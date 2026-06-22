@@ -1,0 +1,38 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  /* Lyndrix design token defaults (dark theme) — overridden at runtime */
+  --lx-bg: #0f1117;
+  --lx-surface: #1a1d27;
+  --lx-elevated: #22263a;
+  --lx-accent: #22d3ee;
+  --lx-accent-2: #38bdf8;
+  --lx-accent-3: #818cf8;
+  --lx-text: #f1f5f9;
+  --lx-text-muted: #94a3b8;
+  --lx-border: #22d3ee33;
+  --lx-border-soft: #334155;
+  --lx-radius-sm: 4px;
+  --lx-radius-md: 8px;
+  --lx-radius-lg: 12px;
+  --lx-glow: 0 0 16px 0 #22d3ee33;
+  --lx-state-up: #22d3ee;
+  --lx-state-down: #f87171;
+  --lx-state-paused: #fbbf24;
+  --lx-state-unknown: #94a3b8;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background-color: var(--lx-bg);
+  color: var(--lx-text);
+  font-family: Inter, system-ui, -apple-system, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
