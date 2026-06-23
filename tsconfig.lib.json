@@ -1,0 +1,19 @@
+{
+  "compilerOptions": {
+    "target": "ES2020",
+    "lib": ["ES2020", "DOM", "DOM.Iterable"],
+    "module": "ESNext",
+    "moduleResolution": "node",
+    "jsx": "react-jsx",
+    "skipLibCheck": true,
+    "strict": true,
+    "noUnusedLocals": false,
+    "noUnusedParameters": false,
+    "declaration": true,
+    "declarationDir": "./dist/types",
+    "emitDeclarationOnly": true,
+    "rootDir": "./src",
+    "types": ["vite/client"]
+  },
+  "include": ["src/index.ts", "src/components/**/*.tsx", "src/lib/types.ts", "src/lib/api.ts", "src/lib/auth.ts", "src/lib/icons.ts", "src/lib/useGreeting.ts"]
+}

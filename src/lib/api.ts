@@ -1,6 +1,8 @@
+import type { PluginSettingField } from './types'
+
 const BASE_URL = ''
 
-function getToken(): string | null {
+export function getToken(): string | null {
   return localStorage.getItem('lyndrix_token')
 }
 
@@ -45,4 +47,25 @@ export async function apiFetch<T = unknown>(path: string, options: FetchOptions 
 
   if (res.status === 204) return undefined as T
   return res.json() as Promise<T>
+}
+
+export interface PluginSettingsResponse {
+  status: string
+  plugin_id: string
+  schema: PluginSettingField[]
+  values: Record<string, unknown>
+}
+
+export async function getPluginSettings(pluginId: string): Promise<PluginSettingsResponse> {
+  return apiFetch<PluginSettingsResponse>(`/api/plugins/${pluginId}/settings`)
+}
+
+export async function updatePluginSettings(
+  pluginId: string,
+  values: Record<string, unknown>,
+): Promise<{ status: string }> {
+  return apiFetch<{ status: string }>(`/api/plugins/${pluginId}/settings`, {
+    method: 'PUT',
+    body: JSON.stringify({ values }),
+  })
 }

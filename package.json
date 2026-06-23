@@ -3,9 +3,12 @@
   "private": true,
   "version": "0.0.0",
   "type": "module",
+  "module": "./dist/index.es.js",
+  "types": "./dist/types/index.d.ts",
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
+    "build:lib": "vite build --config vite.lib.config.ts && tsc --project tsconfig.lib.json && tailwindcss -i ./src/index.css -o ./dist/lyndrix.css --minify",
     "lint": "eslint .",
     "preview": "vite preview"
   },
