@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -29,15 +29,54 @@
 
 * {
   box-sizing: border-box;
+  /* Firefox themed scrollbars (covers shell + plugin bundles in the shared doc) */
+  scrollbar-width: thin;
+  scrollbar-color: var(--lx-border) var(--lx-bg);
+}
+
+/* WebKit/Chromium themed scrollbars — dark track, accent thumb */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: var(--lx-bg);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--lx-border);
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--lx-accent);
 }
 
 body {
   margin: 0;
   background-color: var(--lx-bg);
   color: var(--lx-text);
-  font-family: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', Consolas, monospace;
+  font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+@layer components {
+  /* Standard card surface — flat border + subtle hover-lift (the shell-wide convention) */
+  .lx-card {
+    @apply rounded-xl border border-[var(--lx-border-soft)] bg-[var(--lx-surface)];
+  }
+  .lx-card-hover {
+    @apply transition-all duration-200 hover:border-[var(--lx-border)] hover:-translate-y-0.5;
+  }
+}
+
+/* Consistent, theme-aware focus ring for inputs, selects and buttons.
+   Plain CSS (not @apply) so we can use color-mix on the accent token. */
+.lx-focus {
+  outline: none;
+}
+.lx-focus:focus-visible {
+  border-color: var(--lx-accent);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--lx-accent) 40%, transparent);
 }
 
 @keyframes lx-badge-pulse {

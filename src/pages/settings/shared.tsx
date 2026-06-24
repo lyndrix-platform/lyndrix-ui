@@ -1,22 +1,18 @@
 import { Lock } from 'lucide-react'
 
 export const inputCls =
-  'px-3 py-2 rounded-md bg-[var(--lx-elevated)] border border-[var(--lx-border-soft)] text-[var(--lx-text)] text-sm outline-none focus:border-[var(--lx-accent)] transition-colors disabled:opacity-50 disabled:cursor-not-allowed'
+  'px-3 py-2 rounded-md bg-[var(--lx-elevated)] border border-[var(--lx-border-soft)] text-[var(--lx-text)] text-sm transition-colors lx-focus disabled:opacity-50 disabled:cursor-not-allowed'
 
 export function SectionTitle({ children }: { children: React.ReactNode }) {
   return (
-    <h3 className="text-xs uppercase tracking-widest text-[var(--lx-text-muted)] font-medium mb-3">
+    <h3 className="text-[13px] font-semibold text-[var(--lx-text)] mb-3">
       {children}
     </h3>
   )
 }
 
 export function Card({ children }: { children: React.ReactNode }) {
-  return (
-    <div className="rounded-lg border border-[var(--lx-border-soft)] bg-[var(--lx-surface)] p-5">
-      {children}
-    </div>
-  )
+  return <div className="lx-card p-5">{children}</div>
 }
 
 export function Field({
@@ -33,7 +29,7 @@ export function Field({
   return (
     <div className="flex flex-col gap-1">
       <div className="flex items-center gap-1.5">
-        <label className="text-xs text-[var(--lx-text-muted)] uppercase tracking-wide">{label}</label>
+        <label className="text-xs font-medium text-[var(--lx-text-muted)]">{label}</label>
         {locked && (
           <span
             title="Durch Umgebungsvariable gesperrt"
@@ -55,7 +51,7 @@ export function SaveButton({ onClick, loading }: { onClick: () => void; loading:
     <button
       onClick={onClick}
       disabled={loading}
-      className="mt-3 px-4 py-1.5 rounded-md text-sm font-medium disabled:opacity-40 transition-opacity hover:opacity-90"
+      className="mt-3 px-4 py-1.5 rounded-md text-sm font-medium disabled:opacity-40 transition-opacity hover:opacity-90 lx-focus"
       style={{
         background: 'linear-gradient(135deg, var(--lx-accent), var(--lx-accent-2))',
         color: 'var(--lx-bg)',

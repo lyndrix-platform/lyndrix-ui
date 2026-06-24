@@ -11,7 +11,7 @@ import PluginSettingsModal from '../components/PluginSettingsModal'
 // ─── Shared styles ────────────────────────────────────────────────────────────
 
 const inputCls =
-  'px-3 py-2 rounded-md bg-[var(--lx-elevated)] border border-[var(--lx-border-soft)] text-[var(--lx-text)] text-sm outline-none focus:border-[var(--lx-accent)] transition-colors'
+  'px-3 py-2 rounded-md bg-[var(--lx-elevated)] border border-[var(--lx-border-soft)] text-[var(--lx-text)] text-sm transition-colors lx-focus'
 
 // ─── Tabs ─────────────────────────────────────────────────────────────────────
 
@@ -497,7 +497,7 @@ function PluginCard({ plugin }: { plugin: PluginOut }) {
         />
       )}
 
-      <div className="rounded-xl bg-[var(--lx-surface)] border border-[var(--lx-border-soft)] overflow-hidden">
+      <div className="rounded-xl bg-[var(--lx-surface)] border border-[var(--lx-border-soft)] overflow-hidden transition-colors hover:border-[var(--lx-border)]">
         {/* Header */}
         <div className="p-4 flex gap-3">
           <div
@@ -665,7 +665,7 @@ function InstalledTab() {
 
         {pluginModules.length > 0 && (
           <section>
-            <h2 className="text-xs uppercase tracking-widest text-[var(--lx-text-muted)] font-medium mb-3">
+            <h2 className="text-xs font-semibold uppercase tracking-wide text-[var(--lx-text-muted)] mb-3">
               Plugins
             </h2>
             <div className="flex flex-col gap-2">
@@ -678,7 +678,7 @@ function InstalledTab() {
 
         {coreModules.length > 0 && (
           <section>
-            <h2 className="text-xs uppercase tracking-widest text-[var(--lx-text-muted)] font-medium mb-3">
+            <h2 className="text-xs font-semibold uppercase tracking-wide text-[var(--lx-text-muted)] mb-3">
               Core-Module
             </h2>
             <div className="flex flex-col gap-2">
@@ -796,7 +796,7 @@ function MarketplaceTab() {
 
       {/* Available plugins */}
       <section className="mb-8">
-        <h2 className="text-xs uppercase tracking-widest text-[var(--lx-text-muted)] font-medium mb-3">
+        <h2 className="text-xs font-semibold uppercase tracking-wide text-[var(--lx-text-muted)] mb-3">
           Verfügbare Plugins
         </h2>
 
@@ -822,7 +822,7 @@ function MarketplaceTab() {
               return (
                 <div
                   key={mp.repo_url}
-                  className="rounded-xl bg-[var(--lx-surface)] border border-[var(--lx-border-soft)] overflow-hidden"
+                  className="rounded-xl bg-[var(--lx-surface)] border border-[var(--lx-border-soft)] overflow-hidden transition-colors hover:border-[var(--lx-border)]"
                 >
                   {/* Card body */}
                   <div className="p-4 flex gap-3">
@@ -915,11 +915,11 @@ function MarketplaceTab() {
 
       {/* Custom repos */}
       <section>
-        <h2 className="text-xs uppercase tracking-widest text-[var(--lx-text-muted)] font-medium mb-3">
+        <h2 className="text-xs font-semibold uppercase tracking-wide text-[var(--lx-text-muted)] mb-3">
           Eigene Repositories
         </h2>
 
-        <div className="rounded-xl bg-[var(--lx-surface)] border border-[var(--lx-border-soft)] overflow-hidden">
+        <div className="rounded-xl bg-[var(--lx-surface)] border border-[var(--lx-border-soft)] overflow-hidden transition-colors hover:border-[var(--lx-border)]">
           {(customRepos ?? []).length > 0 && (
             <div className="divide-y divide-[var(--lx-border-soft)]">
               {(customRepos ?? []).map((repo) => (

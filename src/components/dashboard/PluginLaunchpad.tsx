@@ -25,12 +25,11 @@ function PluginTile({ plugin, href, isExternal }: { plugin: PluginOut; href: str
   const inner = (
     <div
       className={[
-        'relative flex flex-col items-center gap-2 p-4 text-center',
-        'rounded-lg border transition-all duration-200',
-        'bg-[var(--lx-surface-glass)] backdrop-blur-[8px]',
+        'lx-card relative flex flex-col items-center gap-2 p-4 text-center',
+        'transition-all duration-200',
         href
-          ? 'border-[var(--lx-border-soft)] hover:border-[var(--lx-border)] hover:-translate-y-1 hover:shadow-glow cursor-pointer'
-          : 'border-[var(--lx-border-soft)] opacity-40 cursor-not-allowed',
+          ? 'hover:border-[var(--lx-border)] hover:-translate-y-0.5 cursor-pointer'
+          : 'opacity-40 cursor-not-allowed',
       ].join(' ')}
     >
       <div className="w-10 h-10 flex items-center justify-center rounded-md bg-[var(--lx-accent)]/10 text-[var(--lx-accent)] shrink-0">

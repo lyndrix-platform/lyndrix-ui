@@ -39,7 +39,7 @@ export default function DashboardPage() {
 
       {/* Plugin Launchpad */}
       <section>
-        <h2 className="text-[10px] uppercase tracking-widest text-[var(--lx-text-muted)] font-medium mb-3">
+        <h2 className="text-xs font-semibold uppercase tracking-wide text-[var(--lx-text-muted)] mb-3">
           Apps
         </h2>
         <PluginLaunchpad plugins={pluginList} />
@@ -47,7 +47,7 @@ export default function DashboardPage() {
 
       {/* Compact platform facts */}
       <section>
-        <h2 className="text-[10px] uppercase tracking-widest text-[var(--lx-text-muted)] font-medium mb-3">
+        <h2 className="text-xs font-semibold uppercase tracking-wide text-[var(--lx-text-muted)] mb-3">
           Plattform
         </h2>
         <div className="flex flex-wrap gap-6 text-sm text-[var(--lx-text-muted)]">
