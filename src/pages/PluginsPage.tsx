@@ -10,8 +10,7 @@ import PluginSettingsModal from '../components/PluginSettingsModal'
 
 // ─── Shared styles ────────────────────────────────────────────────────────────
 
-const inputCls =
-  'px-3 py-2 rounded-md bg-[var(--lx-elevated)] border border-[var(--lx-border-soft)] text-[var(--lx-text)] text-sm transition-colors lx-focus'
+const inputCls = 'lx-input'
 
 // ─── Tabs ─────────────────────────────────────────────────────────────────────
 
@@ -25,17 +24,12 @@ function Tabs({
   onChange: (t: string) => void
 }) {
   return (
-    <div className="flex gap-1 border-b border-[var(--lx-border-soft)] mb-6">
+    <div className="lx-tabs mb-6">
       {tabs.map((t) => (
         <button
           key={t}
           onClick={() => onChange(t)}
-          className={[
-            'px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors',
-            active === t
-              ? 'border-[var(--lx-accent)] text-[var(--lx-accent)]'
-              : 'border-transparent text-[var(--lx-text-muted)] hover:text-[var(--lx-text)]',
-          ].join(' ')}
+          className={`lx-tab ${active === t ? 'lx-tab--active' : ''}`}
         >
           {t}
         </button>
@@ -154,15 +148,11 @@ function ConfirmDialog({
         <div className="flex justify-end gap-2">
           <button
             onClick={onCancel}
-            className="px-3 py-1.5 text-xs rounded-md border border-[var(--lx-border-soft)] text-[var(--lx-text-muted)] hover:text-[var(--lx-text)] transition-colors"
+            className="lx-btn lx-btn--secondary lx-btn--sm"
           >
             Abbrechen
           </button>
-          <button
-            onClick={onConfirm}
-            disabled={loading}
-            className="px-3 py-1.5 text-xs rounded-md bg-[var(--lx-state-down)]/90 text-white font-medium hover:opacity-90 disabled:opacity-40 transition-opacity"
-          >
+          <button onClick={onConfirm} disabled={loading} className="lx-btn lx-btn--danger lx-btn--sm">
             {loading ? 'Bitte warten…' : 'Bestätigen'}
           </button>
         </div>
@@ -275,18 +265,14 @@ function InstallDialog({ initialRepoUrl = '', onClose }: { initialRepoUrl?: stri
           <div className="flex justify-end gap-2 pt-1">
             <button
               onClick={onClose}
-              className="px-3 py-1.5 text-xs rounded-md border border-[var(--lx-border-soft)] text-[var(--lx-text-muted)] hover:text-[var(--lx-text)] transition-colors"
+              className="lx-btn lx-btn--secondary lx-btn--sm"
             >
               Abbrechen
             </button>
             <button
               onClick={() => installMutation.mutate()}
               disabled={!repoUrl || installMutation.isPending}
-              className="px-4 py-1.5 text-xs rounded-md font-medium disabled:opacity-40 hover:opacity-90 transition-opacity"
-              style={{
-                background: 'linear-gradient(135deg, var(--lx-accent), var(--lx-accent-2))',
-                color: 'var(--lx-bg)',
-              }}
+              className="lx-btn lx-btn--primary lx-btn--sm"
             >
               {installMutation.isPending ? 'Installiere…' : 'Installieren'}
             </button>
@@ -389,18 +375,14 @@ function UpgradeDialog({ plugin, onClose }: { plugin: PluginOut; onClose: () => 
           <div className="flex justify-end gap-2 pt-1">
             <button
               onClick={onClose}
-              className="px-3 py-1.5 text-xs rounded-md border border-[var(--lx-border-soft)] text-[var(--lx-text-muted)] hover:text-[var(--lx-text)] transition-colors"
+              className="lx-btn lx-btn--secondary lx-btn--sm"
             >
               Abbrechen
             </button>
             <button
               onClick={() => upgradeMutation.mutate()}
               disabled={upgradeMutation.isPending}
-              className="px-4 py-1.5 text-xs rounded-md font-medium disabled:opacity-40 hover:opacity-90 transition-opacity"
-              style={{
-                background: 'linear-gradient(135deg, var(--lx-accent), var(--lx-accent-2))',
-                color: 'var(--lx-bg)',
-              }}
+              className="lx-btn lx-btn--primary lx-btn--sm"
             >
               {upgradeMutation.isPending ? 'Aktualisiere…' : 'Aktualisieren'}
             </button>
@@ -463,12 +445,12 @@ function PluginCard({ plugin }: { plugin: PluginOut }) {
     upgrading: 'Aktualisiert…',
   }
 
-  const statusColor =
+  const statusBadge =
     plugin.status === 'active'
-      ? 'text-[var(--lx-state-up)] bg-[var(--lx-state-up)]/10'
+      ? 'lx-badge--up'
       : plugin.status === 'failed'
-        ? 'text-[var(--lx-state-down)] bg-[var(--lx-state-down)]/10'
-        : 'text-[var(--lx-text-muted)] bg-[var(--lx-elevated)]'
+        ? 'lx-badge--down'
+        : 'lx-badge--muted'
 
   return (
     <>
@@ -542,20 +524,16 @@ function PluginCard({ plugin }: { plugin: PluginOut }) {
               <button
                 onClick={() => setShowError((v) => !v)}
                 title="Fehlerdetails anzeigen"
-                className={`text-[10px] uppercase tracking-wide px-2 py-0.5 rounded-full font-medium cursor-pointer hover:opacity-80 transition-opacity ${statusColor}`}
+                className={`lx-badge ${statusBadge} cursor-pointer hover:opacity-80 transition-opacity`}
               >
                 {statusLabel[plugin.status] ?? plugin.status}
               </button>
             ) : (
-              <span className={`text-[10px] uppercase tracking-wide px-2 py-0.5 rounded-full font-medium ${statusColor}`}>
+              <span className={`lx-badge ${statusBadge}`}>
                 {statusLabel[plugin.status] ?? plugin.status}
               </span>
             )}
-            {plugin.react_ui && (
-              <span className="text-[10px] uppercase tracking-wide text-[var(--lx-accent)] px-1.5 py-0.5 rounded border border-[var(--lx-accent)]/30">
-                React
-              </span>
-            )}
+            {plugin.react_ui && <span className="lx-badge lx-badge--accent">React</span>}
           </div>
         </div>
 
@@ -651,15 +629,9 @@ function InstalledTab() {
           <span className="text-xs text-[var(--lx-text-muted)]">
             {pluginModules.length} Plugin{pluginModules.length !== 1 ? 's' : ''} installiert
           </span>
-          <button
-            onClick={() => setShowInstall(true)}
-            className="px-3 py-1.5 text-xs rounded-md font-medium hover:opacity-90 transition-opacity"
-            style={{
-              background: 'linear-gradient(135deg, var(--lx-accent), var(--lx-accent-2))',
-              color: 'var(--lx-bg)',
-            }}
-          >
-            + Plugin installieren
+          <button onClick={() => setShowInstall(true)} className="lx-btn lx-btn--primary lx-btn--sm">
+            <span className="material-icons" style={{ fontSize: 16 }}>add</span>
+            Plugin installieren
           </button>
         </div>
 
@@ -695,14 +667,7 @@ function InstalledTab() {
             <p className="text-sm text-[var(--lx-text-muted)]">
               Keine Module installiert.
             </p>
-            <button
-              onClick={() => setShowInstall(true)}
-              className="px-4 py-2 text-xs rounded-md font-medium hover:opacity-90 transition-opacity"
-              style={{
-                background: 'linear-gradient(135deg, var(--lx-accent), var(--lx-accent-2))',
-                color: 'var(--lx-bg)',
-              }}
-            >
+            <button onClick={() => setShowInstall(true)} className="lx-btn lx-btn--primary">
               Erstes Plugin installieren
             </button>
           </div>
@@ -888,20 +853,12 @@ function MarketplaceTab() {
                     {isInstalled && installedEntry ? (
                       <button
                         onClick={() => setUpgradePlugin(installedEntry)}
-                        className="px-3 py-1.5 text-xs rounded-md font-medium border border-[var(--lx-accent)]/40 text-[var(--lx-accent)] hover:bg-[var(--lx-accent)]/10 transition-colors"
+                        className="lx-btn lx-btn--secondary lx-btn--sm"
                       >
                         Version ändern
                       </button>
                     ) : (
-                      <button
-                        onClick={() => setInstallPlugin(mp)}
-                        className="px-3 py-1.5 text-xs rounded-md font-medium hover:opacity-90 transition-opacity"
-                        style={{
-                          background:
-                            'linear-gradient(135deg, var(--lx-accent), var(--lx-accent-2))',
-                          color: 'var(--lx-bg)',
-                        }}
-                      >
+                      <button onClick={() => setInstallPlugin(mp)} className="lx-btn lx-btn--primary lx-btn--sm">
                         Installieren
                       </button>
                     )}
@@ -975,11 +932,7 @@ function MarketplaceTab() {
                 if (newRepoUrl.trim()) addRepoMutation.mutate(newRepoUrl.trim())
               }}
               disabled={!newRepoUrl.trim() || addRepoMutation.isPending}
-              className="px-3 py-1.5 text-xs rounded-md font-medium disabled:opacity-40 hover:opacity-90 transition-opacity shrink-0"
-              style={{
-                background: 'linear-gradient(135deg, var(--lx-accent), var(--lx-accent-2))',
-                color: 'var(--lx-bg)',
-              }}
+              className="lx-btn lx-btn--primary lx-btn--sm shrink-0"
             >
               Hinzufügen
             </button>

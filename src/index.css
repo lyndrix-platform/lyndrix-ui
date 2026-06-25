@@ -59,24 +59,344 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
-@layer components {
-  /* Standard card surface — flat border + subtle hover-lift (the shell-wide convention) */
-  .lx-card {
-    @apply rounded-xl border border-[var(--lx-border-soft)] bg-[var(--lx-surface)];
-  }
-  .lx-card-hover {
-    @apply transition-all duration-200 hover:border-[var(--lx-border)] hover:-translate-y-0.5;
-  }
+/* ──────────────────────────────────────────────────────────────────────────
+   Lyndrix shared design system — PLAIN CSS (token-driven).
+   Lives in the shared document so BOTH the shell and the IIFE plugin bundles
+   (which ship no Tailwind of their own) can use these class names directly.
+   Spacing scale: tight 8px · normal 16px · section 32px.
+   Radius: sm 6 · md 12 · lg 20.
+   ────────────────────────────────────────────────────────────────────────── */
+
+/* ── Surfaces ── */
+.lx-card {
+  background: var(--lx-surface);
+  border: 1px solid var(--lx-border-soft);
+  border-radius: var(--lx-radius-md);
+}
+.lx-card-hover {
+  transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+}
+.lx-card-hover:hover {
+  border-color: var(--lx-border);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px -12px rgba(0, 0, 0, 0.5);
+}
+.lx-elevated {
+  background: var(--lx-elevated);
+  border: 1px solid var(--lx-border-soft);
+  border-radius: var(--lx-radius-md);
 }
 
-/* Consistent, theme-aware focus ring for inputs, selects and buttons.
-   Plain CSS (not @apply) so we can use color-mix on the accent token. */
+/* ── Focus ring (inputs / selects / buttons / tiles) ── */
 .lx-focus {
   outline: none;
 }
 .lx-focus:focus-visible {
   border-color: var(--lx-accent);
   box-shadow: 0 0 0 2px color-mix(in srgb, var(--lx-accent) 40%, transparent);
+}
+
+/* ── Form controls ── */
+.lx-input,
+.lx-select,
+.lx-textarea {
+  width: 100%;
+  padding: 8px 12px;
+  font-size: 0.8125rem;
+  font-family: inherit;
+  color: var(--lx-text);
+  background: var(--lx-elevated);
+  border: 1px solid var(--lx-border-soft);
+  border-radius: var(--lx-radius-sm);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  outline: none;
+}
+.lx-input::placeholder,
+.lx-textarea::placeholder {
+  color: var(--lx-text-muted);
+  opacity: 0.7;
+}
+.lx-input:hover,
+.lx-select:hover,
+.lx-textarea:hover {
+  border-color: var(--lx-border);
+}
+.lx-input:focus-visible,
+.lx-select:focus-visible,
+.lx-textarea:focus-visible {
+  border-color: var(--lx-accent);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--lx-accent) 40%, transparent);
+}
+.lx-input:disabled,
+.lx-select:disabled,
+.lx-textarea:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.lx-label {
+  display: block;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--lx-text-muted);
+  margin-bottom: 6px;
+}
+
+/* ── Buttons ── */
+.lx-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  padding: 8px 16px;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  font-family: inherit;
+  line-height: 1.1;
+  border: 1px solid transparent;
+  border-radius: var(--lx-radius-sm);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.15s ease, border-color 0.15s ease, opacity 0.15s ease,
+    transform 0.1s ease, box-shadow 0.15s ease;
+}
+.lx-btn:active {
+  transform: translateY(1px);
+}
+.lx-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.lx-btn:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--lx-accent) 45%, transparent);
+}
+.lx-btn--sm {
+  padding: 5px 11px;
+  font-size: 0.75rem;
+  gap: 5px;
+}
+.lx-btn--block {
+  width: 100%;
+}
+.lx-btn--primary {
+  background: linear-gradient(135deg, var(--lx-accent), var(--lx-accent-2));
+  color: var(--lx-bg);
+  font-weight: 600;
+}
+.lx-btn--primary:not(:disabled):hover {
+  box-shadow: 0 4px 16px -4px color-mix(in srgb, var(--lx-accent) 55%, transparent);
+}
+.lx-btn--secondary {
+  background: var(--lx-elevated);
+  color: var(--lx-text);
+  border-color: var(--lx-border-soft);
+}
+.lx-btn--secondary:not(:disabled):hover {
+  border-color: var(--lx-border);
+  color: var(--lx-text);
+}
+.lx-btn--ghost {
+  background: transparent;
+  color: var(--lx-text-muted);
+}
+.lx-btn--ghost:not(:disabled):hover {
+  background: var(--lx-elevated);
+  color: var(--lx-text);
+}
+.lx-btn--danger {
+  background: color-mix(in srgb, var(--lx-state-down) 15%, transparent);
+  color: var(--lx-state-down);
+  border-color: color-mix(in srgb, var(--lx-state-down) 35%, transparent);
+}
+.lx-btn--danger:not(:disabled):hover {
+  background: color-mix(in srgb, var(--lx-state-down) 25%, transparent);
+}
+
+/* Square icon button */
+.lx-icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 7px;
+  border-radius: var(--lx-radius-sm);
+  color: var(--lx-text-muted);
+  background: transparent;
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+.lx-icon-btn:not(:disabled):hover {
+  background: var(--lx-elevated);
+  color: var(--lx-text);
+}
+.lx-icon-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+.lx-icon-btn--danger:not(:disabled):hover {
+  color: var(--lx-state-down);
+  background: color-mix(in srgb, var(--lx-state-down) 12%, transparent);
+}
+
+/* ── Badges / pills ── */
+.lx-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  line-height: 1.2;
+  padding: 3px 9px;
+  border-radius: 999px;
+  border: 1px solid transparent;
+  white-space: nowrap;
+}
+.lx-badge .lx-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  background: currentColor;
+}
+.lx-badge--up {
+  color: var(--lx-state-up);
+  background: color-mix(in srgb, var(--lx-state-up) 13%, transparent);
+  border-color: color-mix(in srgb, var(--lx-state-up) 28%, transparent);
+}
+.lx-badge--down {
+  color: var(--lx-state-down);
+  background: color-mix(in srgb, var(--lx-state-down) 13%, transparent);
+  border-color: color-mix(in srgb, var(--lx-state-down) 28%, transparent);
+}
+.lx-badge--paused {
+  color: var(--lx-state-paused);
+  background: color-mix(in srgb, var(--lx-state-paused) 13%, transparent);
+  border-color: color-mix(in srgb, var(--lx-state-paused) 28%, transparent);
+}
+.lx-badge--accent {
+  color: var(--lx-accent);
+  background: color-mix(in srgb, var(--lx-accent) 13%, transparent);
+  border-color: color-mix(in srgb, var(--lx-accent) 28%, transparent);
+}
+.lx-badge--muted {
+  color: var(--lx-text-muted);
+  background: var(--lx-elevated);
+  border-color: var(--lx-border-soft);
+}
+
+/* ── Tabs (underline) ── */
+.lx-tabs {
+  display: flex;
+  gap: 2px;
+  border-bottom: 1px solid var(--lx-border-soft);
+}
+.lx-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 9px 16px;
+  margin-bottom: -1px;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--lx-text-muted);
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: color 0.15s ease, border-color 0.15s ease;
+}
+.lx-tab:hover {
+  color: var(--lx-text);
+}
+.lx-tab--active {
+  color: var(--lx-accent);
+  border-bottom-color: var(--lx-accent);
+}
+
+/* ── Section title (replaces uppercase-tracking-widest soup) ── */
+.lx-section-title {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--lx-text);
+}
+.lx-eyebrow {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--lx-text-muted);
+}
+
+/* ── Tables / lists ── */
+.lx-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.8125rem;
+}
+.lx-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  text-align: left;
+  font-weight: 600;
+  font-size: 0.6875rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--lx-text-muted);
+  background: var(--lx-surface);
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--lx-border-soft);
+}
+.lx-table tbody td {
+  padding: 11px 14px;
+  border-bottom: 1px solid var(--lx-border-soft);
+  color: var(--lx-text);
+}
+.lx-table tbody tr {
+  transition: background 0.12s ease;
+}
+.lx-table tbody tr:hover {
+  background: color-mix(in srgb, var(--lx-elevated) 55%, transparent);
+}
+.lx-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+/* ── Empty state ── */
+.lx-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 56px 20px;
+  text-align: center;
+  color: var(--lx-text-muted);
+}
+.lx-empty .material-icons {
+  font-size: 34px;
+  opacity: 0.35;
+}
+
+/* ── Spinner ── */
+.lx-spinner {
+  width: 20px;
+  height: 20px;
+  border: 2px solid color-mix(in srgb, var(--lx-accent) 30%, transparent);
+  border-top-color: var(--lx-accent);
+  border-radius: 50%;
+  animation: lx-spin 0.7s linear infinite;
+}
+@keyframes lx-spin {
+  to { transform: rotate(360deg); }
+}
+
+/* ── Mono helper ── */
+.lx-mono {
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-feature-settings: 'liga' 0;
 }
 
 @keyframes lx-badge-pulse {

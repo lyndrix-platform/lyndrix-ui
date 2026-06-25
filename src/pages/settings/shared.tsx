@@ -1,18 +1,13 @@
 import { Lock } from 'lucide-react'
 
-export const inputCls =
-  'px-3 py-2 rounded-md bg-[var(--lx-elevated)] border border-[var(--lx-border-soft)] text-[var(--lx-text)] text-sm transition-colors lx-focus disabled:opacity-50 disabled:cursor-not-allowed'
+export const inputCls = 'lx-input'
 
 export function SectionTitle({ children }: { children: React.ReactNode }) {
-  return (
-    <h3 className="text-[13px] font-semibold text-[var(--lx-text)] mb-3">
-      {children}
-    </h3>
-  )
+  return <h3 className="lx-section-title mb-4">{children}</h3>
 }
 
 export function Card({ children }: { children: React.ReactNode }) {
-  return <div className="lx-card p-5">{children}</div>
+  return <div className="lx-card lx-card-hover p-6">{children}</div>
 }
 
 export function Field({
@@ -48,15 +43,7 @@ export function Field({
 
 export function SaveButton({ onClick, loading }: { onClick: () => void; loading: boolean }) {
   return (
-    <button
-      onClick={onClick}
-      disabled={loading}
-      className="mt-3 px-4 py-1.5 rounded-md text-sm font-medium disabled:opacity-40 transition-opacity hover:opacity-90 lx-focus"
-      style={{
-        background: 'linear-gradient(135deg, var(--lx-accent), var(--lx-accent-2))',
-        color: 'var(--lx-bg)',
-      }}
-    >
+    <button onClick={onClick} disabled={loading} className="lx-btn lx-btn--primary mt-4">
       {loading ? 'Speichern…' : 'Speichern'}
     </button>
   )

@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom'
-import { ExternalLink } from 'lucide-react'
+import { ArrowRight, ExternalLink } from 'lucide-react'
 import { getPluginIcon } from '../../lib/icons'
 import type { PluginOut } from '../../lib/types'
 
@@ -9,84 +9,106 @@ interface Props {
   plugins: PluginOut[]
 }
 
-function StatusDot({ active }: { active: boolean }) {
-  return (
-    <span
-      className={`inline-block w-1.5 h-1.5 rounded-full ${
-        active ? 'bg-[var(--lx-state-up)]' : 'bg-[var(--lx-text-muted)] opacity-40'
-      }`}
-    />
-  )
-}
-
-function PluginTile({ plugin, href, isExternal }: { plugin: PluginOut; href: string | null; isExternal: boolean }) {
+function PluginTile({
+  plugin,
+  href,
+  isExternal,
+}: {
+  plugin: PluginOut
+  href: string | null
+  isExternal: boolean
+}) {
   const Icon = getPluginIcon(plugin.icon)
+  const enabled = !!href
 
   const inner = (
     <div
       className={[
-        'lx-card relative flex flex-col items-center gap-2 p-4 text-center',
-        'transition-all duration-200',
-        href
-          ? 'hover:border-[var(--lx-border)] hover:-translate-y-0.5 cursor-pointer'
-          : 'opacity-40 cursor-not-allowed',
+        'lx-card group/tile relative flex items-center gap-3.5 p-4',
+        enabled ? 'lx-card-hover cursor-pointer' : 'opacity-45 cursor-not-allowed',
       ].join(' ')}
     >
-      <div className="w-10 h-10 flex items-center justify-center rounded-md bg-[var(--lx-accent)]/10 text-[var(--lx-accent)] shrink-0">
-        <Icon size={20} />
+      <div
+        className="w-11 h-11 flex items-center justify-center rounded-lg shrink-0 text-[var(--lx-accent)]"
+        style={{ background: 'color-mix(in srgb, var(--lx-accent) 12%, transparent)' }}
+      >
+        <Icon size={22} />
       </div>
-      <div className="min-w-0 w-full">
-        <p className="text-sm font-medium text-[var(--lx-text)] truncate">{plugin.name}</p>
-        <p className="text-[10px] text-[var(--lx-text-muted)] mt-0.5">v{plugin.version}</p>
+
+      <div className="min-w-0 flex-1">
+        <p className="text-sm font-semibold text-[var(--lx-text)] truncate">{plugin.name}</p>
+        <div className="flex items-center gap-2 mt-1">
+          {!plugin.is_active ? (
+            <span className="lx-badge lx-badge--muted">
+              <span className="lx-dot" />
+              Inaktiv
+            </span>
+          ) : enabled ? (
+            <span className="lx-badge lx-badge--up">
+              <span className="lx-dot" />
+              Aktiv
+            </span>
+          ) : (
+            <span className="lx-badge lx-badge--muted">Kein UI</span>
+          )}
+          <span className="lx-mono text-[11px] text-[var(--lx-text-muted)]">v{plugin.version}</span>
+        </div>
       </div>
-      <div className="flex items-center gap-1.5">
-        <StatusDot active={plugin.is_active} />
-        <span className="text-[10px] text-[var(--lx-text-muted)]">{plugin.status}</span>
-      </div>
-      {href && isExternal && (
-        <ExternalLink
-          size={10}
-          className="absolute top-2 right-2 text-[var(--lx-accent)] opacity-0 group-hover:opacity-60"
-        />
-      )}
+
+      {enabled &&
+        (isExternal ? (
+          <ExternalLink
+            size={16}
+            className="shrink-0 text-[var(--lx-text-muted)] transition-colors group-hover/tile:text-[var(--lx-accent)]"
+          />
+        ) : (
+          <ArrowRight
+            size={16}
+            className="shrink-0 text-[var(--lx-text-muted)] transition-all group-hover/tile:text-[var(--lx-accent)] group-hover/tile:translate-x-0.5"
+          />
+        ))}
     </div>
   )
 
-  if (!href) return <div key={plugin.id}>{inner}</div>
+  if (!href) return <div>{inner}</div>
 
   if (isExternal) {
     return (
-      <a href={href} target="_blank" rel="noreferrer" className="group">
+      <a href={href} target="_blank" rel="noreferrer">
         {inner}
       </a>
     )
   }
 
-  return (
-    <Link to={href} className="group">
-      {inner}
-    </Link>
-  )
+  return <Link to={href}>{inner}</Link>
 }
 
 export default function PluginLaunchpad({ plugins }: Props) {
   const items = plugins.filter((p) => p.type === 'PLUGIN')
 
   if (items.length === 0) {
-    return <p className="text-sm text-[var(--lx-text-muted)]">Keine Plugins installiert.</p>
+    return (
+      <div className="lx-card lx-empty">
+        <span className="material-icons">extension</span>
+        <p className="text-sm">Keine Plugins installiert.</p>
+        <Link to="/plugins" className="lx-btn lx-btn--secondary lx-btn--sm mt-1">
+          Zum Marketplace
+        </Link>
+      </div>
+    )
   }
 
   return (
-    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
       {items.map((plugin) => {
         if (!plugin.is_active) {
           return <PluginTile key={plugin.id} plugin={plugin} href={null} isExternal={false} />
         }
 
-        // React UI: link internally
         if (plugin.react_ui && plugin.react_routes.length > 0) {
           const safeId = plugin.id.replace(/\./g, '-')
-          const primaryRoute = plugin.react_routes.find((r) => r.sidebar_visible) ?? plugin.react_routes[0]
+          const primaryRoute =
+            plugin.react_routes.find((r) => r.sidebar_visible) ?? plugin.react_routes[0]
           return (
             <PluginTile
               key={plugin.id}
@@ -97,7 +119,6 @@ export default function PluginLaunchpad({ plugins }: Props) {
           )
         }
 
-        // NiceGUI UI: external link to core
         if (plugin.ui_route) {
           return (
             <PluginTile

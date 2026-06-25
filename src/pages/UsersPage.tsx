@@ -5,34 +5,19 @@ import type { UserOut, ApiKeyOut, GroupOut } from '../lib/types'
 
 // ── Shared primitives ─────────────────────────────────────────────────────────
 
-const inputCls =
-  'px-3 py-2 rounded-md bg-[var(--lx-elevated)] border border-[var(--lx-border-soft)] text-[var(--lx-text)] text-sm outline-none focus:border-[var(--lx-accent)] transition-colors w-full'
+const inputCls = 'lx-input'
 
 function Card({ children }: { children: React.ReactNode }) {
-  return (
-    <div className="rounded-lg border border-[var(--lx-border-soft)] bg-[var(--lx-surface)] p-5">
-      {children}
-    </div>
-  )
+  return <div className="lx-card p-6">{children}</div>
 }
 
 function SectionTitle({ children }: { children: React.ReactNode }) {
-  return (
-    <h3 className="text-xs uppercase tracking-widest text-[var(--lx-text-muted)] font-medium mb-3">
-      {children}
-    </h3>
-  )
+  return <h3 className="lx-section-title mb-4">{children}</h3>
 }
 
 function Badge({ label, color = 'accent' }: { label: string; color?: 'accent' | 'muted' | 'down' }) {
-  const cls = {
-    accent: 'bg-[var(--lx-accent)]/10 text-[var(--lx-accent)] border-[var(--lx-accent)]/20',
-    muted: 'bg-[var(--lx-elevated)] text-[var(--lx-text-muted)] border-[var(--lx-border-soft)]',
-    down: 'bg-[var(--lx-state-down)]/10 text-[var(--lx-state-down)] border-[var(--lx-state-down)]/20',
-  }[color]
-  return (
-    <span className={`px-1.5 py-0.5 rounded text-[10px] border ${cls}`}>{label}</span>
-  )
+  const cls = { accent: 'lx-badge--accent', muted: 'lx-badge--muted', down: 'lx-badge--down' }[color]
+  return <span className={`lx-badge ${cls}`}>{label}</span>
 }
 
 function ActionButton({
@@ -49,11 +34,7 @@ function ActionButton({
   return (
     <button
       onClick={onClick}
-      className={`${small ? 'px-2 py-0.5 text-xs' : 'px-3 py-1.5 text-sm'} rounded-md font-medium transition-opacity hover:opacity-80 ${
-        danger
-          ? 'bg-[var(--lx-state-down)]/15 text-[var(--lx-state-down)] border border-[var(--lx-state-down)]/30'
-          : 'bg-[var(--lx-elevated)] text-[var(--lx-text-muted)] border border-[var(--lx-border-soft)]'
-      }`}
+      className={`lx-btn ${danger ? 'lx-btn--danger' : 'lx-btn--secondary'} ${small ? 'lx-btn--sm' : ''}`}
     >
       {label}
     </button>
@@ -163,7 +144,7 @@ function UserDetailPanel({
                 { label: 'Gruppen (kommagetrennt)', key: 'groups' },
               ].map(({ label, key, type }) => (
                 <div key={key} className="flex flex-col gap-1">
-                  <label className="text-xs text-[var(--lx-text-muted)] uppercase tracking-wide">{label}</label>
+                  <label className="lx-label">{label}</label>
                   <input
                     className={inputCls}
                     type={type ?? 'text'}
@@ -179,12 +160,7 @@ function UserDetailPanel({
                 {status.msg}
               </p>
             )}
-            <button
-              onClick={() => patchMut.mutate()}
-              disabled={patchMut.isPending}
-              className="mt-3 px-4 py-1.5 rounded-md text-sm font-medium disabled:opacity-40"
-              style={{ background: 'linear-gradient(135deg, var(--lx-accent), var(--lx-accent-2))', color: 'var(--lx-bg)' }}
-            >
+            <button onClick={() => patchMut.mutate()} disabled={patchMut.isPending} className="lx-btn lx-btn--primary mt-4">
               {patchMut.isPending ? 'Speichern…' : 'Speichern'}
             </button>
           </div>
@@ -215,8 +191,7 @@ function UserDetailPanel({
               <button
                 onClick={() => createKeyMut.mutate()}
                 disabled={!newKeyLabel || createKeyMut.isPending}
-                className="px-3 py-1 rounded-md text-xs font-medium disabled:opacity-40"
-                style={{ background: 'linear-gradient(135deg, var(--lx-accent), var(--lx-accent-2))', color: 'var(--lx-bg)' }}
+                className="lx-btn lx-btn--primary lx-btn--sm shrink-0"
               >
                 Erstellen
               </button>
@@ -274,7 +249,7 @@ function CreateUserModal({ onClose }: { onClose: () => void }) {
             { label: 'E-Mail', key: 'email' },
           ].map(({ label, key, type }) => (
             <div key={key} className="flex flex-col gap-1">
-              <label className="text-xs text-[var(--lx-text-muted)] uppercase tracking-wide">{label}</label>
+              <label className="lx-label">{label}</label>
               <input className={inputCls} type={type ?? 'text'}
                 value={(form as Record<string, string>)[key]}
                 onChange={(e) => setForm((f) => ({ ...f, [key]: e.target.value }))} />
@@ -284,8 +259,7 @@ function CreateUserModal({ onClose }: { onClose: () => void }) {
           <button
             onClick={() => mut.mutate()}
             disabled={!form.username || !form.password || mut.isPending}
-            className="mt-2 py-2 rounded-md text-sm font-medium disabled:opacity-40"
-            style={{ background: 'linear-gradient(135deg, var(--lx-accent), var(--lx-accent-2))', color: 'var(--lx-bg)' }}
+            className="lx-btn lx-btn--primary lx-btn--block mt-2"
           >
             {mut.isPending ? 'Erstellen…' : 'Erstellen'}
           </button>
@@ -358,7 +332,7 @@ function GroupsTab() {
       {/* Group list */}
       <div className="md:col-span-1">
         <div className="flex items-center justify-between mb-2">
-          <span className="text-xs uppercase tracking-widest text-[var(--lx-text-muted)]">Gruppen</span>
+          <span className="lx-eyebrow">Gruppen</span>
           <button
             onClick={() => setCreating(true)}
             className="text-xs text-[var(--lx-accent)] hover:opacity-80"
@@ -372,8 +346,7 @@ function GroupsTab() {
             <input className={`${inputCls} text-xs py-1 flex-1`} placeholder="Gruppenname"
               value={newGroupName} onChange={(e) => setNewGroupName(e.target.value)} />
             <button onClick={() => createGroupMut.mutate()} disabled={!newGroupName}
-              className="px-2 py-1 text-xs rounded-md disabled:opacity-40"
-              style={{ background: 'var(--lx-accent)', color: 'var(--lx-bg)' }}>
+              className="lx-btn lx-btn--primary lx-btn--sm shrink-0">
               OK
             </button>
           </div>
@@ -447,15 +420,12 @@ function UsersTab() {
   return (
     <div>
       <div className="flex items-center justify-between mb-4">
-        <span className="text-xs uppercase tracking-widest text-[var(--lx-text-muted)]">
+        <span className="lx-eyebrow">
           {users?.length ?? 0} Benutzer
         </span>
-        <button
-          onClick={() => setCreating(true)}
-          className="px-3 py-1.5 rounded-md text-sm font-medium"
-          style={{ background: 'linear-gradient(135deg, var(--lx-accent), var(--lx-accent-2))', color: 'var(--lx-bg)' }}
-        >
-          + Benutzer erstellen
+        <button onClick={() => setCreating(true)} className="lx-btn lx-btn--primary lx-btn--sm">
+          <span className="material-icons" style={{ fontSize: 16 }}>add</span>
+          Benutzer erstellen
         </button>
       </div>
 
@@ -509,17 +479,9 @@ export default function UsersPage() {
         <p className="text-sm text-[var(--lx-text-muted)] mt-1">Benutzer, Gruppen und Berechtigungen</p>
       </div>
 
-      <div className="flex gap-0 mb-6 border-b border-[var(--lx-border-soft)]">
+      <div className="lx-tabs mb-6">
         {TABS.map((t) => (
-          <button
-            key={t}
-            onClick={() => setTab(t)}
-            className={`px-4 py-2 text-sm transition-colors border-b-2 -mb-px ${
-              tab === t
-                ? 'border-[var(--lx-accent)] text-[var(--lx-accent)]'
-                : 'border-transparent text-[var(--lx-text-muted)] hover:text-[var(--lx-text)]'
-            }`}
-          >
+          <button key={t} onClick={() => setTab(t)} className={`lx-tab ${tab === t ? 'lx-tab--active' : ''}`}>
             {t}
           </button>
         ))}

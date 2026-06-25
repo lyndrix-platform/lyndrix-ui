@@ -83,48 +83,36 @@ export default function LoginPage() {
         <p className="text-sm text-[var(--lx-text-muted)] mb-6">Melden Sie sich an</p>
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-          <div className="flex flex-col gap-1">
-            <label className="text-xs text-[var(--lx-text-muted)] uppercase tracking-wide">
-              Benutzername
-            </label>
+          <div>
+            <label className="lx-label">Benutzername</label>
             <input
               type="text"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
               required
               autoFocus
-              className="px-3 py-2 rounded-md bg-[var(--lx-elevated)] border border-[var(--lx-border-soft)] text-[var(--lx-text)] text-sm outline-none focus:border-[var(--lx-accent)] transition-colors"
+              className="lx-input"
             />
           </div>
 
-          <div className="flex flex-col gap-1">
-            <label className="text-xs text-[var(--lx-text-muted)] uppercase tracking-wide">
-              Passwort
-            </label>
+          <div>
+            <label className="lx-label">Passwort</label>
             <input
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
-              className="px-3 py-2 rounded-md bg-[var(--lx-elevated)] border border-[var(--lx-border-soft)] text-[var(--lx-text)] text-sm outline-none focus:border-[var(--lx-accent)] transition-colors"
+              className="lx-input"
             />
           </div>
 
           {error && (
-            <p className="text-sm text-[var(--lx-state-down)] bg-[var(--lx-elevated)] px-3 py-2 rounded-md">
+            <p className="text-sm text-[var(--lx-state-down)] bg-[var(--lx-state-down)]/10 border border-[var(--lx-state-down)]/20 px-3 py-2 rounded-md">
               {error}
             </p>
           )}
 
-          <button
-            type="submit"
-            disabled={loading}
-            className="mt-2 py-2 rounded-md font-semibold text-sm disabled:opacity-50 transition-opacity hover:opacity-90"
-            style={{
-              background: 'linear-gradient(135deg, var(--lx-accent), var(--lx-accent-2))',
-              color: 'var(--lx-bg)',
-            }}
-          >
+          <button type="submit" disabled={loading} className="lx-btn lx-btn--primary lx-btn--block mt-2">
             {loading ? 'Anmelden…' : 'Anmelden'}
           </button>
         </form>
