@@ -33,6 +33,8 @@ export const toast = {
   info: (message: string) => _emit('info', message),
   _subscribe: (fn: Listener) => {
     _listeners.add(fn)
-    return () => _listeners.delete(fn)
+    return () => {
+      _listeners.delete(fn)
+    }
   },
 }

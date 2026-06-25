@@ -1,6 +1,7 @@
 import { lazy } from 'react'
 import type { ComponentType, LazyExoticComponent } from 'react'
 import { Settings, Palette, ShieldCheck, Puzzle, User, Info, Bell } from 'lucide-react'
+import type { LucideIcon } from 'lucide-react'
 
 export interface SettingsSectionProps {
   config: Record<string, unknown>
@@ -10,7 +11,7 @@ export interface SettingsSectionProps {
 export interface SettingsSectionDef {
   id: string
   label: string
-  Icon: ComponentType<{ size?: number; className?: string }>
+  Icon: LucideIcon
   component: LazyExoticComponent<ComponentType<SettingsSectionProps>>
 }
 
