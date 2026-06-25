@@ -1,12 +1,15 @@
 import { useState } from 'react'
 import { Menu } from 'lucide-react'
 import Sidebar from './Sidebar'
+import Header from './Header'
 import LyndrixLogo from '../LyndrixLogo'
 import ToastStack from '../ToastStack'
 
 interface Props {
   children: React.ReactNode
 }
+
+const COLLAPSE_KEY = 'lyndrix_sidebar_collapsed'
 
 const gridBg: React.CSSProperties = {
   backgroundImage: [
@@ -18,6 +21,19 @@ const gridBg: React.CSSProperties = {
 
 export default function AppShell({ children }: Props) {
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  // AppShell remounts on every top-level navigation, so the collapsed state
+  // must live in localStorage to survive across routes.
+  const [collapsed, setCollapsed] = useState(
+    () => localStorage.getItem(COLLAPSE_KEY) === '1',
+  )
+
+  function toggleCollapsed() {
+    setCollapsed((prev) => {
+      const next = !prev
+      localStorage.setItem(COLLAPSE_KEY, next ? '1' : '0')
+      return next
+    })
+  }
 
   return (
     <div className="flex h-screen overflow-hidden bg-[var(--lx-bg)]">
@@ -36,10 +52,11 @@ export default function AppShell({ children }: Props) {
           'bg-[var(--lx-surface)] border-r border-[var(--lx-border-soft)]',
           'transition-transform duration-200 ease-in-out',
           sidebarOpen ? 'translate-x-0' : '-translate-x-full',
-          'md:relative md:translate-x-0',
+          'md:relative md:translate-x-0 md:transition-[width] md:duration-200',
+          collapsed ? 'md:w-14' : 'md:w-56',
         ].join(' ')}
       >
-        <Sidebar onClose={() => setSidebarOpen(false)} />
+        <Sidebar onClose={() => setSidebarOpen(false)} collapsed={collapsed} />
       </aside>
 
       {/* Main area */}
@@ -66,6 +83,9 @@ export default function AppShell({ children }: Props) {
             Lyndrix
           </span>
         </div>
+
+        {/* Desktop header */}
+        <Header onToggleSidebar={toggleCollapsed} />
 
         {/* Scrollable page content */}
         <main className="flex-1 overflow-y-auto" style={gridBg}>

@@ -69,3 +69,34 @@ export async function updatePluginSettings(
     body: JSON.stringify({ values }),
   })
 }
+
+// ─── Notifications (notification bell) ────────────────────────────────────────
+
+export interface NotificationItem {
+  id: string
+  title: string
+  message: string
+  type: string
+  timestamp: number
+  read: boolean
+}
+
+export interface NotificationsResponse {
+  notifications: NotificationItem[]
+  unread: number
+}
+
+export const getNotifications = () =>
+  apiFetch<NotificationsResponse>('/api/notifications')
+
+export const markNotificationRead = (id: string) =>
+  apiFetch(`/api/notifications/${encodeURIComponent(id)}/read`, { method: 'POST' })
+
+export const markAllNotificationsRead = () =>
+  apiFetch('/api/notifications/read-all', { method: 'POST' })
+
+export const dismissNotification = (id: string) =>
+  apiFetch(`/api/notifications/${encodeURIComponent(id)}`, { method: 'DELETE' })
+
+export const clearAllNotifications = () =>
+  apiFetch('/api/notifications', { method: 'DELETE' })
