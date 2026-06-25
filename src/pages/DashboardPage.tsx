@@ -1,151 +1,106 @@
 import { useQuery } from '@tanstack/react-query'
-import { useNavigate } from 'react-router-dom'
-import { getMe, logout } from '../lib/auth'
+import { getMe } from '../lib/auth'
 import { apiFetch } from '../lib/api'
-import { LogOut, Plug, Activity } from 'lucide-react'
-
-interface PluginEntry {
-  id: string
-  name: string
-  version: string
-  type: string
-  is_active: boolean
-  status: string
-}
+import WelcomeSection from '../components/dashboard/WelcomeSection'
+import PluginLaunchpad from '../components/dashboard/PluginLaunchpad'
+import type { PluginOut, HealthResponse, VaultStatusResponse } from '../lib/types'
 
 export default function DashboardPage() {
-  const navigate = useNavigate()
-
   const { data: me } = useQuery({
     queryKey: ['me'],
     queryFn: getMe,
   })
 
-  const { data: plugins, isLoading: pluginsLoading } = useQuery({
+  const { data: plugins } = useQuery({
     queryKey: ['plugins'],
-    queryFn: () => apiFetch<{ plugins: PluginEntry[] }>('/api/plugins'),
-    select: (d) => d.plugins,
+    queryFn: () => apiFetch<{ plugins: PluginOut[] }>('/api/plugins').then((r) => r.plugins),
   })
 
   const { data: health } = useQuery({
     queryKey: ['health'],
-    queryFn: () => apiFetch<{ status: string; core_version: string }>('/api/health'),
+    queryFn: () => apiFetch<HealthResponse>('/api/health'),
     refetchInterval: 30_000,
   })
 
-  async function handleLogout() {
-    await logout()
-    navigate('/login', { replace: true })
-  }
+  const { data: vaultStatus } = useQuery({
+    queryKey: ['vault-status'],
+    queryFn: () => apiFetch<VaultStatusResponse>('/api/vault/status'),
+    refetchInterval: 60_000,
+  })
+
+  const pluginList = plugins ?? []
+  const activePlugins = pluginList.filter((p) => p.type === 'PLUGIN' && p.is_active)
+  const totalPlugins = pluginList.filter((p) => p.type === 'PLUGIN')
+
+  const vaultOk = !!vaultStatus && vaultStatus.connected && !vaultStatus.sealed
 
   return (
-    <div className="min-h-screen bg-[var(--lx-bg)] text-[var(--lx-text)]">
-      <header className="border-b border-[var(--lx-border-soft)] px-6 py-4 flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <span className="text-lg font-semibold tracking-tight text-[var(--lx-accent)]">
-            Lyndrix
-          </span>
-          {health && (
-            <span className="text-xs px-2 py-0.5 rounded-full border border-[var(--lx-border-soft)] text-[var(--lx-text-muted)]">
-              v{health.core_version}
-            </span>
-          )}
-        </div>
-        <div className="flex items-center gap-4">
-          <span className="text-sm text-[var(--lx-text-muted)]">{me?.username}</span>
-          <button
-            onClick={handleLogout}
-            className="flex items-center gap-1.5 text-sm text-[var(--lx-text-muted)] hover:text-[var(--lx-text)] transition-colors"
-          >
-            <LogOut size={14} />
-            Sign out
-          </button>
-        </div>
-      </header>
+    <div className="max-w-5xl mx-auto px-6 py-8 md:px-8 flex flex-col gap-9">
+      {/* Welcome */}
+      <WelcomeSection me={me} health={health} vaultStatus={vaultStatus} />
 
-      <main className="max-w-5xl mx-auto px-6 py-8 flex flex-col gap-6">
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <StatCard
-            icon={<Activity size={16} />}
-            label="Core status"
-            value={health?.status ?? '…'}
-            accent={health?.status === 'ok'}
+      {/* Platform stat tiles */}
+      <section>
+        <h2 className="lx-eyebrow mb-3">Plattform</h2>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <StatTile
+            icon="extension"
+            label="Plugins aktiv"
+            value={`${activePlugins.length} / ${totalPlugins.length}`}
+            state="up"
           />
-          <StatCard
-            icon={<Plug size={16} />}
-            label="Plugins loaded"
-            value={plugins ? String(plugins.filter((p) => p.type === 'PLUGIN').length) : '…'}
+          <StatTile
+            icon="dns"
+            label="Core"
+            value={health?.core_version ? `v${health.core_version}` : '—'}
+            state={health?.status === 'ok' ? 'up' : 'down'}
           />
-          <StatCard
-            icon={<Plug size={16} />}
-            label="Plugins active"
-            value={plugins ? String(plugins.filter((p) => p.is_active && p.type === 'PLUGIN').length) : '…'}
-            accent
+          <StatTile
+            icon="lock"
+            label="Vault"
+            value={vaultStatus?.ui_state ?? '—'}
+            state={vaultOk ? 'up' : 'paused'}
           />
         </div>
+      </section>
 
-        <section>
-          <h2 className="text-sm font-medium uppercase tracking-widest text-[var(--lx-text-muted)] mb-3">
-            Modules
-          </h2>
-          {pluginsLoading ? (
-            <p className="text-sm text-[var(--lx-text-muted)]">Loading…</p>
-          ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              {plugins?.map((p) => (
-                <div
-                  key={p.id}
-                  className="p-4 rounded-lg border border-[var(--lx-border-soft)] bg-[var(--lx-surface)] flex items-start justify-between gap-3"
-                >
-                  <div>
-                    <p className="text-sm font-medium">{p.name}</p>
-                    <p className="text-xs text-[var(--lx-text-muted)] mt-0.5">
-                      {p.id} · v{p.version}
-                    </p>
-                  </div>
-                  <span
-                    className={`mt-0.5 text-xs px-2 py-0.5 rounded-full font-medium shrink-0 ${
-                      p.is_active
-                        ? 'bg-[var(--lx-accent)]/10 text-[var(--lx-accent)]'
-                        : 'bg-[var(--lx-border-soft)] text-[var(--lx-text-muted)]'
-                    }`}
-                  >
-                    {p.status}
-                  </span>
-                </div>
-              ))}
-            </div>
-          )}
-        </section>
-      </main>
+      {/* Plugin Launchpad */}
+      <section>
+        <h2 className="lx-eyebrow mb-3">Apps</h2>
+        <PluginLaunchpad plugins={pluginList} />
+      </section>
     </div>
   )
 }
 
-function StatCard({
+function StatTile({
   icon,
   label,
   value,
-  accent,
+  state,
 }: {
-  icon: React.ReactNode
+  icon: string
   label: string
   value: string
-  accent?: boolean
+  state: 'up' | 'down' | 'paused'
 }) {
+  const color = `var(--lx-state-${state})`
   return (
-    <div className="p-4 rounded-lg border border-[var(--lx-border-soft)] bg-[var(--lx-surface)]">
-      <div className="flex items-center gap-2 text-[var(--lx-text-muted)] mb-2">
-        {icon}
-        <span className="text-xs uppercase tracking-wide">{label}</span>
-      </div>
-      <p
-        className={`text-2xl font-semibold ${
-          accent ? 'text-[var(--lx-accent)]' : 'text-[var(--lx-text)]'
-        }`}
+    <div className="lx-card lx-card-hover p-4 flex items-center gap-3.5">
+      <div
+        className="w-10 h-10 rounded-lg flex items-center justify-center shrink-0"
+        style={{ background: `color-mix(in srgb, ${color} 14%, transparent)`, color }}
       >
-        {value}
-      </p>
+        <span className="material-icons" style={{ fontSize: 20 }}>
+          {icon}
+        </span>
+      </div>
+      <div className="min-w-0">
+        <p className="text-[11px] text-[var(--lx-text-muted)]">{label}</p>
+        <p className="text-base font-semibold text-[var(--lx-text)] truncate leading-tight mt-0.5">
+          {value}
+        </p>
+      </div>
     </div>
   )
 }

@@ -26,5 +26,7 @@ services:
     environment:
       # Proxy /api requests to lyndrix-core on the host.
       - API_PROXY_TARGET=http://host.docker.internal:8081
+      # Plugin UI links open lyndrix-core pages in a new tab.
+      - VITE_CORE_URL=http://localhost:8081
       # Polling is required for inotify to work reliably in WSL2 volume mounts.
       - CHOKIDAR_USEPOLLING=true
