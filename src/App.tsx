@@ -12,6 +12,7 @@ import DashboardPage from './pages/DashboardPage'
 import PluginsPage from './pages/PluginsPage'
 import SettingsPage from './pages/SettingsPage'
 import UsersPage from './pages/UsersPage'
+import JobLogPage from './pages/JobLogPage'
 import VaultSetupPage from './pages/VaultSetupPage'
 import VaultUnsealPage from './pages/VaultUnsealPage'
 import PluginRoute from './components/PluginRoute'
@@ -95,6 +96,7 @@ export default function App() {
       <Route path="/plugins" element={<AuthShell><PluginsPage /></AuthShell>} />
       <Route path="/settings" element={<AuthShell><SettingsPage /></AuthShell>} />
       <Route path="/users" element={<AuthShell><UsersPage /></AuthShell>} />
+      <Route path="/iac/jobs/:jobId/logs" element={<AuthShell><JobLogPage /></AuthShell>} />
 
       {/* Dynamic plugin React UI routes */}
       {reactPlugins.flatMap((plugin) =>

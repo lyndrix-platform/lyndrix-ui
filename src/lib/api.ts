@@ -49,6 +49,48 @@ export async function apiFetch<T = unknown>(path: string, options: FetchOptions 
   return res.json() as Promise<T>
 }
 
+// ─── IaC Orchestrator job logs ────────────────────────────────────────────────
+
+export const IAC_ORCHESTRATOR_ID = 'lyndrix.plugin.iac_orchestrator'
+
+export interface JobLogDelta {
+  job_id: number
+  lines: string[]
+  offset: number
+  size: number
+  source: string
+  grep: string | null
+}
+
+/**
+ * Fetch an incremental slice of a job's log. Pass the previously returned
+ * `offset` to get only the bytes appended since (append-only log → O(new data)).
+ * When `grep` is set the server returns a filtered snapshot (full offset reset),
+ * so callers should replace rather than append.
+ */
+export async function getJobLogDelta(
+  jobId: number,
+  offset = 0,
+  grep?: string,
+): Promise<JobLogDelta> {
+  const params = new URLSearchParams({ offset: String(offset) })
+  if (grep) params.set('grep', grep)
+  return apiFetch<JobLogDelta>(
+    `/api/plugins/${IAC_ORCHESTRATOR_ID}/jobs/${jobId}/logs?${params.toString()}`,
+  )
+}
+
+/**
+ * URL of the streamed raw (entire) log. Carries the token as a query param because
+ * the browser opens this directly (new tab / download) and cannot send a Bearer
+ * header — matching the SSE stream's `?token=` auth.
+ */
+export function jobLogRawUrl(jobId: number, download = false): string {
+  const params = new URLSearchParams({ token: getToken() ?? '' })
+  if (download) params.set('download', 'true')
+  return `${BASE_URL}/api/plugins/${IAC_ORCHESTRATOR_ID}/jobs/${jobId}/logs/raw?${params.toString()}`
+}
+
 export interface PluginSettingsResponse {
   status: string
   plugin_id: string

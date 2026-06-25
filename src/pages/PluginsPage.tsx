@@ -402,7 +402,7 @@ function PluginCard({ plugin }: { plugin: PluginOut }) {
   const [showUpgrade, setShowUpgrade] = useState(false)
   const [showError, setShowError] = useState(false)
   const [showSettings, setShowSettings] = useState(false)
-  const hasSettings = plugin.settings_schema.length > 0 || !!plugin.settings_ui_route
+  const hasSettings = (plugin.settings_schema?.length ?? 0) > 0 || !!plugin.settings_ui_route
 
   function openSettings() {
     if (plugin.settings_ui_route) {
