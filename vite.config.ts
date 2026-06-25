@@ -5,10 +5,10 @@ import react from '@vitejs/plugin-react'
 // In local dev (npm run dev) it defaults to the lyndrix-core dev server.
 const apiTarget = process.env.API_PROXY_TARGET ?? 'http://localhost:8081'
 
-// Production builds are served by lyndrix-core under /app (avoids colliding with
-// core's own /assets mount); the dev server stays at / with the /api proxy.
-export default defineConfig(({ command }) => ({
-  base: command === 'build' ? '/app/' : '/',
+// lyndrix-ui is deployed standalone (nginx at /), so the build base defaults to '/'.
+// VITE_BASE can override it (e.g. '/app/') if the SPA is ever embedded under a subpath.
+export default defineConfig(() => ({
+  base: process.env.VITE_BASE ?? '/',
   plugins: [react()],
   server: {
     host: '0.0.0.0',

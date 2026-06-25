@@ -22,7 +22,7 @@ export default function SettingsPage() {
   const [searchParams, setSearchParams] = useSearchParams()
   const activeId = searchParams.get('section') ?? SETTINGS_SECTIONS[0].id
 
-  const [mobileOpen, setMobileOpen] = useState(false)
+  const [, setMobileOpen] = useState(false)
 
   const { data: configData } = useQuery({
     queryKey: ['system-config'],

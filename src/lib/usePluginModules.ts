@@ -31,7 +31,7 @@ export async function loadPluginModule(pluginId: string): Promise<PluginModule> 
   if (moduleCache.has(pluginId)) return moduleCache.get(pluginId)!
 
   const gName = globalName(pluginId)
-  delete (window as Record<string, unknown>)[gName]
+  delete (window as unknown as Record<string, unknown>)[gName]
 
   return new Promise<PluginModule>((resolve, reject) => {
     const scriptId = `plugin-script-${safeId(pluginId)}`
@@ -57,7 +57,7 @@ export async function loadPluginModule(pluginId: string): Promise<PluginModule> 
       if (settled) return
       settled = true
       clearTimeout(timer)
-      const mod = (window as Record<string, unknown>)[gName] as PluginModule | undefined
+      const mod = (window as unknown as Record<string, unknown>)[gName] as PluginModule | undefined
       if (!mod?.PluginApp) {
         reject(new Error(`Plugin '${pluginId}' bundle did not expose PluginApp`))
         return
@@ -82,5 +82,5 @@ export function invalidatePluginModule(pluginId: string): void {
   const scriptId = `plugin-script-${safeId(pluginId)}`
   document.getElementById(scriptId)?.remove()
   const gName = globalName(pluginId)
-  delete (window as Record<string, unknown>)[gName]
+  delete (window as unknown as Record<string, unknown>)[gName]
 }
