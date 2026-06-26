@@ -78,8 +78,8 @@ export default function App() {
           ...prev,
           [p.plugin_id!]: (prev[p.plugin_id!] ?? 0) + 1,
         }))
+        void queryClient.invalidateQueries({ queryKey: ['plugins'] })
       }
-      void queryClient.invalidateQueries({ queryKey: ['plugins'] })
     }
   }, isLoggedIn())
 

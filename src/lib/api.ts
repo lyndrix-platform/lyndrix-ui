@@ -18,6 +18,24 @@ interface FetchOptions extends RequestInit {
   skipAuth?: boolean
 }
 
+// ─── Debug logging + request timeout ───────────────────────────────────────────
+// Flip on in the browser console:  localStorage.LX_DEBUG = '1'  (then reload).
+// Logs every request with timing/status; a hung request aborts after the timeout
+// and surfaces as a visible error instead of silently wedging the whole UI.
+const REQUEST_TIMEOUT_MS = 20_000
+
+function debugOn(): boolean {
+  try {
+    return localStorage.getItem('LX_DEBUG') === '1'
+  } catch {
+    return false
+  }
+}
+
+function now(): number {
+  return typeof performance !== 'undefined' ? performance.now() : Date.now()
+}
+
 export async function apiFetch<T = unknown>(path: string, options: FetchOptions = {}): Promise<T> {
   const { skipAuth, ...rest } = options
   const headers: Record<string, string> = {
@@ -32,7 +50,32 @@ export async function apiFetch<T = unknown>(path: string, options: FetchOptions 
     }
   }
 
-  const res = await fetch(`${BASE_URL}${path}`, { ...rest, headers })
+  const method = (rest.method ?? 'GET').toUpperCase()
+  const ctrl = new AbortController()
+  const timer = setTimeout(() => ctrl.abort(), REQUEST_TIMEOUT_MS)
+  const t0 = now()
+
+  let res: Response
+  try {
+    res = await fetch(`${BASE_URL}${path}`, { ...rest, headers, signal: rest.signal ?? ctrl.signal })
+  } catch (err) {
+    const ms = Math.round(now() - t0)
+    const aborted = (err as Error)?.name === 'AbortError'
+    if (debugOn()) {
+      // eslint-disable-next-line no-console
+      console.warn(`[api] ${method} ${path} → ${aborted ? `TIMEOUT ${REQUEST_TIMEOUT_MS}ms` : 'NETWORK ERR'} (${ms}ms)`, err)
+    }
+    throw new Error(
+      aborted ? `Zeitüberschreitung nach ${REQUEST_TIMEOUT_MS / 1000}s: ${method} ${path}` : `Netzwerkfehler: ${method} ${path}`,
+    )
+  } finally {
+    clearTimeout(timer)
+  }
+
+  if (debugOn()) {
+    // eslint-disable-next-line no-console
+    console.debug(`[api] ${method} ${path} → ${res.status} (${Math.round(now() - t0)}ms)`)
+  }
 
   if (res.status === 401) {
     clearToken()
