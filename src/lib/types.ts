@@ -68,11 +68,20 @@ export interface ApiKeyOut {
 }
 
 export interface GroupOut {
-  id: string
+  id: number
   name: string
   description: string | null
   permissions: string[]
   ldap_mappings: string[]
+}
+
+// /api/permissions/catalog returns permission *definitions* (objects), not bare ids.
+export interface PermissionDefOut {
+  id: string
+  label: string
+  category: string
+  description: string
+  icon: string
 }
 
 export interface ThemeOut {

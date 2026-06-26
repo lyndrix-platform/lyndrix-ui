@@ -7,6 +7,7 @@ import { useSSE } from './lib/useSSE'
 import { invalidatePluginModule } from './lib/usePluginModules'
 import { invalidatePluginRouteCache } from './components/PluginRoute'
 import AppShell from './components/layout/AppShell'
+import ErrorBoundary from './components/ErrorBoundary'
 import LoginPage from './pages/LoginPage'
 import DashboardPage from './pages/DashboardPage'
 import PluginsPage from './pages/PluginsPage'
@@ -46,7 +47,9 @@ function RequireAuth({ children }: { children: React.ReactNode }) {
 function AuthShell({ children }: { children: React.ReactNode }) {
   return (
     <RequireAuth>
-      <AppShell>{children}</AppShell>
+      <AppShell>
+        <ErrorBoundary>{children}</ErrorBoundary>
+      </AppShell>
     </RequireAuth>
   )
 }

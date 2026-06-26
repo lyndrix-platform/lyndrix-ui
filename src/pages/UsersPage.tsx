@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { apiFetch } from '../lib/api'
-import type { UserOut, ApiKeyOut, GroupOut } from '../lib/types'
+import type { UserOut, ApiKeyOut, GroupOut, PermissionDefOut } from '../lib/types'
 
 // ── Shared primitives ─────────────────────────────────────────────────────────
 
@@ -283,10 +283,11 @@ function GroupsTab() {
       apiFetch<{ groups: GroupOut[] }>('/api/permissions/groups').then((r) => r.groups),
   })
 
+  // NB: /catalog returns permission *definitions* (objects), not bare strings.
   const { data: catalog } = useQuery({
     queryKey: ['permissions-catalog'],
     queryFn: () =>
-      apiFetch<{ permissions: string[] }>('/api/permissions/catalog').then((r) => r.permissions),
+      apiFetch<{ permissions: PermissionDefOut[] }>('/api/permissions/catalog').then((r) => r.permissions),
   })
 
   const createGroupMut = useMutation({
@@ -303,7 +304,7 @@ function GroupsTab() {
   })
 
   const deleteGroupMut = useMutation({
-    mutationFn: (id: string) => apiFetch(`/api/permissions/groups/${id}`, { method: 'DELETE' }),
+    mutationFn: (id: number) => apiFetch(`/api/permissions/groups/${id}`, { method: 'DELETE' }),
     onSuccess: () => {
       setSelected(null)
       qc.invalidateQueries({ queryKey: ['groups'] })
@@ -311,7 +312,7 @@ function GroupsTab() {
   })
 
   const patchGroupMut = useMutation({
-    mutationFn: ({ id, permissions }: { id: string; permissions: string[] }) =>
+    mutationFn: ({ id, permissions }: { id: number; permissions: string[] }) =>
       apiFetch(`/api/permissions/groups/${id}`, {
         method: 'PATCH',
         body: JSON.stringify({ permissions }),
@@ -377,23 +378,39 @@ function GroupsTab() {
               <SectionTitle>Berechtigungen: {selected.name}</SectionTitle>
               <ActionButton small label="Löschen" danger onClick={() => deleteGroupMut.mutate(selected.id)} />
             </div>
-            <div className="flex flex-wrap gap-2">
-              {(catalog ?? []).map((perm) => {
-                const active = selected.permissions.includes(perm)
-                return (
-                  <button
-                    key={perm}
-                    onClick={() => togglePermission(selected, perm)}
-                    className={`px-2 py-1 text-xs rounded border transition-colors ${
-                      active
-                        ? 'border-[var(--lx-accent)] bg-[var(--lx-accent)]/10 text-[var(--lx-accent)]'
-                        : 'border-[var(--lx-border-soft)] bg-[var(--lx-elevated)] text-[var(--lx-text-muted)]'
-                    }`}
-                  >
-                    {perm}
-                  </button>
-                )
-              })}
+            <div className="flex flex-col gap-4">
+              {Object.entries(
+                (catalog ?? []).reduce<Record<string, PermissionDefOut[]>>((acc, p) => {
+                  ;(acc[p.category || 'Allgemein'] ||= []).push(p)
+                  return acc
+                }, {}),
+              ).map(([category, perms]) => (
+                <div key={category}>
+                  <p className="lx-eyebrow mb-2">{category}</p>
+                  <div className="flex flex-wrap gap-2">
+                    {perms.map((perm) => {
+                      const active = selected.permissions.includes(perm.id)
+                      return (
+                        <button
+                          key={perm.id}
+                          onClick={() => togglePermission(selected, perm.id)}
+                          title={perm.description || perm.id}
+                          className={`px-2 py-1 text-xs rounded border transition-colors ${
+                            active
+                              ? 'border-[var(--lx-accent)] bg-[var(--lx-accent)]/10 text-[var(--lx-accent)]'
+                              : 'border-[var(--lx-border-soft)] bg-[var(--lx-elevated)] text-[var(--lx-text-muted)]'
+                          }`}
+                        >
+                          {perm.label || perm.id}
+                        </button>
+                      )
+                    })}
+                  </div>
+                </div>
+              ))}
+              {(catalog ?? []).length === 0 && (
+                <p className="text-xs text-[var(--lx-text-muted)]">Keine Berechtigungen im Katalog.</p>
+              )}
             </div>
           </Card>
         ) : (
