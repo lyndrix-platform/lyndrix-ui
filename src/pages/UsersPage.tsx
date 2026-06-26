@@ -41,11 +41,31 @@ function ActionButton({
   )
 }
 
+function SearchInput({
+  value,
+  onChange,
+  placeholder,
+}: {
+  value: string
+  onChange: (v: string) => void
+  placeholder: string
+}) {
+  return (
+    <input
+      className={`${inputCls} text-xs py-1.5 mb-3`}
+      placeholder={placeholder}
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+    />
+  )
+}
+
 // ── Per-user direct permission grants ──────────────────────────────────────────
 
 function UserPermissionsSection({ username }: { username: string }) {
   const qc = useQueryClient()
   const [status, setStatus] = useState<{ ok: boolean; msg: string } | null>(null)
+  const [search, setSearch] = useState('')
 
   // Shared cache key with GroupsTab — the catalog is fetched once.
   const { data: catalog } = useQuery({
@@ -84,18 +104,28 @@ function UserPermissionsSection({ username }: { username: string }) {
     putMut.mutate(next)
   }
 
-  const byCategory = (catalog ?? []).reduce<Record<string, PermissionDefOut[]>>((acc, p) => {
-    ;(acc[p.category || 'Allgemein'] ||= []).push(p)
-    return acc
-  }, {})
+  const q = search.trim().toLowerCase()
+  const byCategory = (catalog ?? [])
+    .filter(
+      (p) =>
+        !q ||
+        (p.label || '').toLowerCase().includes(q) ||
+        p.id.toLowerCase().includes(q) ||
+        (p.category || '').toLowerCase().includes(q),
+    )
+    .reduce<Record<string, PermissionDefOut[]>>((acc, p) => {
+      ;(acc[p.category || 'Allgemein'] ||= []).push(p)
+      return acc
+    }, {})
 
   return (
     <div>
       <SectionTitle>Direkte Berechtigungen</SectionTitle>
       <p className="text-[11px] text-[var(--lx-text-muted)] -mt-3 mb-3">
         Zusätzliche Rechte für diesen Benutzer. Aus Gruppen/Rollen geerbte Rechte sind gesperrt
-        (mit „· Gruppe" markiert) und werden im Gruppen-Tab verwaltet.
+        (mit „✓ via Gruppe" markiert) und werden im Gruppen-Tab verwaltet.
       </p>
+      <SearchInput value={search} onChange={setSearch} placeholder="Berechtigung suchen…" />
       <div className="flex flex-col gap-4">
         {Object.entries(byCategory).map(([category, ps]) => (
           <div key={category}>
@@ -126,8 +156,8 @@ function UserPermissionsSection({ username }: { username: string }) {
             </div>
           </div>
         ))}
-        {(catalog ?? []).length === 0 && (
-          <p className="text-xs text-[var(--lx-text-muted)]">Keine Berechtigungen im Katalog.</p>
+        {Object.keys(byCategory).length === 0 && (
+          <p className="text-xs text-[var(--lx-text-muted)]">Keine Berechtigungen gefunden.</p>
         )}
       </div>
       {status && (
@@ -156,6 +186,7 @@ function UserDetailPanel({
     roles: user.roles.join(', '),
   })
   const [groupSel, setGroupSel] = useState<string[]>(user.groups ?? [])
+  const [groupSearch, setGroupSearch] = useState('')
   const [status, setStatus] = useState<{ ok: boolean; msg: string } | null>(null)
 
   const { data: allGroups } = useQuery({
@@ -258,8 +289,11 @@ function UserDetailPanel({
               ))}
               <div className="flex flex-col gap-1">
                 <label className="lx-label">Gruppen</label>
+                <SearchInput value={groupSearch} onChange={setGroupSearch} placeholder="Gruppe suchen…" />
                 <div className="flex flex-wrap gap-2">
-                  {(allGroups ?? []).map((g) => {
+                  {(allGroups ?? [])
+                    .filter((g) => !groupSearch.trim() || g.name.toLowerCase().includes(groupSearch.trim().toLowerCase()))
+                    .map((g) => {
                     const member = groupSel.includes(g.name)
                     return (
                       <button
@@ -408,6 +442,7 @@ function CreateUserModal({ onClose }: { onClose: () => void }) {
 
 function GroupMembersSection({ group }: { group: GroupOut }) {
   const qc = useQueryClient()
+  const [search, setSearch] = useState('')
   const { data: users } = useQuery({
     queryKey: ['users'],
     queryFn: () => apiFetch<{ users: UserOut[] }>('/api/users').then((r) => r.users),
@@ -430,31 +465,37 @@ function GroupMembersSection({ group }: { group: GroupOut }) {
     patchUser.mutate({ username: u.username, groups })
   }
 
+  const q = search.trim().toLowerCase()
+  const filtered = (users ?? []).filter(
+    (u) => !q || u.username.toLowerCase().includes(q) || (u.full_name || '').toLowerCase().includes(q),
+  )
+
   return (
     <div className="mt-6 pt-4 border-t border-[var(--lx-border-soft)]">
       <p className="lx-eyebrow mb-2">Mitglieder</p>
-      <div className="flex flex-col gap-0.5">
-        {(users ?? []).map((u) => {
+      <SearchInput value={search} onChange={setSearch} placeholder="Mitglied suchen…" />
+      <div className="flex flex-wrap gap-2">
+        {filtered.map((u) => {
           const member = u.groups.includes(group.name)
           return (
-            <label
+            <button
               key={u.username}
-              className="flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-[var(--lx-elevated)] cursor-pointer"
+              type="button"
+              disabled={patchUser.isPending}
+              onClick={() => toggle(u)}
+              title={`@${u.username}`}
+              className={`px-2 py-1 text-xs rounded border transition-colors ${
+                member
+                  ? 'border-[var(--lx-accent)] bg-[var(--lx-accent)]/10 text-[var(--lx-accent)]'
+                  : 'border-[var(--lx-border-soft)] bg-[var(--lx-elevated)] text-[var(--lx-text-muted)]'
+              }`}
             >
-              <input
-                type="checkbox"
-                className="w-4 h-4 accent-[var(--lx-accent)]"
-                checked={member}
-                disabled={patchUser.isPending}
-                onChange={() => toggle(u)}
-              />
-              <span className="text-sm text-[var(--lx-text)]">{u.full_name || u.username}</span>
-              <span className="text-xs text-[var(--lx-text-muted)]">@{u.username}</span>
-            </label>
+              {u.full_name || u.username}
+            </button>
           )
         })}
-        {(users ?? []).length === 0 && (
-          <span className="text-xs text-[var(--lx-text-muted)]">Keine Benutzer.</span>
+        {filtered.length === 0 && (
+          <span className="text-xs text-[var(--lx-text-muted)]">Keine Benutzer gefunden.</span>
         )}
       </div>
     </div>
@@ -468,6 +509,7 @@ function GroupsTab() {
   const [selected, setSelected] = useState<GroupOut | null>(null)
   const [creating, setCreating] = useState(false)
   const [newGroupName, setNewGroupName] = useState('')
+  const [permSearch, setPermSearch] = useState('')
 
   const { data: groups } = useQuery({
     queryKey: ['groups'],
@@ -520,6 +562,20 @@ function GroupsTab() {
     setSelected((prev) => prev ? { ...prev, permissions: perms } : prev)
   }
 
+  const permQuery = permSearch.trim().toLowerCase()
+  const groupDetailByCat = (catalog ?? [])
+    .filter(
+      (p) =>
+        !permQuery ||
+        (p.label || '').toLowerCase().includes(permQuery) ||
+        p.id.toLowerCase().includes(permQuery) ||
+        (p.category || '').toLowerCase().includes(permQuery),
+    )
+    .reduce<Record<string, PermissionDefOut[]>>((acc, p) => {
+      ;(acc[p.category || 'Allgemein'] ||= []).push(p)
+      return acc
+    }, {})
+
   return (
     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
       {/* Group list */}
@@ -570,13 +626,9 @@ function GroupsTab() {
               <SectionTitle>Berechtigungen: {selected.name}</SectionTitle>
               <ActionButton small label="Löschen" danger onClick={() => deleteGroupMut.mutate(selected.id)} />
             </div>
+            <SearchInput value={permSearch} onChange={setPermSearch} placeholder="Berechtigung suchen…" />
             <div className="flex flex-col gap-4">
-              {Object.entries(
-                (catalog ?? []).reduce<Record<string, PermissionDefOut[]>>((acc, p) => {
-                  ;(acc[p.category || 'Allgemein'] ||= []).push(p)
-                  return acc
-                }, {}),
-              ).map(([category, perms]) => (
+              {Object.entries(groupDetailByCat).map(([category, perms]) => (
                 <div key={category}>
                   <p className="lx-eyebrow mb-2">{category}</p>
                   <div className="flex flex-wrap gap-2">
@@ -600,8 +652,8 @@ function GroupsTab() {
                   </div>
                 </div>
               ))}
-              {(catalog ?? []).length === 0 && (
-                <p className="text-xs text-[var(--lx-text-muted)]">Keine Berechtigungen im Katalog.</p>
+              {Object.keys(groupDetailByCat).length === 0 && (
+                <p className="text-xs text-[var(--lx-text-muted)]">Keine Berechtigungen gefunden.</p>
               )}
             </div>
             <GroupMembersSection group={selected} />
