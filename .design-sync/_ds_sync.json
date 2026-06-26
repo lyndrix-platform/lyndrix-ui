@@ -1,0 +1,49 @@
+{
+  "shape": "package",
+  "styleSha": "4d61216c670b8a1a65e436f8eea5821117a3b7bffe3eab48f94315db091215dc",
+  "renderHashes": {
+    "AppShell": "9e0ca35eab6cc3f7",
+    "FeatureCard": "404e4bf44a792334",
+    "HeroBadge": "f9a6eaec4c0c59ea",
+    "PluginLaunchpad": "b62592257af18453",
+    "SectionTag": "792dd7cf1f672769",
+    "Sidebar": "58c4d5848d43b14b",
+    "WelcomeSection": "297c14f05930f18c"
+  },
+  "sourceKeys": {
+    "AppShell": "81b6dcafd81626e7",
+    "FeatureCard": "5d31784a9f7b1abe",
+    "HeroBadge": "d91edd8e4b30f2d0",
+    "PluginLaunchpad": "d8008e7e4791ffae",
+    "SectionTag": "6c6574c7623a0048",
+    "Sidebar": "9d0e8c5e0fb74122",
+    "WelcomeSection": "6c57823fa477d444"
+  },
+  "keyRecipe": 7,
+  "scriptsSha": "5741b18a21a90534",
+  "sourceHashes": {
+    "components/layout/AppShell/AppShell.jsx": "26c5aae1b09f",
+    "components/layout/AppShell/AppShell.d.ts": "e71533499021",
+    "components/layout/AppShell/AppShell.prompt.md": "0acd0a373d8a",
+    "components/marketing/FeatureCard/FeatureCard.jsx": "5bf136bec4ac",
+    "components/marketing/FeatureCard/FeatureCard.d.ts": "3d9b622bebc8",
+    "components/marketing/FeatureCard/FeatureCard.prompt.md": "3de494794ff5",
+    "components/marketing/HeroBadge/HeroBadge.jsx": "9f68b60ddcef",
+    "components/marketing/HeroBadge/HeroBadge.d.ts": "b1a18408ec0d",
+    "components/marketing/HeroBadge/HeroBadge.prompt.md": "2e26e6424276",
+    "components/dashboard/PluginLaunchpad/PluginLaunchpad.jsx": "c160bf326cd2",
+    "components/dashboard/PluginLaunchpad/PluginLaunchpad.d.ts": "f99e44753ccf",
+    "components/dashboard/PluginLaunchpad/PluginLaunchpad.prompt.md": "df2c1a6f765a",
+    "components/marketing/SectionTag/SectionTag.jsx": "0ce712daaaaa",
+    "components/marketing/SectionTag/SectionTag.d.ts": "fe655c7a37c8",
+    "components/marketing/SectionTag/SectionTag.prompt.md": "263a15051677",
+    "components/layout/Sidebar/Sidebar.jsx": "5df8babc1d0a",
+    "components/layout/Sidebar/Sidebar.d.ts": "92474154ef4a",
+    "components/layout/Sidebar/Sidebar.prompt.md": "1320cc5d1e41",
+    "components/dashboard/WelcomeSection/WelcomeSection.jsx": "fafdef684b76",
+    "components/dashboard/WelcomeSection/WelcomeSection.d.ts": "2d6f6af541c2",
+    "components/dashboard/WelcomeSection/WelcomeSection.prompt.md": "c5e747aa6b13"
+  },
+  "auxSha": "b0fc516040cd7569",
+  "bundleSha12": "d885468b1259"
+}

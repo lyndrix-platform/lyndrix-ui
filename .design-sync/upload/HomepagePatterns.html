@@ -1,0 +1,773 @@
+<!-- @dsCard group="homepage" viewport="960x2200" -->
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Lyndrix Homepage Patterns</title>
+<style>
+  :root {
+    --bg-primary:    #0a0e1a;
+    --bg-secondary:  #0f1629;
+    --bg-card:       rgba(15,22,41,0.8);
+    --accent-cyan:   #00d4ff;
+    --accent-blue:   #0ea5e9;
+    --accent-purple: #8b5cf6;
+    --text-primary:  #f0f6ff;
+    --text-secondary:#94a3b8;
+    --text-muted:    #64748b;
+    --border-color:  rgba(0,212,255,0.15);
+    --border-card:   rgba(255,255,255,0.08);
+    --glow-cyan:     0 0 30px rgba(0,212,255,0.3);
+    --radius-sm:     6px;
+    --radius-md:     12px;
+    --radius-lg:     20px;
+    --font-sans:     'JetBrains Mono', 'Fira Code', 'Cascadia Code', system-ui, sans-serif;
+    --font-mono:     'JetBrains Mono', 'Fira Code', Consolas, monospace;
+    --transition:    0.2s ease;
+  }
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html { font-size: 16px; }
+  body {
+    font-family: var(--font-sans);
+    background: #0d0f1c;
+    color: var(--text-primary);
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+    padding: 2rem;
+  }
+
+  /* ── Layout ───────────────────────────────────────────── */
+  .page-title {
+    font-size: 0.75rem; font-weight: 700; letter-spacing: 0.1em;
+    text-transform: uppercase; color: var(--text-muted);
+    margin-bottom: 2rem;
+    padding-bottom: 0.75rem;
+    border-bottom: 1px solid var(--border-card);
+  }
+  .pattern-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 2.5rem;
+  }
+  .pattern-section {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+  }
+  .pattern-label {
+    font-size: 0.72rem; font-weight: 700; letter-spacing: 0.08em;
+    text-transform: uppercase; color: var(--text-muted);
+  }
+  .pattern-demo {
+    background: var(--bg-primary);
+    border: 1px solid var(--border-card);
+    border-radius: var(--radius-lg);
+    padding: 2rem;
+    overflow: hidden;
+  }
+
+  /* ── Section tag / badge pill ─────────────────────────── */
+  .section-tag {
+    display: inline-block;
+    padding: 0.3rem 0.875rem;
+    background: rgba(0,212,255,0.1);
+    border: 1px solid rgba(0,212,255,0.2);
+    border-radius: 999px;
+    font-size: 0.8rem; font-weight: 600;
+    color: var(--accent-cyan);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+  }
+
+  /* ── Hero badge with pulse ────────────────────────────── */
+  .hero-badge {
+    display: inline-flex; align-items: center; gap: 0.5rem;
+    padding: 0.375rem 0.875rem;
+    background: rgba(0,212,255,0.1);
+    border: 1px solid rgba(0,212,255,0.2);
+    border-radius: 999px;
+    font-size: 0.8rem; font-weight: 500; color: var(--accent-cyan);
+  }
+  .badge-dot {
+    width: 6px; height: 6px;
+    background: var(--accent-cyan); border-radius: 50%;
+    animation: pulse 2s ease-in-out infinite;
+  }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+
+  /* ── Section header ───────────────────────────────────── */
+  .section-header {
+    display: flex; flex-direction: column; align-items: center;
+    text-align: center; gap: 1rem;
+  }
+  .section-title {
+    font-size: clamp(2rem, 4vw, 2.5rem); font-weight: 800;
+    line-height: 1.15; letter-spacing: -0.025em;
+    color: var(--text-primary);
+  }
+  .gradient-text {
+    background: linear-gradient(135deg, var(--accent-cyan), var(--accent-blue));
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  .section-subtitle {
+    font-size: 1rem; color: var(--text-secondary);
+    max-width: 520px; line-height: 1.7;
+  }
+
+  /* ── Hero stats row ───────────────────────────────────── */
+  .stats-row {
+    display: flex; align-items: center; gap: 1.5rem;
+  }
+  .stat { display: flex; flex-direction: column; gap: 2px; }
+  .stat-value { font-size: 0.9rem; font-weight: 700; color: var(--accent-cyan); }
+  .stat-label { font-size: 0.72rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; }
+  .stat-divider { width: 1px; height: 32px; background: var(--border-card); }
+
+  /* ── Gradient text wordmark ───────────────────────────── */
+  .wordmark {
+    font-size: 1.5rem; font-weight: 700; letter-spacing: -0.02em;
+    background: linear-gradient(135deg, var(--accent-cyan), var(--accent-blue));
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  /* ── CTA buttons ──────────────────────────────────────── */
+  .btn-row { display: flex; gap: 1rem; flex-wrap: wrap; align-items: center; }
+  .btn-primary {
+    display: inline-flex; align-items: center;
+    padding: 0.75rem 1.75rem; font-size: 1rem; font-weight: 600;
+    color: var(--bg-primary);
+    background: linear-gradient(135deg, var(--accent-cyan), var(--accent-blue));
+    border-radius: var(--radius-md); border: none; cursor: pointer;
+    font-family: var(--font-sans);
+    transition: opacity var(--transition), box-shadow var(--transition), transform var(--transition);
+  }
+  .btn-primary:hover { opacity: 0.9; box-shadow: var(--glow-cyan); transform: translateY(-2px); }
+  .btn-secondary {
+    display: inline-flex; align-items: center;
+    padding: 0.75rem 1.75rem; font-size: 1rem; font-weight: 600;
+    color: var(--text-primary);
+    background: rgba(255,255,255,0.06);
+    border: 1px solid var(--border-card);
+    border-radius: var(--radius-md); cursor: pointer;
+    font-family: var(--font-sans);
+    transition: background var(--transition), border-color var(--transition), transform var(--transition);
+  }
+  .btn-secondary:hover { background: rgba(255,255,255,0.10); border-color: rgba(0,212,255,0.3); transform: translateY(-2px); }
+  .btn-sm-primary {
+    display: inline-flex; align-items: center;
+    padding: 0.5rem 1.25rem; font-size: 0.9rem; font-weight: 600;
+    color: var(--bg-primary);
+    background: linear-gradient(135deg, var(--accent-cyan), var(--accent-blue));
+    border-radius: var(--radius-sm); border: none; cursor: pointer;
+    font-family: var(--font-sans);
+    transition: opacity var(--transition), box-shadow var(--transition);
+  }
+  .btn-sm-ghost {
+    display: inline-flex; align-items: center; gap: 0.375rem;
+    padding: 0.5rem 1.25rem; font-size: 0.9rem; font-weight: 600;
+    color: var(--text-secondary);
+    background: rgba(255,255,255,0.05);
+    border: 1px solid var(--border-card);
+    border-radius: var(--radius-sm); cursor: pointer;
+    font-family: var(--font-sans);
+  }
+
+  /* ── Glassmorphism feature card ───────────────────────── */
+  .feature-grid {
+    display: grid; grid-template-columns: repeat(3, 1fr);
+    gap: 1.25rem;
+  }
+  .feature-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border-card);
+    border-radius: var(--radius-lg);
+    padding: 1.75rem;
+    display: flex; flex-direction: column; gap: 0.875rem;
+    backdrop-filter: blur(8px);
+    transition: border-color var(--transition), box-shadow var(--transition), transform var(--transition);
+  }
+  .feature-card:hover {
+    border-color: rgba(0,212,255,0.3);
+    box-shadow: 0 8px 32px rgba(0,0,0,0.3), 0 0 0 1px rgba(0,212,255,0.1);
+    transform: translateY(-4px);
+  }
+  .feature-icon {
+    width: 48px; height: 48px;
+    display: flex; align-items: center; justify-content: center;
+    background: rgba(0,212,255,0.1);
+    border-radius: var(--radius-md);
+    color: var(--accent-cyan); flex-shrink: 0;
+  }
+  .feature-title { font-size: 1rem; font-weight: 700; color: var(--text-primary); letter-spacing: -0.01em; }
+  .feature-desc { font-size: 0.87rem; color: var(--text-secondary); line-height: 1.7; }
+  .feature-desc code {
+    font-family: var(--font-mono); font-size: 0.83em;
+    background: rgba(0,212,255,0.1); color: var(--accent-cyan);
+    padding: 0.1em 0.4em; border-radius: 4px;
+  }
+
+  /* ── Numbered step row ────────────────────────────────── */
+  .steps { display: flex; flex-direction: column; gap: 0; }
+  .step {
+    display: flex; gap: 1.5rem;
+    padding: 1.5rem 0;
+    border-bottom: 1px solid var(--border-card);
+  }
+  .step:last-child { border-bottom: none; }
+  .step-number {
+    font-size: 2.25rem; font-weight: 800; font-family: var(--font-mono);
+    color: rgba(0,212,255,0.15); line-height: 1; flex-shrink: 0; width: 3rem;
+    transition: color var(--transition);
+  }
+  .step:hover .step-number { color: var(--accent-cyan); }
+  .step-body { display: flex; flex-direction: column; gap: 0.375rem; padding-top: 0.2rem; }
+  .step-title { font-size: 1rem; font-weight: 700; color: var(--text-primary); }
+  .step-desc { font-size: 0.87rem; color: var(--text-secondary); line-height: 1.7; }
+  .step-desc code {
+    font-family: var(--font-mono); font-size: 0.85em;
+    background: rgba(0,212,255,0.1); color: var(--accent-cyan);
+    padding: 0.1em 0.4em; border-radius: 4px;
+  }
+
+  /* ── Code panel ───────────────────────────────────────── */
+  .code-panel {
+    background: #0d1117;
+    border: 1px solid var(--border-card);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    box-shadow: 0 24px 64px rgba(0,0,0,0.5);
+  }
+  .code-header {
+    display: flex; align-items: center; gap: 0.75rem;
+    padding: 0.75rem 1.25rem;
+    background: #161b22;
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+  }
+  .mac-dots { display: flex; gap: 5px; }
+  .dot { width: 10px; height: 10px; border-radius: 50%; }
+  .dot-red   { background: #ff5f57; }
+  .dot-yellow{ background: #ffbd2e; }
+  .dot-green { background: #28c840; }
+  .code-filename {
+    flex: 1; font-family: var(--font-mono); font-size: 0.8rem; color: var(--text-secondary);
+  }
+  .code-lang {
+    font-size: 0.72rem; padding: 0.2rem 0.5rem;
+    background: rgba(0,212,255,0.1); color: var(--accent-cyan);
+    border-radius: 4px; font-weight: 600;
+  }
+  .code-block {
+    margin: 0; padding: 1.5rem;
+    font-family: var(--font-mono); font-size: 0.8rem;
+    line-height: 1.7; color: #e6edf3;
+    overflow-x: auto; white-space: pre;
+  }
+
+  /* ── Browser chrome mockup ────────────────────────────── */
+  .browser-chrome {
+    background: #1a2035;
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    border: 1px solid var(--border-card);
+    box-shadow: 0 0 0 1px rgba(0,212,255,0.1), 0 40px 80px rgba(0,0,0,0.6), var(--glow-cyan);
+  }
+  .browser-bar {
+    display: flex; align-items: center; gap: 0.75rem;
+    padding: 0.75rem 1rem;
+    background: #111827;
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+  }
+  .browser-url {
+    flex: 1; background: rgba(255,255,255,0.06); border-radius: 4px;
+    padding: 0.25rem 0.75rem; font-size: 0.75rem;
+    font-family: var(--font-mono); color: var(--text-muted);
+  }
+  .browser-body {
+    background: #0f1117; padding: 1.5rem;
+    display: flex; flex-direction: column; gap: 0.75rem;
+  }
+  .browser-body-row { display: flex; gap: 0.75rem; }
+  .browser-block {
+    background: #1a1d27; border-radius: 8px; flex: 1; height: 60px;
+    border: 1px solid #22263a;
+  }
+  .browser-block.accent { border-color: #22d3ee33; }
+
+  /* ── Eco banner ───────────────────────────────────────── */
+  .eco-banner {
+    display: flex; align-items: center; justify-content: center; gap: 0.5rem;
+    padding: 1.25rem 2rem;
+    background: rgba(0,212,255,0.06);
+    border: 1px solid rgba(0,212,255,0.15);
+    border-radius: var(--radius-lg);
+    font-size: 0.9rem; color: var(--text-secondary);
+    flex-wrap: wrap; text-align: center;
+  }
+  .eco-banner a { color: var(--accent-cyan); font-weight: 600; cursor: pointer; }
+
+  /* ── Dot grid bg ──────────────────────────────────────── */
+  .dot-grid {
+    position: relative;
+    background-image:
+      linear-gradient(rgba(0,212,255,0.04) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,212,255,0.04) 1px, transparent 1px);
+    background-size: 40px 40px;
+    -webkit-mask-image: radial-gradient(ellipse 80% 80% at 50% 50%, black 30%, transparent 100%);
+    mask-image: radial-gradient(ellipse 80% 80% at 50% 50%, black 30%, transparent 100%);
+    padding: 2rem;
+    border-radius: var(--radius-lg);
+  }
+
+  /* ── Plugin badge (language chip) ─────────────────────── */
+  .plugin-badge {
+    display: inline-flex; align-items: center; gap: 0.3rem;
+    padding: 0.2rem 0.6rem;
+    background: rgba(59,130,246,0.12);
+    border: 1px solid rgba(59,130,246,0.2);
+    border-radius: 999px;
+    font-size: 0.72rem; font-weight: 600; color: #60a5fa;
+  }
+  .plugin-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border-card);
+    border-radius: var(--radius-lg); padding: 1.5rem;
+    display: flex; flex-direction: column; gap: 0.75rem;
+    backdrop-filter: blur(8px);
+    transition: border-color var(--transition), box-shadow var(--transition), transform var(--transition);
+  }
+  .plugin-card:hover {
+    border-color: rgba(0,212,255,0.35);
+    box-shadow: 0 8px 32px rgba(0,0,0,0.3), 0 0 0 1px rgba(0,212,255,0.1);
+    transform: translateY(-3px);
+  }
+  .plugin-header { display: flex; align-items: center; justify-content: space-between; }
+  .plugin-icon {
+    width: 36px; height: 36px;
+    display: flex; align-items: center; justify-content: center;
+    background: rgba(0,212,255,0.1);
+    border-radius: var(--radius-sm); color: var(--accent-cyan);
+  }
+  .plugin-name { font-size: 1rem; font-weight: 700; color: var(--text-primary); }
+  .plugin-repo { font-size: 0.74rem; color: var(--text-secondary); font-family: var(--font-mono); opacity: 0.7; }
+  .plugin-desc { font-size: 0.85rem; color: var(--text-secondary); line-height: 1.6; flex: 1; }
+  .plugin-links { display: flex; gap: 1.25rem; margin-top: auto; }
+  .plugin-link { font-size: 0.82rem; font-weight: 600; color: var(--accent-cyan); cursor: pointer; }
+  .plugin-link.muted { color: var(--text-secondary); }
+
+  .plugin-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.25rem; }
+
+  /* ── Navbar strip ─────────────────────────────────────── */
+  .navbar-strip {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 0.75rem 1.5rem;
+    background: rgba(10,14,26,0.92);
+    border-bottom: 1px solid var(--border-color);
+    box-shadow: 0 4px 24px rgba(0,0,0,0.4);
+    border-radius: var(--radius-md);
+    backdrop-filter: blur(16px);
+  }
+  .nav-brand { display: flex; align-items: center; gap: 0.625rem; }
+  .nav-logo-box {
+    width: 28px; height: 28px; border-radius: 6px;
+    background: linear-gradient(135deg, var(--accent-cyan), var(--accent-blue));
+    display: flex; align-items: center; justify-content: center;
+    filter: drop-shadow(0 0 8px rgba(0,212,255,0.5));
+  }
+  .nav-links { display: flex; align-items: center; gap: 0.25rem; }
+  .nav-link {
+    padding: 0.5rem 0.875rem; font-size: 0.875rem; font-weight: 500;
+    color: var(--text-secondary); border-radius: var(--radius-sm);
+    cursor: pointer; transition: color var(--transition), background var(--transition);
+  }
+  .nav-link:hover { color: var(--text-primary); background: rgba(255,255,255,0.06); }
+  .nav-cta {
+    padding: 0.5rem 1.25rem; font-size: 0.875rem; font-weight: 600;
+    color: var(--bg-primary);
+    background: linear-gradient(135deg, var(--accent-cyan), var(--accent-blue));
+    border-radius: var(--radius-sm); cursor: pointer; margin-left: 0.5rem;
+  }
+
+  /* ── Footer ───────────────────────────────────────────── */
+  .footer-demo {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-card);
+    border-radius: var(--radius-lg);
+    padding: 2rem;
+  }
+  .footer-inner {
+    display: grid; grid-template-columns: 200px 1fr; gap: 3rem;
+  }
+  .footer-brand { display: flex; flex-direction: column; gap: 0.75rem; }
+  .brand-tagline { font-size: 0.875rem; color: var(--text-muted); line-height: 1.6; }
+  .github-chip {
+    display: inline-flex; align-items: center; gap: 0.5rem;
+    font-size: 0.82rem; font-weight: 600; color: var(--text-secondary);
+    padding: 0.4rem 0.75rem;
+    background: rgba(255,255,255,0.05);
+    border: 1px solid var(--border-card);
+    border-radius: var(--radius-sm); width: fit-content; cursor: pointer;
+  }
+  .footer-cols { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.5rem; }
+  .footer-col { display: flex; flex-direction: column; gap: 0.75rem; }
+  .col-title { font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--text-primary); }
+  .col-link { font-size: 0.85rem; color: var(--text-muted); cursor: pointer; display: block; padding: 0.1rem 0; }
+  .col-link:hover { color: var(--accent-cyan); }
+  .footer-bar {
+    display: flex; align-items: center; justify-content: space-between;
+    border-top: 1px solid var(--border-card); margin-top: 1.5rem; padding-top: 1.25rem;
+  }
+  .copyright { font-size: 0.8rem; color: var(--text-muted); }
+  .docs-link { font-size: 0.8rem; font-weight: 600; color: var(--accent-cyan); cursor: pointer; }
+</style>
+</head>
+<body>
+
+<p class="page-title">Lyndrix Homepage Design Patterns — extracted from lyndrix-homepage (Astro)</p>
+
+<div class="pattern-grid">
+
+  <!-- 1. Navbar -->
+  <div class="pattern-section">
+    <div class="pattern-label">Navbar (scrolled state)</div>
+    <div class="pattern-demo" style="padding: 1rem; background: #080b14;">
+      <div class="navbar-strip">
+        <div class="nav-brand">
+          <div class="nav-logo-box">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="white"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+          </div>
+          <span class="wordmark">Lyndrix</span>
+        </div>
+        <div class="nav-links">
+          <span class="nav-link">Home</span>
+          <span class="nav-link">Features</span>
+          <span class="nav-link">Plugins</span>
+          <span class="nav-link">Ecosystem</span>
+          <span class="nav-link">Docs</span>
+          <span class="nav-cta">Get Started</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 2. Hero headline block -->
+  <div class="pattern-section">
+    <div class="pattern-label">Hero — headline + badge + stats</div>
+    <div class="pattern-demo">
+      <div class="dot-grid" style="background-color: var(--bg-primary);">
+        <div style="display:flex;flex-direction:column;gap:1.25rem;position:relative;z-index:1">
+          <div class="hero-badge">
+            <span class="badge-dot"></span>
+            Open Source · Apache 2.0
+          </div>
+          <h1 style="font-size:clamp(2.25rem,5vw,3.5rem);font-weight:800;line-height:1.1;letter-spacing:-0.03em;color:var(--text-primary)">
+            Build Applications,<br>
+            <span class="gradient-text">Ship Plugins.</span>
+          </h1>
+          <p style="font-size:1rem;line-height:1.7;color:var(--text-secondary);max-width:500px">
+            Lyndrix is a secure, extensible application framework. Drop in a plugin and go — authentication, secrets, event bus, UI, and database are already there.
+          </p>
+          <div class="btn-row">
+            <button class="btn-primary">Get Started →</button>
+            <button class="btn-secondary">View Docs</button>
+          </div>
+          <div class="stats-row">
+            <div class="stat"><span class="stat-value">Plugin-First</span><span class="stat-label">Architecture</span></div>
+            <div class="stat-divider"></div>
+            <div class="stat"><span class="stat-value">Vault-Backed</span><span class="stat-label">Secrets</span></div>
+            <div class="stat-divider"></div>
+            <div class="stat"><span class="stat-value">Event-Driven</span><span class="stat-label">Core</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 3. Section header pattern -->
+  <div class="pattern-section">
+    <div class="pattern-label">Section header (tag + title + subtitle)</div>
+    <div class="pattern-demo">
+      <div class="section-header">
+        <span class="section-tag">Why Lyndrix</span>
+        <h2 class="section-title">
+          Everything you need.<br>
+          <span class="gradient-text">Nothing you don't.</span>
+        </h2>
+        <p class="section-subtitle">
+          Lyndrix is the foundation your application sits on. You bring the business logic; Lyndrix brings the platform.
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <!-- 4. Feature cards -->
+  <div class="pattern-section">
+    <div class="pattern-label">Feature cards — glassmorphism grid (hover to see lift)</div>
+    <div class="pattern-demo" style="background: linear-gradient(180deg, var(--bg-primary) 0%, var(--bg-secondary) 50%, var(--bg-primary) 100%);">
+      <div class="feature-grid">
+        <div class="feature-card">
+          <div class="feature-icon">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M11 3.055A9.001 9.001 0 1020.945 13H11V3.055z"/><path d="M20.488 9H15V3.512A9.025 9.025 0 0120.488 9z"/></svg>
+          </div>
+          <div class="feature-title">Plugin-First Architecture</div>
+          <p class="feature-desc">Develop only what makes your app unique. Drop in a plugin with <code>setup(ctx)</code> and the framework handles the rest.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
+          </div>
+          <div class="feature-title">Vault-Backed Secrets</div>
+          <p class="feature-desc">First-class HashiCorp Vault integration with automatic bootstrap, unseal, and per-plugin secret isolation. Zero-trust by default.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+          </div>
+          <div class="feature-title">Event-Driven Core</div>
+          <p class="feature-desc">A global event bus decouples every component. Plugins communicate through declared topics — no spaghetti imports, no tight coupling.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 5. CTA button pairs -->
+  <div class="pattern-section">
+    <div class="pattern-label">CTA buttons — large hero + small nav variants</div>
+    <div class="pattern-demo">
+      <div style="display:flex;flex-direction:column;gap:1.5rem">
+        <div>
+          <p style="font-size:0.75rem;color:var(--text-muted);margin-bottom:0.75rem">Large (hero)</p>
+          <div class="btn-row">
+            <button class="btn-primary">Get Started →</button>
+            <button class="btn-secondary">View Docs</button>
+          </div>
+        </div>
+        <div>
+          <p style="font-size:0.75rem;color:var(--text-muted);margin-bottom:0.75rem">Small (nav)</p>
+          <div class="btn-row">
+            <button class="btn-sm-primary">Get Started</button>
+            <button class="btn-sm-ghost">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844a9.59 9.59 0 012.504.337c1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.02 10.02 0 0022 12.017C22 6.484 17.522 2 12 2z"/></svg>
+              GitHub
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 6. How it works — steps + code panel -->
+  <div class="pattern-section">
+    <div class="pattern-label">Numbered steps + sticky code panel</div>
+    <div class="pattern-demo">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:2.5rem;align-items:start">
+        <div class="steps">
+          <div class="step">
+            <div class="step-number">01</div>
+            <div class="step-body">
+              <div class="step-title">Deploy Lyndrix Core</div>
+              <p class="step-desc">Run with Docker. Vault, database, and the full runtime are ready in minutes.</p>
+            </div>
+          </div>
+          <div class="step">
+            <div class="step-number">02</div>
+            <div class="step-body">
+              <div class="step-title">Write Your Plugin</div>
+              <p class="step-desc">Create <code>entrypoint.py</code> with a <code>manifest</code> and <code>setup(ctx)</code>. That's the entire contract.</p>
+            </div>
+          </div>
+          <div class="step">
+            <div class="step-number">03</div>
+            <div class="step-body">
+              <div class="step-title">Install from GitHub</div>
+              <p class="step-desc">Point Lyndrix at your plugin repo with a version tag. Installs dependencies and activates automatically.</p>
+            </div>
+          </div>
+          <div class="step">
+            <div class="step-number">04</div>
+            <div class="step-body">
+              <div class="step-title">You're Done</div>
+              <p class="step-desc">Your plugin is live. Managed from the built-in Plugin Manager. No restarts, no manual wiring.</p>
+            </div>
+          </div>
+        </div>
+        <div class="code-panel">
+          <div class="code-header">
+            <div class="mac-dots"><span class="dot dot-red"></span><span class="dot dot-yellow"></span><span class="dot dot-green"></span></div>
+            <span class="code-filename">entrypoint.py</span>
+            <span class="code-lang">Python</span>
+          </div>
+          <pre class="code-block">from core.api import ModuleManifest
+from nicegui import ui
+
+manifest = ModuleManifest(
+    id="lyndrix.plugin.myapp",
+    name="My App",
+    version="1.0.0",
+    type="PLUGIN",
+    permissions={
+        "subscribe": ["system:boot_complete"],
+        "emit": [],
+    },
+)
+
+async def setup(ctx):
+    @ui.page('/myapp')
+    async def page():
+        ui.label('Hello!')</pre>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 7. Plugin ecosystem cards -->
+  <div class="pattern-section">
+    <div class="pattern-label">Plugin cards (ecosystem grid)</div>
+    <div class="pattern-demo" style="background: var(--bg-secondary);">
+      <div class="plugin-grid">
+        <div class="plugin-card">
+          <div class="plugin-header">
+            <div class="plugin-icon">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>
+            </div>
+            <span class="plugin-badge">Python</span>
+          </div>
+          <div class="plugin-name">IaC Orchestrator</div>
+          <div class="plugin-repo">lyndrix-plugin-iac-orchestrator</div>
+          <p class="plugin-desc">GitOps controller for Terraform and Ansible pipelines — webhook triggers, drift detection, and parallel provisioning.</p>
+          <div class="plugin-links">
+            <span class="plugin-link">Docs ↗</span>
+            <span class="plugin-link muted">GitHub ↗</span>
+          </div>
+        </div>
+        <div class="plugin-card">
+          <div class="plugin-header">
+            <div class="plugin-icon">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>
+            </div>
+            <span class="plugin-badge">Python</span>
+          </div>
+          <div class="plugin-name">Docker Manager</div>
+          <div class="plugin-repo">lyndrix-plugin-docker-manager</div>
+          <p class="plugin-desc">Docker monitoring with runtime controls — start/stop/restart/logs/shell — through the core sockets layer.</p>
+          <div class="plugin-links">
+            <span class="plugin-link">Docs ↗</span>
+            <span class="plugin-link muted">GitHub ↗</span>
+          </div>
+        </div>
+        <div class="plugin-card">
+          <div class="plugin-header">
+            <div class="plugin-icon">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+            </div>
+            <span class="plugin-badge">Python</span>
+          </div>
+          <div class="plugin-name">State Monitoring</div>
+          <div class="plugin-repo">lyndrix-plugin-monitoring</div>
+          <p class="plugin-desc">Native infrastructure and service monitoring with persistent, grouped status timelines and inventory sync.</p>
+          <div class="plugin-links">
+            <span class="plugin-link">Docs ↗</span>
+            <span class="plugin-link muted">GitHub ↗</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 8. Browser chrome mockup -->
+  <div class="pattern-section">
+    <div class="pattern-label">Browser chrome mockup (hero preview frame)</div>
+    <div class="pattern-demo">
+      <div class="browser-chrome">
+        <div class="browser-bar">
+          <div class="mac-dots"><span class="dot dot-red"></span><span class="dot dot-yellow"></span><span class="dot dot-green"></span></div>
+          <div class="browser-url">lyndrix.local/dashboard</div>
+        </div>
+        <div class="browser-body">
+          <div class="browser-body-row">
+            <div class="browser-block" style="max-width:200px;height:100%;flex:0 0 200px;background:#1a1d27;border-color:#22263a;border-right:1px solid #22263a"></div>
+            <div style="flex:1;display:flex;flex-direction:column;gap:0.75rem">
+              <div style="height:40px;background:#1a1d27;border-radius:6px;border:1px solid #22d3ee33"></div>
+              <div class="browser-body-row">
+                <div class="browser-block accent"></div>
+                <div class="browser-block accent"></div>
+                <div class="browser-block accent"></div>
+              </div>
+              <div class="browser-body-row">
+                <div class="browser-block" style="height:45px"></div>
+                <div class="browser-block" style="height:45px"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 9. Info / eco banner -->
+  <div class="pattern-section">
+    <div class="pattern-label">Info / CTA banner (ecosystem section)</div>
+    <div class="pattern-demo" style="background: var(--bg-secondary);">
+      <div class="eco-banner">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#00d4ff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+        <a>Browse all plugins</a>
+        &nbsp;·&nbsp; Want to build your own? →&nbsp;
+        <a>Read the Plugin Development Guide</a>
+      </div>
+    </div>
+  </div>
+
+  <!-- 10. Footer -->
+  <div class="pattern-section">
+    <div class="pattern-label">Footer</div>
+    <div class="footer-demo">
+      <div class="footer-inner">
+        <div class="footer-brand">
+          <div class="nav-brand">
+            <div class="nav-logo-box" style="width:32px;height:32px">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="white"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+            </div>
+            <span class="wordmark">Lyndrix</span>
+          </div>
+          <p class="brand-tagline">Secure by default.<br>Extensible by design.</p>
+          <span class="github-chip">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844a9.59 9.59 0 012.504.337c1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.02 10.02 0 0022 12.017C22 6.484 17.522 2 12 2z"/></svg>
+            GitHub Organization
+          </span>
+        </div>
+        <div class="footer-cols">
+          <div class="footer-col">
+            <div class="col-title">Framework</div>
+            <span class="col-link">Core</span>
+            <span class="col-link">Architecture</span>
+            <span class="col-link">Security</span>
+            <span class="col-link">Deployment</span>
+          </div>
+          <div class="footer-col">
+            <div class="col-title">Plugins</div>
+            <span class="col-link">Plugin Guide</span>
+            <span class="col-link">Ecosystem</span>
+            <span class="col-link">Discord Notifier</span>
+            <span class="col-link">Docker Manager</span>
+          </div>
+          <div class="footer-col">
+            <div class="col-title">Community</div>
+            <span class="col-link">GitHub Organization</span>
+            <span class="col-link">lyndrix-core</span>
+            <span class="col-link">Issues</span>
+            <span class="col-link">Discussions</span>
+          </div>
+        </div>
+      </div>
+      <div class="footer-bar">
+        <span class="copyright">© 2025 Lyndrix Platform · Apache 2.0 License</span>
+        <span class="docs-link">Full Documentation →</span>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /pattern-grid -->
+
+</body>
+</html>

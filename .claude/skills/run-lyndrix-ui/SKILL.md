@@ -48,7 +48,7 @@ Vault auto-unseals via `LYNDRIX_MASTER_KEY` in `../lyndrix-core/docker/.env.dev`
 Verify both stacks respond:
 
 ```bash
-curl -s http://localhost:8081/api/health        # {"status":"unknown","core_version":"0.2.0","api_version":"1.2.0","plugins":{...}}
+curl -s http://localhost:8081/api/health        # {"status":"unknown","core_version":"0.2.2","api_version":"1.2.0","plugins":{...}}  (core_version varies)
 docker compose -f docker/docker-compose.dev.yml ps   # lyndrix-ui-dev Up
 ```
 
@@ -76,6 +76,20 @@ node .claude/skills/run-lyndrix-ui/driver.mjs /plugins /tmp/gear.png 'button[tit
 
 Then **look at the PNG** (Read the file). The deep-link command lands on
 "Docker Manager — Einstellungen" with the Docker Hosts list + add-host form.
+
+### Verified routes (this session, against core 0.2.2)
+
+| Route | What renders |
+|---|---|
+| `/settings` | Tabbed settings (lx-tabs bar): Allgemein · Darstellung · Auth-Anbieter · Plugins · Profil · System Info · Benachrichtigungen |
+| `/settings?section=notifications` | Notification endpoint bindings (active toggle + provider) + per-provider config cards |
+| `/users` | Benutzerverwaltung with **Benutzer** / **Gruppen & Rechte** tabs; user rows show role chips |
+| `/apps/lyndrix-plugin-docker/docker` | Docker Manager main view — header has **Aktualisieren** + **Settings** buttons, host list |
+| `/apps/lyndrix-plugin-docker/docker/settings` | Docker Manager settings — Docker Hosts list + "Host hinzufügen" form |
+
+> For driving a specific plugin's React UI there are per-plugin skills that wrap this
+> driver with the plugin's exact route (e.g. `run-docker-manager`, and the React notes in
+> `run-server-manager` / `run-iac-orchestrator`).
 
 ### Drive the core-served UI (`/app`)
 
@@ -118,9 +132,12 @@ log in as `admin`. Useless headless — for any automated check use the driver.
   then the real `/apps/<safe-id>/...` route renders. Previously a cold hard-nav
   fell through to `/dashboard`; if you ever see that bounce again, the loading
   guard regressed. The clickSelector arg still works for clicking *within* a page.
-- **`safe-id` = plugin id with dots → dashes.** `lyndrix.plugin.docker` →
-  `/apps/lyndrix-plugin-docker/docker/settings`. Set per-plugin in App.tsx via
-  `plugin.id.replace(/\./g, '-')`.
+- **`safe-id` = plugin id with ONLY dots → dashes** (`plugin.id.replace(/\./g, '-')`
+  in App.tsx). **Underscores in the id are kept** — `lyndrix.plugin.docker` →
+  `lyndrix-plugin-docker`, but `lyndrix.plugin.server_manager` →
+  `lyndrix-plugin-server_manager` and `lyndrix.plugin.iac_orchestrator` →
+  `lyndrix-plugin-iac_orchestrator`. All-dashing an underscore id silently bounces to
+  `/dashboard` (verified) — a common, confusing trap.
 - **Core-served base is `/app`.** The built SPA uses Vite `base=/app/` and
   React-Router `basename=/app` (to avoid colliding with core's `/assets` mount).
   So when driving the core-served UI, `UI_URL` must end in `/app` and routes are

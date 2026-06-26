@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { apiFetch } from '../lib/api'
-import type { UserOut, ApiKeyOut, GroupOut } from '../lib/types'
+import type { UserOut, ApiKeyOut, GroupOut, PermissionDefOut } from '../lib/types'
 
 // ── Shared primitives ─────────────────────────────────────────────────────────
 
@@ -41,6 +41,134 @@ function ActionButton({
   )
 }
 
+function SearchInput({
+  value,
+  onChange,
+  placeholder,
+}: {
+  value: string
+  onChange: (v: string) => void
+  placeholder: string
+}) {
+  return (
+    <input
+      className={`${inputCls} text-xs py-1.5 mb-3`}
+      placeholder={placeholder}
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+    />
+  )
+}
+
+// ── Per-user direct permission grants ──────────────────────────────────────────
+
+function UserPermissionsSection({ username }: { username: string }) {
+  const qc = useQueryClient()
+  const [status, setStatus] = useState<{ ok: boolean; msg: string } | null>(null)
+  const [search, setSearch] = useState('')
+
+  // Shared cache key with GroupsTab — the catalog is fetched once.
+  const { data: catalog } = useQuery({
+    queryKey: ['permissions-catalog'],
+    queryFn: () =>
+      apiFetch<{ permissions: PermissionDefOut[] }>('/api/permissions/catalog').then((r) => r.permissions),
+  })
+
+  const { data: perms } = useQuery({
+    queryKey: ['user-permissions', username],
+    queryFn: () =>
+      apiFetch<{
+        user: { extra_permissions: string[]; from_groups: string[]; roles: string[]; groups: string[] }
+      }>(`/api/permissions/users/${username}`).then((r) => r.user),
+  })
+
+  const putMut = useMutation({
+    mutationFn: (permissions: string[]) =>
+      apiFetch(`/api/permissions/users/${username}/extra`, {
+        method: 'PUT',
+        body: JSON.stringify({ permissions }),
+      }),
+    onSuccess: () => {
+      setStatus({ ok: true, msg: 'Berechtigungen aktualisiert.' })
+      qc.invalidateQueries({ queryKey: ['user-permissions', username] })
+      qc.invalidateQueries({ queryKey: ['users'] })
+    },
+    onError: (e) => setStatus({ ok: false, msg: e instanceof Error ? e.message : 'Fehler' }),
+  })
+
+  const extra = perms?.extra_permissions ?? []
+  const inherited = new Set(perms?.from_groups ?? [])
+
+  function toggle(permId: string) {
+    const next = extra.includes(permId) ? extra.filter((p) => p !== permId) : [...extra, permId]
+    putMut.mutate(next)
+  }
+
+  const q = search.trim().toLowerCase()
+  const byCategory = (catalog ?? [])
+    .filter(
+      (p) =>
+        !q ||
+        (p.label || '').toLowerCase().includes(q) ||
+        p.id.toLowerCase().includes(q) ||
+        (p.category || '').toLowerCase().includes(q),
+    )
+    .reduce<Record<string, PermissionDefOut[]>>((acc, p) => {
+      ;(acc[p.category || 'Allgemein'] ||= []).push(p)
+      return acc
+    }, {})
+
+  return (
+    <div>
+      <SectionTitle>Direkte Berechtigungen</SectionTitle>
+      <p className="text-[11px] text-[var(--lx-text-muted)] -mt-3 mb-3">
+        Zusätzliche Rechte für diesen Benutzer. Aus Gruppen/Rollen geerbte Rechte sind gesperrt
+        (mit „✓ via Gruppe" markiert) und werden im Gruppen-Tab verwaltet.
+      </p>
+      <SearchInput value={search} onChange={setSearch} placeholder="Berechtigung suchen…" />
+      <div className="flex flex-col gap-4">
+        {Object.entries(byCategory).map(([category, ps]) => (
+          <div key={category}>
+            <p className="lx-eyebrow mb-2">{category}</p>
+            <div className="flex flex-wrap gap-2">
+              {ps.map((perm) => {
+                const direct = extra.includes(perm.id)
+                const fromGroup = inherited.has(perm.id)
+                return (
+                  <button
+                    key={perm.id}
+                    disabled={fromGroup || putMut.isPending}
+                    onClick={() => toggle(perm.id)}
+                    title={fromGroup ? 'Über Gruppe/Rolle vererbt' : perm.description || perm.id}
+                    className={`px-2 py-1 text-xs rounded border transition-colors ${
+                      fromGroup
+                        ? 'border-[var(--lx-border-soft)] bg-[var(--lx-elevated)] text-[var(--lx-text-muted)] opacity-70 cursor-not-allowed'
+                        : direct
+                          ? 'border-[var(--lx-accent)] bg-[var(--lx-accent)]/10 text-[var(--lx-accent)]'
+                          : 'border-[var(--lx-border-soft)] bg-[var(--lx-elevated)] text-[var(--lx-text-muted)]'
+                    }`}
+                  >
+                    {perm.label || perm.id}
+                    {fromGroup && <span className="ml-1 font-medium">✓ via Gruppe</span>}
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+        ))}
+        {Object.keys(byCategory).length === 0 && (
+          <p className="text-xs text-[var(--lx-text-muted)]">Keine Berechtigungen gefunden.</p>
+        )}
+      </div>
+      {status && (
+        <p className={`mt-2 text-xs ${status.ok ? 'text-[var(--lx-state-up)]' : 'text-[var(--lx-state-down)]'}`}>
+          {status.msg}
+        </p>
+      )}
+    </div>
+  )
+}
+
 // ── User detail panel ─────────────────────────────────────────────────────────
 
 function UserDetailPanel({
@@ -56,9 +184,15 @@ function UserDetailPanel({
     email: user.email ?? '',
     password: '',
     roles: user.roles.join(', '),
-    groups: user.groups.join(', '),
   })
+  const [groupSel, setGroupSel] = useState<string[]>(user.groups ?? [])
+  const [groupSearch, setGroupSearch] = useState('')
   const [status, setStatus] = useState<{ ok: boolean; msg: string } | null>(null)
+
+  const { data: allGroups } = useQuery({
+    queryKey: ['groups'],
+    queryFn: () => apiFetch<{ groups: GroupOut[] }>('/api/permissions/groups').then((r) => r.groups),
+  })
   const [newKeyLabel, setNewKeyLabel] = useState('')
   const [newKeyResult, setNewKeyResult] = useState<string | null>(null)
   const [deleteConfirm, setDeleteConfirm] = useState(false)
@@ -77,7 +211,7 @@ function UserDetailPanel({
         full_name: form.full_name,
         email: form.email,
         roles: form.roles.split(',').map((s) => s.trim()).filter(Boolean),
-        groups: form.groups.split(',').map((s) => s.trim()).filter(Boolean),
+        groups: groupSel,
       }
       if (form.password) updates.password = form.password
       return apiFetch(`/api/users/${user.username}`, {
@@ -141,7 +275,6 @@ function UserDetailPanel({
                 { label: 'E-Mail', key: 'email' },
                 { label: 'Neues Passwort', key: 'password', type: 'password' },
                 { label: 'Rollen (kommagetrennt)', key: 'roles' },
-                { label: 'Gruppen (kommagetrennt)', key: 'groups' },
               ].map(({ label, key, type }) => (
                 <div key={key} className="flex flex-col gap-1">
                   <label className="lx-label">{label}</label>
@@ -154,6 +287,39 @@ function UserDetailPanel({
                   />
                 </div>
               ))}
+              <div className="flex flex-col gap-1">
+                <label className="lx-label">Gruppen</label>
+                <SearchInput value={groupSearch} onChange={setGroupSearch} placeholder="Gruppe suchen…" />
+                <div className="flex flex-wrap gap-2">
+                  {(allGroups ?? [])
+                    .filter((g) => !groupSearch.trim() || g.name.toLowerCase().includes(groupSearch.trim().toLowerCase()))
+                    .map((g) => {
+                    const member = groupSel.includes(g.name)
+                    return (
+                      <button
+                        key={g.id}
+                        type="button"
+                        onClick={() =>
+                          setGroupSel((s) => (member ? s.filter((n) => n !== g.name) : [...s, g.name]))
+                        }
+                        className={`px-2 py-1 text-xs rounded border transition-colors ${
+                          member
+                            ? 'border-[var(--lx-accent)] bg-[var(--lx-accent)]/10 text-[var(--lx-accent)]'
+                            : 'border-[var(--lx-border-soft)] bg-[var(--lx-elevated)] text-[var(--lx-text-muted)]'
+                        }`}
+                      >
+                        {g.name}
+                      </button>
+                    )
+                  })}
+                  {(allGroups ?? []).length === 0 && (
+                    <span className="text-xs text-[var(--lx-text-muted)]">Keine Gruppen vorhanden.</span>
+                  )}
+                </div>
+                <p className="text-[10px] text-[var(--lx-text-muted)]">
+                  Mehrfachzuordnung möglich · mit „Speichern" übernehmen.
+                </p>
+              </div>
             </div>
             {status && (
               <p className={`mt-2 text-xs px-2 py-1.5 rounded-md ${status.ok ? 'text-[var(--lx-state-up)]' : 'text-[var(--lx-state-down)]'}`}>
@@ -164,6 +330,9 @@ function UserDetailPanel({
               {patchMut.isPending ? 'Speichern…' : 'Speichern'}
             </button>
           </div>
+
+          {/* Direct permission grants */}
+          <UserPermissionsSection username={user.username} />
 
           {/* API Keys */}
           <div>
@@ -269,6 +438,70 @@ function CreateUserModal({ onClose }: { onClose: () => void }) {
   )
 }
 
+// ── Group membership (manage which users belong to a group) ─────────────────────
+
+function GroupMembersSection({ group }: { group: GroupOut }) {
+  const qc = useQueryClient()
+  const [search, setSearch] = useState('')
+  const { data: users } = useQuery({
+    queryKey: ['users'],
+    queryFn: () => apiFetch<{ users: UserOut[] }>('/api/users').then((r) => r.users),
+  })
+
+  // Membership lives on the user (user.groups by name), so toggling membership
+  // PATCHes the user's group list — naturally supports multiple groups per user.
+  const patchUser = useMutation({
+    mutationFn: ({ username, groups }: { username: string; groups: string[] }) =>
+      apiFetch(`/api/users/${username}`, { method: 'PATCH', body: JSON.stringify({ groups }) }),
+    onSuccess: (_d, vars) => {
+      qc.invalidateQueries({ queryKey: ['users'] })
+      qc.invalidateQueries({ queryKey: ['user-permissions', vars.username] })
+    },
+  })
+
+  function toggle(u: UserOut) {
+    const member = u.groups.includes(group.name)
+    const groups = member ? u.groups.filter((n) => n !== group.name) : [...u.groups, group.name]
+    patchUser.mutate({ username: u.username, groups })
+  }
+
+  const q = search.trim().toLowerCase()
+  const filtered = (users ?? []).filter(
+    (u) => !q || u.username.toLowerCase().includes(q) || (u.full_name || '').toLowerCase().includes(q),
+  )
+
+  return (
+    <div className="mt-6 pt-4 border-t border-[var(--lx-border-soft)]">
+      <p className="lx-eyebrow mb-2">Mitglieder</p>
+      <SearchInput value={search} onChange={setSearch} placeholder="Mitglied suchen…" />
+      <div className="flex flex-wrap gap-2">
+        {filtered.map((u) => {
+          const member = u.groups.includes(group.name)
+          return (
+            <button
+              key={u.username}
+              type="button"
+              disabled={patchUser.isPending}
+              onClick={() => toggle(u)}
+              title={`@${u.username}`}
+              className={`px-2 py-1 text-xs rounded border transition-colors ${
+                member
+                  ? 'border-[var(--lx-accent)] bg-[var(--lx-accent)]/10 text-[var(--lx-accent)]'
+                  : 'border-[var(--lx-border-soft)] bg-[var(--lx-elevated)] text-[var(--lx-text-muted)]'
+              }`}
+            >
+              {u.full_name || u.username}
+            </button>
+          )
+        })}
+        {filtered.length === 0 && (
+          <span className="text-xs text-[var(--lx-text-muted)]">Keine Benutzer gefunden.</span>
+        )}
+      </div>
+    </div>
+  )
+}
+
 // ── Groups tab ────────────────────────────────────────────────────────────────
 
 function GroupsTab() {
@@ -276,6 +509,7 @@ function GroupsTab() {
   const [selected, setSelected] = useState<GroupOut | null>(null)
   const [creating, setCreating] = useState(false)
   const [newGroupName, setNewGroupName] = useState('')
+  const [permSearch, setPermSearch] = useState('')
 
   const { data: groups } = useQuery({
     queryKey: ['groups'],
@@ -283,10 +517,11 @@ function GroupsTab() {
       apiFetch<{ groups: GroupOut[] }>('/api/permissions/groups').then((r) => r.groups),
   })
 
+  // NB: /catalog returns permission *definitions* (objects), not bare strings.
   const { data: catalog } = useQuery({
     queryKey: ['permissions-catalog'],
     queryFn: () =>
-      apiFetch<{ permissions: string[] }>('/api/permissions/catalog').then((r) => r.permissions),
+      apiFetch<{ permissions: PermissionDefOut[] }>('/api/permissions/catalog').then((r) => r.permissions),
   })
 
   const createGroupMut = useMutation({
@@ -303,7 +538,7 @@ function GroupsTab() {
   })
 
   const deleteGroupMut = useMutation({
-    mutationFn: (id: string) => apiFetch(`/api/permissions/groups/${id}`, { method: 'DELETE' }),
+    mutationFn: (id: number) => apiFetch(`/api/permissions/groups/${id}`, { method: 'DELETE' }),
     onSuccess: () => {
       setSelected(null)
       qc.invalidateQueries({ queryKey: ['groups'] })
@@ -311,7 +546,7 @@ function GroupsTab() {
   })
 
   const patchGroupMut = useMutation({
-    mutationFn: ({ id, permissions }: { id: string; permissions: string[] }) =>
+    mutationFn: ({ id, permissions }: { id: number; permissions: string[] }) =>
       apiFetch(`/api/permissions/groups/${id}`, {
         method: 'PATCH',
         body: JSON.stringify({ permissions }),
@@ -326,6 +561,20 @@ function GroupsTab() {
     patchGroupMut.mutate({ id: group.id, permissions: perms })
     setSelected((prev) => prev ? { ...prev, permissions: perms } : prev)
   }
+
+  const permQuery = permSearch.trim().toLowerCase()
+  const groupDetailByCat = (catalog ?? [])
+    .filter(
+      (p) =>
+        !permQuery ||
+        (p.label || '').toLowerCase().includes(permQuery) ||
+        p.id.toLowerCase().includes(permQuery) ||
+        (p.category || '').toLowerCase().includes(permQuery),
+    )
+    .reduce<Record<string, PermissionDefOut[]>>((acc, p) => {
+      ;(acc[p.category || 'Allgemein'] ||= []).push(p)
+      return acc
+    }, {})
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -377,24 +626,37 @@ function GroupsTab() {
               <SectionTitle>Berechtigungen: {selected.name}</SectionTitle>
               <ActionButton small label="Löschen" danger onClick={() => deleteGroupMut.mutate(selected.id)} />
             </div>
-            <div className="flex flex-wrap gap-2">
-              {(catalog ?? []).map((perm) => {
-                const active = selected.permissions.includes(perm)
-                return (
-                  <button
-                    key={perm}
-                    onClick={() => togglePermission(selected, perm)}
-                    className={`px-2 py-1 text-xs rounded border transition-colors ${
-                      active
-                        ? 'border-[var(--lx-accent)] bg-[var(--lx-accent)]/10 text-[var(--lx-accent)]'
-                        : 'border-[var(--lx-border-soft)] bg-[var(--lx-elevated)] text-[var(--lx-text-muted)]'
-                    }`}
-                  >
-                    {perm}
-                  </button>
-                )
-              })}
+            <SearchInput value={permSearch} onChange={setPermSearch} placeholder="Berechtigung suchen…" />
+            <div className="flex flex-col gap-4">
+              {Object.entries(groupDetailByCat).map(([category, perms]) => (
+                <div key={category}>
+                  <p className="lx-eyebrow mb-2">{category}</p>
+                  <div className="flex flex-wrap gap-2">
+                    {perms.map((perm) => {
+                      const active = selected.permissions.includes(perm.id)
+                      return (
+                        <button
+                          key={perm.id}
+                          onClick={() => togglePermission(selected, perm.id)}
+                          title={perm.description || perm.id}
+                          className={`px-2 py-1 text-xs rounded border transition-colors ${
+                            active
+                              ? 'border-[var(--lx-accent)] bg-[var(--lx-accent)]/10 text-[var(--lx-accent)]'
+                              : 'border-[var(--lx-border-soft)] bg-[var(--lx-elevated)] text-[var(--lx-text-muted)]'
+                          }`}
+                        >
+                          {perm.label || perm.id}
+                        </button>
+                      )
+                    })}
+                  </div>
+                </div>
+              ))}
+              {Object.keys(groupDetailByCat).length === 0 && (
+                <p className="text-xs text-[var(--lx-text-muted)]">Keine Berechtigungen gefunden.</p>
+              )}
             </div>
+            <GroupMembersSection group={selected} />
           </Card>
         ) : (
           <div className="flex items-center justify-center h-32 text-sm text-[var(--lx-text-muted)]">
