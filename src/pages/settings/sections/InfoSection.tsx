@@ -1,7 +1,8 @@
+import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { apiFetch } from '../../../lib/api'
 import type { SystemInfoOut } from '../../../lib/types'
-import { Card, SectionTitle } from '../shared'
+import { Card, SectionTitle, StatusMsg } from '../shared'
 
 function formatUptime(seconds: number): string {
   const d = Math.floor(seconds / 86400)
@@ -36,6 +37,63 @@ function InfoRow({ label, value }: { label: string; value: React.ReactNode }) {
       <span className="text-xs text-[var(--lx-text-muted)] uppercase tracking-wide">{label}</span>
       <span className="text-sm text-[var(--lx-text)] font-mono">{value}</span>
     </div>
+  )
+}
+
+function RestartCard() {
+  const [phase, setPhase] = useState<'idle' | 'confirm' | 'restarting' | 'error'>('idle')
+  const [err, setErr] = useState<string | null>(null)
+
+  async function doRestart() {
+    setPhase('restarting')
+    setErr(null)
+    try {
+      await apiFetch('/api/system/restart', { method: 'POST' })
+    } catch {
+      // The connection drops as the container goes down — expected, not a failure.
+    }
+    // Poll until the core answers again, then reload the page.
+    const start = Date.now()
+    const poll = async () => {
+      try {
+        await apiFetch<SystemInfoOut>('/api/system/info')
+        window.location.reload()
+      } catch {
+        if (Date.now() - start > 120_000) {
+          setPhase('error')
+          setErr('Zeitüberschreitung beim Warten auf den Core. Bitte die Seite manuell neu laden.')
+          return
+        }
+        setTimeout(poll, 2500)
+      }
+    }
+    setTimeout(poll, 4000)
+  }
+
+  return (
+    <Card>
+      <SectionTitle>Wartung</SectionTitle>
+      <p className="text-xs text-[var(--lx-text-muted)] mb-3">
+        Startet den Core-Container neu — z. B. damit ein Plugin-Upgrade greift. Die Oberfläche
+        verbindet sich nach dem Neustart automatisch wieder.
+      </p>
+      {phase === 'restarting' ? (
+        <div className="flex items-center gap-2 text-sm text-[var(--lx-accent)]">
+          <span className="lx-spinner" /> Core startet neu – bitte warten…
+        </div>
+      ) : phase === 'confirm' ? (
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="text-sm text-[var(--lx-text)]">Core-Container wirklich neu starten?</span>
+          <button className="lx-btn lx-btn--danger" onClick={doRestart}>Ja, neu starten</button>
+          <button className="lx-btn lx-btn--ghost" onClick={() => setPhase('idle')}>Abbrechen</button>
+        </div>
+      ) : (
+        <button className="lx-btn lx-btn--danger" onClick={() => setPhase('confirm')}>
+          Core neu starten
+        </button>
+      )}
+      {err && <StatusMsg ok={false} msg={err} />}
+    </Card>
   )
 }
 
@@ -77,6 +135,8 @@ export default function InfoSection(_: {
           <StatusBadge ok={info?.db_connected ?? null} label="Datenbank" />
         </div>
       </Card>
+
+      <RestartCard />
     </div>
   )
 }
