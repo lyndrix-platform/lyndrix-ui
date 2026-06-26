@@ -119,7 +119,7 @@ function UserPermissionsSection({ username }: { username: string }) {
                     }`}
                   >
                     {perm.label || perm.id}
-                    {fromGroup && <span className="ml-1 opacity-60">· Gruppe</span>}
+                    {fromGroup && <span className="ml-1 font-medium">✓ via Gruppe</span>}
                   </button>
                 )
               })}
@@ -154,9 +154,14 @@ function UserDetailPanel({
     email: user.email ?? '',
     password: '',
     roles: user.roles.join(', '),
-    groups: user.groups.join(', '),
   })
+  const [groupSel, setGroupSel] = useState<string[]>(user.groups ?? [])
   const [status, setStatus] = useState<{ ok: boolean; msg: string } | null>(null)
+
+  const { data: allGroups } = useQuery({
+    queryKey: ['groups'],
+    queryFn: () => apiFetch<{ groups: GroupOut[] }>('/api/permissions/groups').then((r) => r.groups),
+  })
   const [newKeyLabel, setNewKeyLabel] = useState('')
   const [newKeyResult, setNewKeyResult] = useState<string | null>(null)
   const [deleteConfirm, setDeleteConfirm] = useState(false)
@@ -175,7 +180,7 @@ function UserDetailPanel({
         full_name: form.full_name,
         email: form.email,
         roles: form.roles.split(',').map((s) => s.trim()).filter(Boolean),
-        groups: form.groups.split(',').map((s) => s.trim()).filter(Boolean),
+        groups: groupSel,
       }
       if (form.password) updates.password = form.password
       return apiFetch(`/api/users/${user.username}`, {
@@ -239,7 +244,6 @@ function UserDetailPanel({
                 { label: 'E-Mail', key: 'email' },
                 { label: 'Neues Passwort', key: 'password', type: 'password' },
                 { label: 'Rollen (kommagetrennt)', key: 'roles' },
-                { label: 'Gruppen (kommagetrennt)', key: 'groups' },
               ].map(({ label, key, type }) => (
                 <div key={key} className="flex flex-col gap-1">
                   <label className="lx-label">{label}</label>
@@ -252,6 +256,36 @@ function UserDetailPanel({
                   />
                 </div>
               ))}
+              <div className="flex flex-col gap-1">
+                <label className="lx-label">Gruppen</label>
+                <div className="flex flex-wrap gap-2">
+                  {(allGroups ?? []).map((g) => {
+                    const member = groupSel.includes(g.name)
+                    return (
+                      <button
+                        key={g.id}
+                        type="button"
+                        onClick={() =>
+                          setGroupSel((s) => (member ? s.filter((n) => n !== g.name) : [...s, g.name]))
+                        }
+                        className={`px-2 py-1 text-xs rounded border transition-colors ${
+                          member
+                            ? 'border-[var(--lx-accent)] bg-[var(--lx-accent)]/10 text-[var(--lx-accent)]'
+                            : 'border-[var(--lx-border-soft)] bg-[var(--lx-elevated)] text-[var(--lx-text-muted)]'
+                        }`}
+                      >
+                        {g.name}
+                      </button>
+                    )
+                  })}
+                  {(allGroups ?? []).length === 0 && (
+                    <span className="text-xs text-[var(--lx-text-muted)]">Keine Gruppen vorhanden.</span>
+                  )}
+                </div>
+                <p className="text-[10px] text-[var(--lx-text-muted)]">
+                  Mehrfachzuordnung möglich · mit „Speichern" übernehmen.
+                </p>
+              </div>
             </div>
             {status && (
               <p className={`mt-2 text-xs px-2 py-1.5 rounded-md ${status.ok ? 'text-[var(--lx-state-up)]' : 'text-[var(--lx-state-down)]'}`}>
@@ -365,6 +399,63 @@ function CreateUserModal({ onClose }: { onClose: () => void }) {
             {mut.isPending ? 'Erstellen…' : 'Erstellen'}
           </button>
         </div>
+      </div>
+    </div>
+  )
+}
+
+// ── Group membership (manage which users belong to a group) ─────────────────────
+
+function GroupMembersSection({ group }: { group: GroupOut }) {
+  const qc = useQueryClient()
+  const { data: users } = useQuery({
+    queryKey: ['users'],
+    queryFn: () => apiFetch<{ users: UserOut[] }>('/api/users').then((r) => r.users),
+  })
+
+  // Membership lives on the user (user.groups by name), so toggling membership
+  // PATCHes the user's group list — naturally supports multiple groups per user.
+  const patchUser = useMutation({
+    mutationFn: ({ username, groups }: { username: string; groups: string[] }) =>
+      apiFetch(`/api/users/${username}`, { method: 'PATCH', body: JSON.stringify({ groups }) }),
+    onSuccess: (_d, vars) => {
+      qc.invalidateQueries({ queryKey: ['users'] })
+      qc.invalidateQueries({ queryKey: ['user-permissions', vars.username] })
+    },
+  })
+
+  function toggle(u: UserOut) {
+    const member = u.groups.includes(group.name)
+    const groups = member ? u.groups.filter((n) => n !== group.name) : [...u.groups, group.name]
+    patchUser.mutate({ username: u.username, groups })
+  }
+
+  return (
+    <div className="mt-6 pt-4 border-t border-[var(--lx-border-soft)]">
+      <p className="lx-eyebrow mb-2">Mitglieder</p>
+      <div className="flex flex-col gap-0.5">
+        {(users ?? []).map((u) => {
+          const member = u.groups.includes(group.name)
+          return (
+            <label
+              key={u.username}
+              className="flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-[var(--lx-elevated)] cursor-pointer"
+            >
+              <input
+                type="checkbox"
+                className="w-4 h-4 accent-[var(--lx-accent)]"
+                checked={member}
+                disabled={patchUser.isPending}
+                onChange={() => toggle(u)}
+              />
+              <span className="text-sm text-[var(--lx-text)]">{u.full_name || u.username}</span>
+              <span className="text-xs text-[var(--lx-text-muted)]">@{u.username}</span>
+            </label>
+          )
+        })}
+        {(users ?? []).length === 0 && (
+          <span className="text-xs text-[var(--lx-text-muted)]">Keine Benutzer.</span>
+        )}
       </div>
     </div>
   )
@@ -513,6 +604,7 @@ function GroupsTab() {
                 <p className="text-xs text-[var(--lx-text-muted)]">Keine Berechtigungen im Katalog.</p>
               )}
             </div>
+            <GroupMembersSection group={selected} />
           </Card>
         ) : (
           <div className="flex items-center justify-center h-32 text-sm text-[var(--lx-text-muted)]">
