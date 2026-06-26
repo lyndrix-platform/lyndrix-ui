@@ -1,7 +1,7 @@
 {
   "name": "lyndrix-ui",
   "private": true,
-  "version": "0.2.0",
+  "version": "0.3.0",
   "type": "module",
   "module": "./dist/index.es.js",
   "types": "./dist/types/index.d.ts",
@@ -13,6 +13,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@dnd-kit/core": "^6.3.1",
     "@tanstack/react-query": "^5.101.0",
     "@tanstack/react-query-devtools": "^5.101.0",
     "autoprefixer": "^10.5.0",

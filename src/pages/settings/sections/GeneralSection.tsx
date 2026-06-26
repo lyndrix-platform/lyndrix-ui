@@ -40,7 +40,7 @@ export default function GeneralSection({
       <Card>
         <SectionTitle>Anwendung</SectionTitle>
         <div className="flex flex-col gap-3">
-          <Field label="App Name" locked={locked('APP_NAME')}>
+          <Field label="App Name" locked={locked('APP_NAME')} envVar="APP_NAME">
             <input
               className={inputCls}
               value={form.APP_NAME}
@@ -48,7 +48,7 @@ export default function GeneralSection({
               onChange={(e) => setForm((f) => ({ ...f, APP_NAME: e.target.value }))}
             />
           </Field>
-          <Field label="App Titel" locked={locked('APP_TITLE')}>
+          <Field label="App Titel" locked={locked('APP_TITLE')} envVar="APP_TITLE">
             <input
               className={inputCls}
               value={form.APP_TITLE}
@@ -56,7 +56,7 @@ export default function GeneralSection({
               onChange={(e) => setForm((f) => ({ ...f, APP_TITLE: e.target.value }))}
             />
           </Field>
-          <Field label="Log Level" locked={locked('LOG_LEVEL')}>
+          <Field label="Log Level" locked={locked('LOG_LEVEL')} envVar="LOG_LEVEL">
             <select
               className={inputCls}
               value={form.LOG_LEVEL}
@@ -70,7 +70,7 @@ export default function GeneralSection({
               ))}
             </select>
           </Field>
-          <Field label="Standard-Sprache" locked={locked('DEFAULT_LOCALE')}>
+          <Field label="Standard-Sprache" locked={locked('DEFAULT_LOCALE')} envVar="DEFAULT_LOCALE">
             <select
               className={inputCls}
               value={form.DEFAULT_LOCALE}

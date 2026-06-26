@@ -1,140 +1,168 @@
 import { useState } from 'react'
-import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { apiFetch } from '../../../lib/api'
 import { Card, Field, SectionTitle, SaveButton, StatusMsg, inputCls } from '../shared'
 
-export default function AuthSection({
-  config,
-  envLocked,
+// ─── Types (mirror GET /api/auth/config) ─────────────────────────────────────
+
+interface AuthField {
+  vault_key: string
+  label: string
+  hint: string
+  env_var: string
+  sensitive: boolean
+  is_bool: boolean
+  source: 'env' | 'vault' | 'default'
+  is_env_locked: boolean
+  configured: boolean
+  current_value: string
+}
+
+interface AuthConfigOut {
+  status: string
+  fields: AuthField[]
+}
+
+// ─── Single field input (text / password / bool) ─────────────────────────────
+
+function AuthFieldInput({
+  field,
+  value,
+  onChange,
 }: {
-  config: Record<string, unknown>
-  envLocked: string[]
+  field: AuthField
+  value: string | undefined
+  onChange: (v: string) => void
 }) {
+  const locked = field.is_env_locked
+  // For sensitive fields we never receive the value — show a "set" placeholder.
+  const shown = locked
+    ? field.sensitive
+      ? ''
+      : field.current_value
+    : value ?? (field.sensitive ? '' : field.current_value)
+
+  return (
+    <Field label={field.label} hint={field.hint} locked={locked} envVar={field.env_var}>
+      {field.is_bool ? (
+        <select
+          className={inputCls}
+          value={value ?? (field.current_value || 'true')}
+          disabled={locked}
+          onChange={(e) => onChange(e.target.value)}
+        >
+          <option value="true">an</option>
+          <option value="false">aus</option>
+        </select>
+      ) : (
+        <input
+          className={inputCls}
+          type={field.sensitive ? 'password' : 'text'}
+          value={shown}
+          disabled={locked}
+          placeholder={
+            field.sensitive && field.configured
+              ? '•••••••• (gesetzt — zum Ändern überschreiben)'
+              : undefined
+          }
+          onChange={(e) => onChange(e.target.value)}
+        />
+      )}
+    </Field>
+  )
+}
+
+// ─── Section ─────────────────────────────────────────────────────────────────
+
+export default function AuthSection(_: { config: Record<string, unknown>; envLocked: string[] }) {
   const qc = useQueryClient()
-  const [form, setForm] = useState({
-    LYNDRIX_AUTH_PROVIDERS: String(config.LYNDRIX_AUTH_PROVIDERS ?? 'local'),
-    LYNDRIX_LDAP_URL: String(config.LYNDRIX_LDAP_URL ?? ''),
-    LYNDRIX_LDAP_BIND_DN: String(config.LYNDRIX_LDAP_BIND_DN ?? ''),
-    LYNDRIX_LDAP_BASE_DN: String(config.LYNDRIX_LDAP_BASE_DN ?? ''),
-    LYNDRIX_OIDC_ISSUER: String(config.LYNDRIX_OIDC_ISSUER ?? ''),
-    LYNDRIX_OIDC_CLIENT_ID: String(config.LYNDRIX_OIDC_CLIENT_ID ?? ''),
-  })
+  const [form, setForm] = useState<Record<string, string>>({})
   const [status, setStatus] = useState<{ ok: boolean; msg: string } | null>(null)
 
-  const locked = (key: string) => envLocked.includes(key)
-  const providers = form.LYNDRIX_AUTH_PROVIDERS.split(',').map((s) => s.trim())
+  const { data, isLoading, isError, error } = useQuery({
+    queryKey: ['auth-config'],
+    queryFn: () => apiFetch<AuthConfigOut>('/api/auth/config'),
+  })
+
+  const fields = data?.fields ?? []
+  const byKey = (k: string) => fields.find((f) => f.vault_key === k)
+  const set = (k: string, v: string) => setForm((f) => ({ ...f, [k]: v }))
+
+  const chain = byKey('auth_providers')
+  const providersStr = form.auth_providers ?? chain?.current_value ?? 'local'
+  const providers = providersStr.split(',').map((s) => s.trim())
+
+  const ldapFields = fields.filter((f) => f.vault_key.startsWith('ldap_'))
+  const oidcFields = fields.filter((f) => f.vault_key.startsWith('oidc_'))
 
   const mut = useMutation({
     mutationFn: () => {
-      const updates: Record<string, string> = {
-        LYNDRIX_AUTH_PROVIDERS: form.LYNDRIX_AUTH_PROVIDERS,
+      const updates: Record<string, string> = {}
+      for (const f of fields) {
+        if (f.is_env_locked) continue
+        const v = form[f.vault_key]
+        if (v === undefined) continue // untouched → keep stored value
+        if (f.sensitive && v.trim() === '') continue // blank secret → keep existing
+        updates[f.vault_key] = v
       }
-      if (providers.includes('ldap')) {
-        if (form.LYNDRIX_LDAP_URL) updates.LYNDRIX_LDAP_URL = form.LYNDRIX_LDAP_URL
-        if (form.LYNDRIX_LDAP_BIND_DN) updates.LYNDRIX_LDAP_BIND_DN = form.LYNDRIX_LDAP_BIND_DN
-        if (form.LYNDRIX_LDAP_BASE_DN) updates.LYNDRIX_LDAP_BASE_DN = form.LYNDRIX_LDAP_BASE_DN
-      }
-      if (providers.includes('oidc')) {
-        if (form.LYNDRIX_OIDC_ISSUER) updates.LYNDRIX_OIDC_ISSUER = form.LYNDRIX_OIDC_ISSUER
-        if (form.LYNDRIX_OIDC_CLIENT_ID)
-          updates.LYNDRIX_OIDC_CLIENT_ID = form.LYNDRIX_OIDC_CLIENT_ID
-      }
-      return apiFetch('/api/system/config', {
-        method: 'POST',
-        body: JSON.stringify({ updates, persist_in_vault: true, apply_runtime: true }),
+      return apiFetch('/api/auth/config', {
+        method: 'PATCH',
+        body: JSON.stringify({ updates }),
       })
     },
     onSuccess: () => {
       setStatus({ ok: true, msg: 'Auth-Einstellungen gespeichert.' })
-      qc.invalidateQueries({ queryKey: ['system-config'] })
+      setForm({})
+      void qc.invalidateQueries({ queryKey: ['auth-config'] })
     },
     onError: (e) => setStatus({ ok: false, msg: e instanceof Error ? e.message : 'Fehler' }),
   })
+
+  if (isLoading) return <p className="text-sm text-[var(--lx-text-muted)]">Lade…</p>
+  if (isError)
+    return <StatusMsg ok={false} msg={(error as Error)?.message ?? 'Fehler beim Laden'} />
 
   return (
     <div className="flex flex-col gap-4">
       <Card>
         <SectionTitle>Anbieter-Reihenfolge</SectionTitle>
-        <Field
-          label="Aktive Anbieter (kommagetrennt)"
-          hint='Reihenfolge bestimmt die Priorität: z.B. "local,ldap,oidc"'
-          locked={locked('LYNDRIX_AUTH_PROVIDERS')}
-        >
-          <input
-            className={inputCls}
-            value={form.LYNDRIX_AUTH_PROVIDERS}
-            disabled={locked('LYNDRIX_AUTH_PROVIDERS')}
-            onChange={(e) => setForm((f) => ({ ...f, LYNDRIX_AUTH_PROVIDERS: e.target.value }))}
+        {chain && (
+          <AuthFieldInput
+            field={{ ...chain, label: 'Aktive Anbieter (kommagetrennt)' }}
+            value={form.auth_providers}
+            onChange={(v) => set('auth_providers', v)}
           />
-        </Field>
+        )}
       </Card>
 
-      {providers.includes('ldap') && (
+      {providers.includes('ldap') && ldapFields.length > 0 && (
         <Card>
           <SectionTitle>LDAP</SectionTitle>
           <div className="flex flex-col gap-3">
-            <Field label="LDAP URL" locked={locked('LYNDRIX_LDAP_URL')}>
-              <input
-                className={inputCls}
-                value={form.LYNDRIX_LDAP_URL}
-                disabled={locked('LYNDRIX_LDAP_URL')}
-                onChange={(e) => setForm((f) => ({ ...f, LYNDRIX_LDAP_URL: e.target.value }))}
+            {ldapFields.map((f) => (
+              <AuthFieldInput
+                key={f.vault_key}
+                field={f}
+                value={form[f.vault_key]}
+                onChange={(v) => set(f.vault_key, v)}
               />
-            </Field>
-            <Field label="Bind DN" locked={locked('LYNDRIX_LDAP_BIND_DN')}>
-              <input
-                className={inputCls}
-                value={form.LYNDRIX_LDAP_BIND_DN}
-                disabled={locked('LYNDRIX_LDAP_BIND_DN')}
-                onChange={(e) =>
-                  setForm((f) => ({ ...f, LYNDRIX_LDAP_BIND_DN: e.target.value }))
-                }
-              />
-            </Field>
-            <Field label="Base DN" locked={locked('LYNDRIX_LDAP_BASE_DN')}>
-              <input
-                className={inputCls}
-                value={form.LYNDRIX_LDAP_BASE_DN}
-                disabled={locked('LYNDRIX_LDAP_BASE_DN')}
-                onChange={(e) =>
-                  setForm((f) => ({ ...f, LYNDRIX_LDAP_BASE_DN: e.target.value }))
-                }
-              />
-            </Field>
-            <p className="text-[10px] text-[var(--lx-text-muted)]">
-              Bind-Passwort nur über Umgebungsvariable LYNDRIX_LDAP_BIND_PASSWORD setzbar.
-            </p>
+            ))}
           </div>
         </Card>
       )}
 
-      {providers.includes('oidc') && (
+      {providers.includes('oidc') && oidcFields.length > 0 && (
         <Card>
           <SectionTitle>OIDC / OAuth2</SectionTitle>
           <div className="flex flex-col gap-3">
-            <Field label="Issuer URL" locked={locked('LYNDRIX_OIDC_ISSUER')}>
-              <input
-                className={inputCls}
-                value={form.LYNDRIX_OIDC_ISSUER}
-                disabled={locked('LYNDRIX_OIDC_ISSUER')}
-                onChange={(e) =>
-                  setForm((f) => ({ ...f, LYNDRIX_OIDC_ISSUER: e.target.value }))
-                }
+            {oidcFields.map((f) => (
+              <AuthFieldInput
+                key={f.vault_key}
+                field={f}
+                value={form[f.vault_key]}
+                onChange={(v) => set(f.vault_key, v)}
               />
-            </Field>
-            <Field label="Client ID" locked={locked('LYNDRIX_OIDC_CLIENT_ID')}>
-              <input
-                className={inputCls}
-                value={form.LYNDRIX_OIDC_CLIENT_ID}
-                disabled={locked('LYNDRIX_OIDC_CLIENT_ID')}
-                onChange={(e) =>
-                  setForm((f) => ({ ...f, LYNDRIX_OIDC_CLIENT_ID: e.target.value }))
-                }
-              />
-            </Field>
-            <p className="text-[10px] text-[var(--lx-text-muted)]">
-              Client Secret nur über Umgebungsvariable LYNDRIX_OIDC_CLIENT_SECRET setzbar.
-            </p>
+            ))}
           </div>
         </Card>
       )}

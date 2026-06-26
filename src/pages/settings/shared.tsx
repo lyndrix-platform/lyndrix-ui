@@ -10,32 +10,45 @@ export function Card({ children }: { children: React.ReactNode }) {
   return <div className="lx-card lx-card-hover p-6">{children}</div>
 }
 
+export function EnvBadge() {
+  return (
+    <span
+      title="Durch Umgebungsvariable gesperrt"
+      className="inline-flex items-center gap-0.5 text-[10px] text-amber-400 bg-amber-400/10 px-1.5 py-0.5 rounded"
+    >
+      <Lock size={9} />
+      ENV
+    </span>
+  )
+}
+
 export function Field({
   label,
   children,
   hint,
   locked,
+  envVar,
 }: {
   label: string
   children: React.ReactNode
   hint?: string
   locked?: boolean
+  /** OS env-var that locks this field; shown as a warning when `locked`. */
+  envVar?: string
 }) {
   return (
     <div className="flex flex-col gap-1">
       <div className="flex items-center gap-1.5">
         <label className="text-xs font-medium text-[var(--lx-text-muted)]">{label}</label>
-        {locked && (
-          <span
-            title="Durch Umgebungsvariable gesperrt"
-            className="inline-flex items-center gap-0.5 text-[10px] text-amber-400 bg-amber-400/10 px-1.5 py-0.5 rounded"
-          >
-            <Lock size={9} />
-            ENV
-          </span>
-        )}
+        {locked && <EnvBadge />}
       </div>
       {children}
+      {locked && envVar && (
+        <p className="text-[10px] text-amber-400/90">
+          Gesetzt über Umgebungsvariable <span className="font-mono">{envVar}</span> — hier nicht
+          änderbar.
+        </p>
+      )}
       {hint && <p className="text-[10px] text-[var(--lx-text-muted)]">{hint}</p>}
     </div>
   )
