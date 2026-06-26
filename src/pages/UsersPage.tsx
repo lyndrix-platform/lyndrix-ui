@@ -41,6 +41,104 @@ function ActionButton({
   )
 }
 
+// ── Per-user direct permission grants ──────────────────────────────────────────
+
+function UserPermissionsSection({ username }: { username: string }) {
+  const qc = useQueryClient()
+  const [status, setStatus] = useState<{ ok: boolean; msg: string } | null>(null)
+
+  // Shared cache key with GroupsTab — the catalog is fetched once.
+  const { data: catalog } = useQuery({
+    queryKey: ['permissions-catalog'],
+    queryFn: () =>
+      apiFetch<{ permissions: PermissionDefOut[] }>('/api/permissions/catalog').then((r) => r.permissions),
+  })
+
+  const { data: perms } = useQuery({
+    queryKey: ['user-permissions', username],
+    queryFn: () =>
+      apiFetch<{
+        user: { extra_permissions: string[]; from_groups: string[]; roles: string[]; groups: string[] }
+      }>(`/api/permissions/users/${username}`).then((r) => r.user),
+  })
+
+  const putMut = useMutation({
+    mutationFn: (permissions: string[]) =>
+      apiFetch(`/api/permissions/users/${username}/extra`, {
+        method: 'PUT',
+        body: JSON.stringify({ permissions }),
+      }),
+    onSuccess: () => {
+      setStatus({ ok: true, msg: 'Berechtigungen aktualisiert.' })
+      qc.invalidateQueries({ queryKey: ['user-permissions', username] })
+      qc.invalidateQueries({ queryKey: ['users'] })
+    },
+    onError: (e) => setStatus({ ok: false, msg: e instanceof Error ? e.message : 'Fehler' }),
+  })
+
+  const extra = perms?.extra_permissions ?? []
+  const inherited = new Set(perms?.from_groups ?? [])
+
+  function toggle(permId: string) {
+    const next = extra.includes(permId) ? extra.filter((p) => p !== permId) : [...extra, permId]
+    putMut.mutate(next)
+  }
+
+  const byCategory = (catalog ?? []).reduce<Record<string, PermissionDefOut[]>>((acc, p) => {
+    ;(acc[p.category || 'Allgemein'] ||= []).push(p)
+    return acc
+  }, {})
+
+  return (
+    <div>
+      <SectionTitle>Direkte Berechtigungen</SectionTitle>
+      <p className="text-[11px] text-[var(--lx-text-muted)] -mt-3 mb-3">
+        Zusätzliche Rechte für diesen Benutzer. Aus Gruppen/Rollen geerbte Rechte sind gesperrt
+        (mit „· Gruppe" markiert) und werden im Gruppen-Tab verwaltet.
+      </p>
+      <div className="flex flex-col gap-4">
+        {Object.entries(byCategory).map(([category, ps]) => (
+          <div key={category}>
+            <p className="lx-eyebrow mb-2">{category}</p>
+            <div className="flex flex-wrap gap-2">
+              {ps.map((perm) => {
+                const direct = extra.includes(perm.id)
+                const fromGroup = inherited.has(perm.id)
+                return (
+                  <button
+                    key={perm.id}
+                    disabled={fromGroup || putMut.isPending}
+                    onClick={() => toggle(perm.id)}
+                    title={fromGroup ? 'Über Gruppe/Rolle vererbt' : perm.description || perm.id}
+                    className={`px-2 py-1 text-xs rounded border transition-colors ${
+                      fromGroup
+                        ? 'border-[var(--lx-border-soft)] bg-[var(--lx-elevated)] text-[var(--lx-text-muted)] opacity-70 cursor-not-allowed'
+                        : direct
+                          ? 'border-[var(--lx-accent)] bg-[var(--lx-accent)]/10 text-[var(--lx-accent)]'
+                          : 'border-[var(--lx-border-soft)] bg-[var(--lx-elevated)] text-[var(--lx-text-muted)]'
+                    }`}
+                  >
+                    {perm.label || perm.id}
+                    {fromGroup && <span className="ml-1 opacity-60">· Gruppe</span>}
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+        ))}
+        {(catalog ?? []).length === 0 && (
+          <p className="text-xs text-[var(--lx-text-muted)]">Keine Berechtigungen im Katalog.</p>
+        )}
+      </div>
+      {status && (
+        <p className={`mt-2 text-xs ${status.ok ? 'text-[var(--lx-state-up)]' : 'text-[var(--lx-state-down)]'}`}>
+          {status.msg}
+        </p>
+      )}
+    </div>
+  )
+}
+
 // ── User detail panel ─────────────────────────────────────────────────────────
 
 function UserDetailPanel({
@@ -164,6 +262,9 @@ function UserDetailPanel({
               {patchMut.isPending ? 'Speichern…' : 'Speichern'}
             </button>
           </div>
+
+          {/* Direct permission grants */}
+          <UserPermissionsSection username={user.username} />
 
           {/* API Keys */}
           <div>
