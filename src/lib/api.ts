@@ -127,6 +127,11 @@ export async function getJobLogDelta(
  * URL of the streamed raw (entire) log. Carries the token as a query param because
  * the browser opens this directly (new tab / download) and cannot send a Bearer
  * header — matching the SSE stream's `?token=` auth.
+ *
+ * TODO(agent): this embeds the long-lived session bearer in the URL, which leaks
+ * into server/proxy access logs, browser history and the Referer header (UI-SHELL-002).
+ * The backend should issue a short-TTL, single-use, log-scoped download token and we
+ * should embed that here instead of the session token.
  */
 export function jobLogRawUrl(jobId: number, download = false): string {
   const params = new URLSearchParams({ token: getToken() ?? '' })

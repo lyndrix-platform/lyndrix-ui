@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { Navigate, useNavigate } from 'react-router-dom'
 import { useQuery, useMutation } from '@tanstack/react-query'
 import { apiFetch } from '../lib/api'
 import { useSSE } from '../lib/useSSE'
@@ -37,29 +37,32 @@ export default function VaultUnsealPage() {
 
   useSSE((topic) => {
     if (topic === 'vault:status_changed') {
-      refetch().then(() => {
-        void apiFetch<VaultStatusResponse>('/api/vault/status', { skipAuth: true }).then((s) => {
-          if (s.ui_state === 'ready') navigate('/login', { replace: true })
-          else if (s.ui_state === 'needs_init') navigate('/vault-setup', { replace: true })
-        })
+      // Reuse the refetch result instead of issuing a second status request.
+      void refetch().then(({ data }) => {
+        if (!data) return
+        if (data.ui_state === 'ready') navigate('/login', { replace: true })
+        else if (data.ui_state === 'needs_init') navigate('/vault-setup', { replace: true })
       })
     }
   })
 
   const unsealMutation = useMutation({
-    mutationFn: () => apiFetch('/api/vault/unseal', { method: 'POST', skipAuth: true }),
+    // Send the operator-supplied unseal key; the backend (VaultUnsealRequest)
+    // falls back to stored material when no key is provided (auto-unseal).
+    mutationFn: () =>
+      apiFetch('/api/vault/unseal', {
+        method: 'POST',
+        skipAuth: true,
+        body: JSON.stringify({ key: key || null }),
+      }),
     onMutate: () => setUnsealing(true),
     onSettled: () => setUnsealing(false),
   })
 
-  if (vaultStatus && vaultStatus.ui_state === 'ready') {
-    navigate('/login', { replace: true })
-    return null
-  }
-  if (vaultStatus && vaultStatus.ui_state === 'needs_init') {
-    navigate('/vault-setup', { replace: true })
-    return null
-  }
+  // Navigation is a side effect — return a declarative redirect instead of
+  // calling navigate() during render.
+  if (vaultStatus && vaultStatus.ui_state === 'ready') return <Navigate to="/login" replace />
+  if (vaultStatus && vaultStatus.ui_state === 'needs_init') return <Navigate to="/vault-setup" replace />
 
   const isAutoUnseal = vaultStatus && !vaultStatus.sealed
 

@@ -22,6 +22,15 @@ export function useSSE(
 
     function connect() {
       if (destroyed) return
+      // EventSource cannot send an Authorization header, and core's SSE auth
+      // (optional_api_auth) reads ONLY headers / X-API-Key — there is no query-param
+      // token path in core/api/security.py. Appending ?token= therefore authenticates
+      // nothing and merely leaks the session bearer into access logs / Referer, so we
+      // do NOT send it. The stream stays on its public topic subset until the backend
+      // gains a proper short-TTL stream ticket.
+      // TODO(agent): teach core /api/events to mint+accept a short-lived, stream-scoped
+      // HMAC ticket (mirror iac-orchestrator's POST /stream/ticket), then pass that —
+      // never the long-lived session bearer (see UI-SHELL-001/002/006).
       es = new EventSource('/api/events')
 
       es.onmessage = (e) => {

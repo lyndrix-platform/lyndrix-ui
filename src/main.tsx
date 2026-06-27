@@ -1,10 +1,18 @@
 import * as React from 'react'
 import * as ReactDOMClient from 'react-dom/client'
-import { StrictMode } from 'react'
+import { StrictMode, Suspense, lazy } from 'react'
 import { createRoot } from 'react-dom/client'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { ReactQueryDevtools } from '@tanstack/react-query-devtools'
 import { BrowserRouter } from 'react-router-dom'
+
+// Devtools are lazily imported only in development so the module is never pulled
+// into the production bundle (the component self-disables at runtime in prod, but
+// the static import still shipped its code).
+const ReactQueryDevtools = import.meta.env.DEV
+  ? lazy(() =>
+      import('@tanstack/react-query-devtools').then((m) => ({ default: m.ReactQueryDevtools })),
+    )
+  : null
 
 // Self-hosted fonts + icons (bundled by Vite) — prod has no internet, so a
 // render-blocking Google-Fonts <link>/@import would freeze the whole UI offline.
@@ -44,7 +52,11 @@ createRoot(document.getElementById('root')!).render(
       <BrowserRouter basename={import.meta.env.BASE_URL.replace(/\/$/, '')}>
         <App />
       </BrowserRouter>
-      <ReactQueryDevtools initialIsOpen={false} />
+      {ReactQueryDevtools && (
+        <Suspense fallback={null}>
+          <ReactQueryDevtools initialIsOpen={false} />
+        </Suspense>
+      )}
     </QueryClientProvider>
   </StrictMode>,
 )

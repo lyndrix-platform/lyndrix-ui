@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { Navigate, useNavigate } from 'react-router-dom'
 import { useQuery, useMutation } from '@tanstack/react-query'
 import { apiFetch } from '../lib/api'
 import { useSSE } from '../lib/useSSE'
@@ -37,11 +37,11 @@ export default function VaultSetupPage() {
 
   useSSE((topic) => {
     if (topic === 'vault:status_changed') {
-      refetch().then(() => {
-        void apiFetch<VaultStatusResponse>('/api/vault/status', { skipAuth: true }).then((s) => {
-          if (s.ui_state === 'needs_unseal') navigate('/vault-unseal', { replace: true })
-          else if (s.ui_state === 'ready') navigate('/login', { replace: true })
-        })
+      // Reuse the refetch result instead of issuing a second status request.
+      void refetch().then(({ data }) => {
+        if (!data) return
+        if (data.ui_state === 'needs_unseal') navigate('/vault-unseal', { replace: true })
+        else if (data.ui_state === 'ready') navigate('/login', { replace: true })
       })
     }
   })
@@ -51,10 +51,11 @@ export default function VaultSetupPage() {
     onSuccess: () => setDone(true),
   })
 
+  // Navigation is a side effect — return a declarative redirect instead of
+  // calling navigate() during render.
   if (vaultStatus && vaultStatus.ui_state !== 'needs_init') {
-    if (vaultStatus.ui_state === 'needs_unseal') navigate('/vault-unseal', { replace: true })
-    else navigate('/', { replace: true })
-    return null
+    if (vaultStatus.ui_state === 'needs_unseal') return <Navigate to="/vault-unseal" replace />
+    return <Navigate to="/" replace />
   }
 
   return (

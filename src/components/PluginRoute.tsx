@@ -1,6 +1,6 @@
-import { Suspense, Component } from 'react'
+import { Suspense, Component, useCallback, useState } from 'react'
 import type { ErrorInfo, ReactNode } from 'react'
-import { loadPluginModule } from '../lib/usePluginModules'
+import { loadPluginModule, invalidatePluginModule } from '../lib/usePluginModules'
 import type { PluginModule } from '../lib/usePluginModules'
 
 // ─── React 18 suspense resource ───────────────────────────────────────────────
@@ -44,7 +44,7 @@ export function invalidatePluginRouteCache(pluginId: string) {
 
 interface EBState { error: Error | null }
 
-class PluginErrorBoundary extends Component<{ children: ReactNode }, EBState> {
+class PluginErrorBoundary extends Component<{ children: ReactNode; onRetry: () => void }, EBState> {
   state: EBState = { error: null }
 
   static getDerivedStateFromError(error: Error): EBState {
@@ -60,7 +60,10 @@ class PluginErrorBoundary extends Component<{ children: ReactNode }, EBState> {
       return (
         <div className="max-w-lg mx-auto px-6 py-12 text-center">
           <p className="text-sm font-medium text-[var(--lx-text)] mb-1">Plugin-UI nicht verfügbar</p>
-          <p className="text-xs text-[var(--lx-text-muted)]">{this.state.error.message}</p>
+          <p className="text-xs text-[var(--lx-text-muted)] mb-4">{this.state.error.message}</p>
+          <button onClick={this.props.onRetry} className="lx-btn lx-btn--secondary lx-btn--sm">
+            Erneut versuchen
+          </button>
         </div>
       )
     }
@@ -90,8 +93,19 @@ function PluginSkeleton() {
 // ─── Public component ─────────────────────────────────────────────────────────
 
 export default function PluginRoute({ pluginId }: { pluginId: string }) {
+  // A failed bundle load is cached as an `error` resource (PluginRoute cache) and
+  // would otherwise stay broken until the page is reloaded. The retry drops the
+  // cached resource + module and remounts the boundary (via the bumped key) so
+  // the next render re-fetches a fresh bundle.
+  const [attempt, setAttempt] = useState(0)
+  const retry = useCallback(() => {
+    invalidatePluginRouteCache(pluginId)
+    invalidatePluginModule(pluginId)
+    setAttempt((a) => a + 1)
+  }, [pluginId])
+
   return (
-    <PluginErrorBoundary>
+    <PluginErrorBoundary key={attempt} onRetry={retry}>
       <Suspense fallback={<PluginSkeleton />}>
         <RemotePlugin pluginId={pluginId} />
       </Suspense>

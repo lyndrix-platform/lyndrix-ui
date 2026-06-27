@@ -59,21 +59,28 @@ export default function ProfileSection(_: {
 
   // ── Password form ─────────────────────────────────────────────────────────────
 
-  const [pwForm, setPwForm] = useState({ password: '', confirm: '' })
+  const [pwForm, setPwForm] = useState({ current: '', password: '', confirm: '' })
   const [pwStatus, setPwStatus] = useState<{ ok: boolean; msg: string } | null>(null)
 
   const pwMut = useMutation({
+    // Route self password changes through the verifying endpoint that requires the
+    // current password (POST /api/users/{username}/password) instead of an
+    // unverified PATCH of `password`, so a hijacked session cannot reset the
+    // password without knowing the old one.
     mutationFn: () => {
       if (pwForm.password !== pwForm.confirm) throw new Error('Passwörter stimmen nicht überein.')
       if (pwForm.password.length < 8) throw new Error('Mindestens 8 Zeichen.')
-      return apiFetch(`/api/users/${me!.username}`, {
-        method: 'PATCH',
-        body: JSON.stringify({ password: pwForm.password }),
+      return apiFetch(`/api/users/${encodeURIComponent(me!.username)}/password`, {
+        method: 'POST',
+        body: JSON.stringify({
+          current_password: pwForm.current,
+          new_password: pwForm.password,
+        }),
       })
     },
     onSuccess: () => {
       setPwStatus({ ok: true, msg: 'Passwort geändert.' })
-      setPwForm({ password: '', confirm: '' })
+      setPwForm({ current: '', password: '', confirm: '' })
     },
     onError: (e) => setPwStatus({ ok: false, msg: e instanceof Error ? e.message : 'Fehler' }),
   })
@@ -144,9 +151,19 @@ export default function ProfileSection(_: {
       <Card>
         <SectionTitle>Passwort ändern</SectionTitle>
         <div className="flex flex-col gap-3">
+          <Field label="Aktuelles Passwort">
+            <input
+              type="password"
+              autoComplete="current-password"
+              className={inputCls}
+              value={pwForm.current}
+              onChange={(e) => setPwForm((f) => ({ ...f, current: e.target.value }))}
+            />
+          </Field>
           <Field label="Neues Passwort">
             <input
               type="password"
+              autoComplete="new-password"
               className={inputCls}
               value={pwForm.password}
               onChange={(e) => setPwForm((f) => ({ ...f, password: e.target.value }))}

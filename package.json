@@ -1,7 +1,7 @@
 {
   "name": "lyndrix-ui",
   "private": true,
-  "version": "0.4.0",
+  "version": "0.5.0",
   "type": "module",
   "module": "./dist/index.es.js",
   "types": "./dist/types/index.d.ts",

@@ -179,7 +179,6 @@ function InstallDialog({ initialRepoUrl = '', onClose }: { initialRepoUrl?: stri
   })
 
   const installMutation = useMutation({
-    // fixed: backend expects { url, version } not { repo_url, version }
     mutationFn: () =>
       apiFetch('/api/plugins/install', {
         method: 'POST',
@@ -681,7 +680,7 @@ function InstalledTab() {
 
 interface CustomRepo {
   id: string
-  repo_url: string  // fixed: backend returns repo_url not url
+  repo_url: string
   name?: string
   description?: string
   enabled?: boolean
@@ -715,7 +714,6 @@ function MarketplaceTab() {
   })
 
   const addRepoMutation = useMutation({
-    // fixed: backend expects { repo_url } not { url }
     mutationFn: (url: string) =>
       apiFetch('/api/plugins/custom-repos', {
         method: 'POST',
@@ -887,7 +885,6 @@ function MarketplaceTab() {
                         {repo.name}
                       </p>
                     )}
-                    {/* fixed: use repo_url not repo.url */}
                     <p className="text-xs font-mono text-[var(--lx-text-muted)] truncate">
                       {repo.repo_url}
                     </p>

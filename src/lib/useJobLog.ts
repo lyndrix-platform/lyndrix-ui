@@ -37,6 +37,7 @@ export function useJobLog(
 
     let cancelled = false
     let timer: ReturnType<typeof setTimeout> | null = null
+    let loadedOnce = false
 
     // Reset buffer/offset whenever the job or filter changes.
     offsetRef.current = 0
@@ -46,6 +47,14 @@ export function useJobLog(
     setIsLoading(true)
 
     async function tick() {
+      // Don't poll while the tab is backgrounded — it would hammer the log
+      // endpoint once per second with nobody watching. We still do the initial
+      // load, then resume polling on `visibilitychange` (see below). The first
+      // fetch is allowed even when hidden so a backgrounded open still populates.
+      if (live && loadedOnce && document.hidden) {
+        timer = setTimeout(tick, POLL_MS)
+        return
+      }
       try {
         const res = await getJobLogDelta(jobId!, grep ? 0 : offsetRef.current, grep)
         if (cancelled) return
@@ -66,16 +75,28 @@ export function useJobLog(
         if (!cancelled) setError(e instanceof Error ? e.message : 'Failed to load log')
       } finally {
         if (cancelled) return
+        loadedOnce = true
         setIsLoading(false)
         if (live) timer = setTimeout(tick, POLL_MS)
       }
     }
+
+    // When the tab becomes visible again, fetch immediately instead of waiting
+    // out the (skipped) poll interval.
+    function onVisibility() {
+      if (!cancelled && live && !document.hidden) {
+        if (timer) clearTimeout(timer)
+        void tick()
+      }
+    }
+    document.addEventListener('visibilitychange', onVisibility)
 
     void tick()
 
     return () => {
       cancelled = true
       if (timer) clearTimeout(timer)
+      document.removeEventListener('visibilitychange', onVisibility)
     }
   }, [jobId, live, grep])
 
