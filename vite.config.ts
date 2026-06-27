@@ -9,6 +9,9 @@ const apiTarget = process.env.API_PROXY_TARGET ?? 'http://localhost:8081'
 // VITE_BASE can override it (e.g. '/app/') if the SPA is ever embedded under a subpath.
 export default defineConfig(() => ({
   base: process.env.VITE_BASE ?? '/',
+  define: {
+    __BUILD_TIME__: JSON.stringify(new Date().toISOString()),
+  },
   plugins: [react()],
   server: {
     host: '0.0.0.0',
