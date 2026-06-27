@@ -119,9 +119,20 @@ export interface MarketplacePlugin {
   id?: string
   name: string
   description?: string
-  repo_url: string
+  repo_url: string   // canonical URL — matches PluginOut.repo_url used to detect installed state
+  url?: string       // html_url alias sent by the backend (same value)
+  clone_url?: string
   icon?: string
   version?: string
+  versions?: string[]
   author?: string
   tags?: string[]
+  topics?: string[]
+  stars?: number
+  archived?: boolean
+  repo_safe?: string
+  repo_aliases?: string[]
+  metadata_source?: 'collection' | 'custom'
+  custom_id?: number
+  provider?: string
 }
