@@ -1,9 +1,13 @@
-import { useState } from 'react'
-import { Routes, Route, Navigate } from 'react-router-dom'
+import { useEffect, useState } from 'react'
+import { Routes, Route, Navigate, useLocation } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { isLoggedIn } from './lib/auth'
 import { apiFetch } from './lib/api'
 import { useSSE } from './lib/useSSE'
+import { bootstrapI18n } from './lib/i18n'
+import { useTheme } from './theme/ThemeProvider'
+import { useAppTitle } from './lib/useAppTitle'
 import { invalidatePluginModule } from './lib/usePluginModules'
 import { invalidatePluginRouteCache } from './components/PluginRoute'
 import AppShell from './components/layout/AppShell'
@@ -18,6 +22,40 @@ import VaultSetupPage from './pages/VaultSetupPage'
 import VaultUnsealPage from './pages/VaultUnsealPage'
 import PluginRoute from './components/PluginRoute'
 import type { PluginOut, VaultStatusResponse } from './lib/types'
+
+// ─── Document title sync ──────────────────────────────────────────────────────
+
+function TitleSync({ plugins }: { plugins: PluginOut[] | undefined }) {
+  const { t } = useTranslation('ui')
+  const location = useLocation()
+  const appName = useAppTitle()
+
+  useEffect(() => {
+    const path = location.pathname
+    let pageName: string
+
+    if (path === '/dashboard' || path === '/') {
+      pageName = t('nav.dashboard')
+    } else if (path.startsWith('/settings')) {
+      pageName = t('nav.settings')
+    } else if (path.startsWith('/users')) {
+      pageName = t('nav.users')
+    } else if (path.startsWith('/plugins')) {
+      pageName = t('nav.plugins')
+    } else if (path.startsWith('/apps/')) {
+      const plugin = (plugins ?? []).find((p) =>
+        path.startsWith(`/apps/${p.id.replace(/\./g, '-')}`)
+      )
+      pageName = plugin?.name ?? 'App'
+    } else {
+      pageName = appName
+    }
+
+    document.title = `${pageName} — ${appName}`
+  }, [location.pathname, appName, plugins, t])
+
+  return null
+}
 
 // ─── Root redirect: vault state first, then auth ──────────────────────────────
 
@@ -57,7 +95,9 @@ function AuthShell({ children }: { children: React.ReactNode }) {
 // ─── App ──────────────────────────────────────────────────────────────────────
 
 export default function App() {
+  const { t } = useTranslation('ui')
   const queryClient = useQueryClient()
+  const { refreshTheme } = useTheme()
 
   // Version counter per plugin — incremented on state_changed so the error boundary resets.
   const [pluginVersions, setPluginVersions] = useState<Record<string, number>>({})
@@ -80,12 +120,21 @@ export default function App() {
         }))
         void queryClient.invalidateQueries({ queryKey: ['plugins'] })
       }
+      // A plugin install/removal may add/remove locale namespaces and bumps the
+      // catalog version server-side — cheap `?v=` revalidation (304 if unchanged).
+      void bootstrapI18n()
+    } else if (topic === 'ui:needs_refresh') {
+      void bootstrapI18n()
+      // A theme upload/activation re-emits this — re-fetch the selected theme's vars.
+      refreshTheme()
     }
   }, isLoggedIn())
 
   const reactPlugins = (plugins ?? []).filter((p) => p.react_ui && p.react_routes.length > 0)
 
   return (
+    <>
+    <TitleSync plugins={plugins} />
     <Routes>
       {/* Public: vault bootstrap */}
       <Route path="/vault-setup" element={<VaultSetupPage />} />
@@ -134,7 +183,7 @@ export default function App() {
             <AuthShell>
               <div className="max-w-5xl mx-auto px-6 py-8 flex gap-3 items-center">
                 <div className="w-5 h-5 border-2 border-[var(--lx-accent)] border-t-transparent rounded-full animate-spin shrink-0" />
-                <p className="text-sm text-[var(--lx-text-muted)]">Plugin wird geladen…</p>
+                <p className="text-sm text-[var(--lx-text-muted)]">{t('shell.loading_plugin')}</p>
               </div>
             </AuthShell>
           ) : (
@@ -149,5 +198,6 @@ export default function App() {
       {/* Fallback */}
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
+    </>
   )
 }

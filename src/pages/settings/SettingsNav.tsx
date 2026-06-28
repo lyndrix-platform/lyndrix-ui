@@ -1,9 +1,6 @@
+import { useTranslation } from 'react-i18next'
 import type { SettingsSectionDef } from './registry'
 
-/**
- * Big-icon tile grid for the settings overview ("wie beim Handy").
- * Mobile: 2 columns; widens to 3/4 on larger screens.
- */
 export function SettingsTileGrid({
   sections,
   onSelect,
@@ -11,6 +8,7 @@ export function SettingsTileGrid({
   sections: SettingsSectionDef[]
   onSelect: (id: string) => void
 }) {
+  const { t } = useTranslation('ui')
   return (
     <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4">
       {sections.map((s) => (
@@ -22,17 +20,13 @@ export function SettingsTileGrid({
           <span className="grid place-items-center w-14 h-14 rounded-xl bg-[var(--lx-elevated)] text-[var(--lx-accent)]">
             <s.Icon size={26} />
           </span>
-          <span className="text-sm font-medium text-[var(--lx-text)]">{s.label}</span>
+          <span className="text-sm font-medium text-[var(--lx-text)]">{t(s.labelKey)}</span>
         </button>
       ))}
     </div>
   )
 }
 
-/**
- * Compact vertical rail for the desktop split-view (tiles on the left while the
- * selected section renders on the right).
- */
 export function SettingsRail({
   sections,
   activeId,
@@ -42,6 +36,7 @@ export function SettingsRail({
   activeId: string | null
   onSelect: (id: string) => void
 }) {
+  const { t } = useTranslation('ui')
   return (
     <nav className="flex flex-col gap-1.5">
       {sections.map((s) => {
@@ -58,7 +53,7 @@ export function SettingsRail({
             }`}
           >
             <s.Icon size={18} className={active ? 'text-[var(--lx-accent)]' : ''} />
-            <span className="text-sm font-medium">{s.label}</span>
+            <span className="text-sm font-medium">{t(s.labelKey)}</span>
           </button>
         )
       })}

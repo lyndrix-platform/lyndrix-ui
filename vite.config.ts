@@ -16,6 +16,7 @@ export default defineConfig(() => ({
   server: {
     host: '0.0.0.0',
     port: 5173,
+    allowedHosts: true as const,
     // Polling keeps hot reload reliable inside Docker / WSL2 volume mounts.
     watch: {
       usePolling: !!process.env.CHOKIDAR_USEPOLLING,

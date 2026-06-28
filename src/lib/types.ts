@@ -95,13 +95,24 @@ export interface EditableSettingMeta {
   kind: 'str' | 'bool' | 'int' | 'select'
   options: string[]
   category: string
+  // Optional, self-describing metadata. The backend may omit these on older
+  // builds; the UI falls back to i18n / the field name when absent.
+  description?: string
+  sensitive?: boolean
+  env_var?: string
+  multiline?: boolean
+  // i18next keys (ns:key form) into the core-served `settings` namespace.
+  // Present on newer cores; the UI falls back to a convention key, then the
+  // literal label/description, when absent.
+  label_key?: string
+  description_key?: string
+  category_key?: string
 }
 
 export interface SystemConfigOut {
   status: string
+  // env_locked / editable_settings live inside config (the public snapshot).
   config: Record<string, unknown>
-  env_locked: string[]
-  editable_settings: EditableSettingMeta[]
 }
 
 export interface SystemInfoOut {

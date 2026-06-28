@@ -1,9 +1,8 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useTranslation } from 'react-i18next'
 import { apiFetch } from '../../../lib/api'
 import { Card, Field, SectionTitle, SaveButton, StatusMsg, inputCls } from '../shared'
-
-// ─── Types (mirror GET /api/auth/config) ─────────────────────────────────────
 
 interface AuthField {
   vault_key: string
@@ -23,8 +22,6 @@ interface AuthConfigOut {
   fields: AuthField[]
 }
 
-// ─── Single field input (text / password / bool) ─────────────────────────────
-
 function AuthFieldInput({
   field,
   value,
@@ -34,16 +31,20 @@ function AuthFieldInput({
   value: string | undefined
   onChange: (v: string) => void
 }) {
+  const { t } = useTranslation('ui')
   const locked = field.is_env_locked
-  // For sensitive fields we never receive the value — show a "set" placeholder.
   const shown = locked
-    ? field.sensitive
-      ? ''
-      : field.current_value
+    ? field.sensitive ? '' : field.current_value
     : value ?? (field.sensitive ? '' : field.current_value)
 
   return (
-    <Field label={field.label} hint={field.hint} locked={locked} envVar={field.env_var}>
+    <Field
+      label={field.label}
+      hint={field.hint}
+      locked={locked}
+      envVar={field.env_var}
+      envValue={locked ? (field.sensitive ? '***' : field.current_value) : undefined}
+    >
       {field.is_bool ? (
         <select
           className={inputCls}
@@ -51,8 +52,8 @@ function AuthFieldInput({
           disabled={locked}
           onChange={(e) => onChange(e.target.value)}
         >
-          <option value="true">an</option>
-          <option value="false">aus</option>
+          <option value="true">{t('common.on')}</option>
+          <option value="false">{t('common.off')}</option>
         </select>
       ) : (
         <input
@@ -60,11 +61,7 @@ function AuthFieldInput({
           type={field.sensitive ? 'password' : 'text'}
           value={shown}
           disabled={locked}
-          placeholder={
-            field.sensitive && field.configured
-              ? '•••••••• (gesetzt — zum Ändern überschreiben)'
-              : undefined
-          }
+          placeholder={field.sensitive && field.configured ? t('common.sensitive_set') : undefined}
           onChange={(e) => onChange(e.target.value)}
         />
       )}
@@ -72,9 +69,8 @@ function AuthFieldInput({
   )
 }
 
-// ─── Section ─────────────────────────────────────────────────────────────────
-
 export default function AuthSection(_: { config: Record<string, unknown>; envLocked: string[] }) {
+  const { t } = useTranslation('ui')
   const qc = useQueryClient()
   const [form, setForm] = useState<Record<string, string>>({})
   const [status, setStatus] = useState<{ ok: boolean; msg: string } | null>(null)
@@ -101,8 +97,8 @@ export default function AuthSection(_: { config: Record<string, unknown>; envLoc
       for (const f of fields) {
         if (f.is_env_locked) continue
         const v = form[f.vault_key]
-        if (v === undefined) continue // untouched → keep stored value
-        if (f.sensitive && v.trim() === '') continue // blank secret → keep existing
+        if (v === undefined) continue
+        if (f.sensitive && v.trim() === '') continue
         updates[f.vault_key] = v
       }
       return apiFetch('/api/auth/config', {
@@ -111,24 +107,25 @@ export default function AuthSection(_: { config: Record<string, unknown>; envLoc
       })
     },
     onSuccess: () => {
-      setStatus({ ok: true, msg: 'Auth-Einstellungen gespeichert.' })
+      setStatus({ ok: true, msg: t('auth_section.saved') })
       setForm({})
       void qc.invalidateQueries({ queryKey: ['auth-config'] })
     },
-    onError: (e) => setStatus({ ok: false, msg: e instanceof Error ? e.message : 'Fehler' }),
+    onError: (e) =>
+      setStatus({ ok: false, msg: e instanceof Error ? e.message : t('common.error') }),
   })
 
-  if (isLoading) return <p className="text-sm text-[var(--lx-text-muted)]">Lade…</p>
+  if (isLoading) return <p className="text-sm text-[var(--lx-text-muted)]">{t('common.loading')}</p>
   if (isError)
-    return <StatusMsg ok={false} msg={(error as Error)?.message ?? 'Fehler beim Laden'} />
+    return <StatusMsg ok={false} msg={(error as Error)?.message ?? t('common.error_loading')} />
 
   return (
     <div className="flex flex-col gap-4">
       <Card>
-        <SectionTitle>Anbieter-Reihenfolge</SectionTitle>
+        <SectionTitle>{t('auth_section.provider_order')}</SectionTitle>
         {chain && (
           <AuthFieldInput
-            field={{ ...chain, label: 'Aktive Anbieter (kommagetrennt)' }}
+            field={{ ...chain, label: t('auth_section.active_providers') }}
             value={form.auth_providers}
             onChange={(v) => set('auth_providers', v)}
           />

@@ -11,7 +11,7 @@ export default defineConfig({
       fileName: () => 'index.es.js',
     },
     rollupOptions: {
-      external: ['react', 'react-dom', 'react/jsx-runtime', '@tanstack/react-query', 'react-router-dom', 'lucide-react'],
+      external: ['react', 'react-dom', 'react/jsx-runtime', '@tanstack/react-query', 'react-router-dom', 'lucide-react', 'i18next', 'react-i18next'],
     },
     outDir: 'dist',
     emptyOutDir: true,

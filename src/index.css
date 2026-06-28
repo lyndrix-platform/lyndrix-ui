@@ -7,8 +7,9 @@
   /* Lyndrix design tokens — homepage palette */
   --lx-bg: #0a0e1a;
   --lx-surface: #0f1629;
-  --lx-surface-glass: rgba(15, 22, 41, 0.75);
+  --lx-surface-glass: rgba(15, 22, 41, 0.62);
   --lx-elevated: #162040;
+  --lx-elevated-glass: rgba(22, 32, 64, 0.55);
   --lx-accent: #00d4ff;
   --lx-accent-2: #0ea5e9;
   --lx-accent-3: #8b5cf6;
@@ -24,6 +25,23 @@
   --lx-state-down: #f87171;
   --lx-state-paused: #fbbf24;
   --lx-state-unknown: #94a3b8;
+  --lx-warning: #fbbf24;
+  --lx-log-bg: #0a0e1a;
+  --lx-log-fg: #f0f6ff;
+  --lx-log-accent: #22d3ee;
+  /* Liquid glass */
+  --lx-glass-blur: 18px;
+  --lx-glass-border: rgba(255, 255, 255, 0.12);
+  --lx-glass-highlight: rgba(255, 255, 255, 0.18);
+  --lx-glass-shadow: 0 8px 32px -10px rgba(0, 0, 0, 0.55);
+  /* Floating menus (dropdowns/popovers) — glass look but near-opaque so they
+     stay readable over bright content, unlike the translucent page surfaces. */
+  --lx-popover-glass: rgba(13, 19, 36, 0.92);
+  --lx-popover-shadow: 0 16px 48px -12px rgba(0, 0, 0, 0.7);
+  /* Background image (themed; overridable per user). Default: none. */
+  --lx-bg-image: none;
+  --lx-bg-image-size: cover;
+  --lx-bg-image-position: center;
 }
 
 * {
@@ -58,6 +76,24 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
+/* ── Themed backdrop ──────────────────────────────────────────────────────────
+   A single fixed layer behind ALL content (app shell + auth pages). Driven by
+   --lx-bg-image (themed, mode-resolved, per-user overridable). The solid
+   --lx-bg sits beneath it as the offline/no-image fallback. Surfaces above are
+   "liquid glass" (.lx-glass) so this reads through softly. */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background-color: var(--lx-bg);
+  background-image: var(--lx-bg-image, none);
+  background-size: var(--lx-bg-image-size, cover);
+  background-position: var(--lx-bg-image-position, center);
+  background-repeat: no-repeat;
+}
+
 /* ──────────────────────────────────────────────────────────────────────────
    Lyndrix shared design system — PLAIN CSS (token-driven).
    Lives in the shared document so BOTH the shell and the IIFE plugin bundles
@@ -66,11 +102,34 @@ body {
    Radius: sm 6 · md 12 · lg 20.
    ────────────────────────────────────────────────────────────────────────── */
 
-/* ── Surfaces ── */
+/* ── Surfaces (liquid glass) ──
+   Translucent + backdrop blur so the themed backdrop reads through softly.
+   Falls back to a readable translucent panel where backdrop-filter is
+   unsupported (older Android WebView). */
+.lx-glass {
+  background: var(--lx-surface-glass);
+  -webkit-backdrop-filter: blur(var(--lx-glass-blur)) saturate(160%);
+  backdrop-filter: blur(var(--lx-glass-blur)) saturate(160%);
+  border: 1px solid var(--lx-glass-border);
+  box-shadow: var(--lx-glass-shadow);
+}
 .lx-card {
-  background: var(--lx-surface);
-  border: 1px solid var(--lx-border-soft);
+  background: var(--lx-surface-glass);
+  -webkit-backdrop-filter: blur(var(--lx-glass-blur)) saturate(160%);
+  backdrop-filter: blur(var(--lx-glass-blur)) saturate(160%);
+  border: 1px solid var(--lx-glass-border);
   border-radius: var(--lx-radius-md);
+  box-shadow: var(--lx-glass-shadow);
+}
+/* Floating menus — same frosted-glass aesthetic as the header/sidebar, but a
+   near-opaque surface and stronger shadow so they read solid over bright tiles. */
+.lx-popover {
+  background: var(--lx-popover-glass);
+  -webkit-backdrop-filter: blur(var(--lx-glass-blur)) saturate(160%);
+  backdrop-filter: blur(var(--lx-glass-blur)) saturate(160%);
+  border: 1px solid var(--lx-glass-border);
+  border-radius: var(--lx-radius-md);
+  box-shadow: var(--lx-popover-shadow);
 }
 .lx-card-hover {
   transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
@@ -78,11 +137,13 @@ body {
 .lx-card-hover:hover {
   border-color: var(--lx-border);
   transform: translateY(-2px);
-  box-shadow: 0 8px 24px -12px rgba(0, 0, 0, 0.5);
+  box-shadow: 0 12px 32px -12px rgba(0, 0, 0, 0.55);
 }
 .lx-elevated {
-  background: var(--lx-elevated);
-  border: 1px solid var(--lx-border-soft);
+  background: var(--lx-elevated-glass);
+  -webkit-backdrop-filter: blur(calc(var(--lx-glass-blur) * 0.6)) saturate(140%);
+  backdrop-filter: blur(calc(var(--lx-glass-blur) * 0.6)) saturate(140%);
+  border: 1px solid var(--lx-glass-border);
   border-radius: var(--lx-radius-md);
 }
 
@@ -104,8 +165,8 @@ body {
   font-size: 0.8125rem;
   font-family: inherit;
   color: var(--lx-text);
-  background: var(--lx-elevated);
-  border: 1px solid var(--lx-border-soft);
+  background: var(--lx-elevated-glass);
+  border: 1px solid var(--lx-glass-border);
   border-radius: var(--lx-radius-sm);
   transition: border-color 0.15s ease, box-shadow 0.15s ease;
   outline: none;
@@ -186,9 +247,11 @@ body {
   box-shadow: 0 4px 16px -4px color-mix(in srgb, var(--lx-accent) 55%, transparent);
 }
 .lx-btn--secondary {
-  background: var(--lx-elevated);
+  background: var(--lx-elevated-glass);
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
   color: var(--lx-text);
-  border-color: var(--lx-border-soft);
+  border-color: var(--lx-glass-border);
 }
 .lx-btn--secondary:not(:disabled):hover {
   border-color: var(--lx-border);
@@ -344,7 +407,9 @@ body {
   letter-spacing: 0.04em;
   text-transform: uppercase;
   color: var(--lx-text-muted);
-  background: var(--lx-surface);
+  background: var(--lx-surface-glass);
+  -webkit-backdrop-filter: blur(var(--lx-glass-blur)) saturate(160%);
+  backdrop-filter: blur(var(--lx-glass-blur)) saturate(160%);
   padding: 10px 14px;
   border-bottom: 1px solid var(--lx-border-soft);
 }
@@ -406,4 +471,71 @@ body {
 @keyframes lx-float {
   0%, 100% { transform: translateY(0); }
   50% { transform: translateY(-20px); }
+}
+
+/* ── Light theme — overrides via [data-theme="light"] on <html> ── */
+:root[data-theme="light"] {
+  --lx-bg: #f1f5f9;
+  --lx-surface: #ffffff;
+  --lx-surface-glass: rgba(255, 255, 255, 0.7);
+  --lx-elevated: #e2e8f0;
+  --lx-elevated-glass: rgba(226, 232, 240, 0.6);
+  --lx-accent: #0891b2;
+  --lx-accent-2: #0284c7;
+  --lx-accent-3: #7c3aed;
+  --lx-text: #0f172a;
+  --lx-text-muted: #64748b;
+  --lx-border: rgba(8, 145, 178, 0.3);
+  --lx-border-soft: rgba(0, 0, 0, 0.09);
+  --lx-radius-sm: 6px;
+  --lx-radius-md: 12px;
+  --lx-radius-lg: 20px;
+  --lx-glow: 0 0 20px rgba(8, 145, 178, 0.12);
+  --lx-state-up: #0891b2;
+  --lx-state-down: #ef4444;
+  --lx-state-paused: #f59e0b;
+  --lx-state-unknown: #94a3b8;
+  --lx-warning: #f59e0b;
+  --lx-log-bg: #0a0e1a;
+  --lx-log-fg: #f0f6ff;
+  --lx-log-accent: #22d3ee;
+  /* Liquid glass (light) */
+  --lx-glass-blur: 18px;
+  --lx-glass-border: rgba(255, 255, 255, 0.6);
+  --lx-glass-highlight: rgba(255, 255, 255, 0.8);
+  --lx-glass-shadow: 0 8px 32px -12px rgba(15, 23, 42, 0.18);
+  --lx-popover-glass: rgba(255, 255, 255, 0.95);
+  --lx-popover-shadow: 0 16px 48px -14px rgba(15, 23, 42, 0.28);
+  /* --lx-bg-image* inherit defaults from :root unless a light theme overrides */
+}
+
+:root[data-theme="light"] body {
+  background-color: var(--lx-bg);
+  color: var(--lx-text);
+}
+
+:root[data-theme="light"] ::-webkit-scrollbar-track {
+  background: var(--lx-elevated);
+}
+:root[data-theme="light"] ::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.18);
+}
+
+/* ──────────────────────────────────────────────────────────────────────────
+   Safe-area insets — the native Capacitor WebView runs edge-to-edge under a
+   transparent status bar/notch, so fixed top/bottom bars must pad themselves
+   clear of the system UI while their background still fills the inset area.
+   env(safe-area-inset-*) is 0 in a normal browser, so these are no-ops
+   off-device. Each floors the inset against the element's own padding (passed
+   via --lx-safe-*-base) so it never shrinks below the design value.
+   ────────────────────────────────────────────────────────────────────────── */
+.lx-safe-top {
+  padding-top: max(var(--lx-safe-top-base, 0px), env(safe-area-inset-top));
+}
+.lx-safe-bottom {
+  padding-bottom: max(var(--lx-safe-bottom-base, 0px), env(safe-area-inset-bottom));
+}
+.lx-safe-x {
+  padding-left: max(var(--lx-safe-x-base, 0px), env(safe-area-inset-left));
+  padding-right: max(var(--lx-safe-x-base, 0px), env(safe-area-inset-right));
 }

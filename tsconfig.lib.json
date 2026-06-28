@@ -5,6 +5,7 @@
     "module": "ESNext",
     "moduleResolution": "node",
     "jsx": "react-jsx",
+    "esModuleInterop": true,
     "skipLibCheck": true,
     "strict": true,
     "noUnusedLocals": false,
@@ -15,5 +16,5 @@
     "rootDir": "./src",
     "types": ["vite/client"]
   },
-  "include": ["src/index.ts", "src/components/**/*.tsx", "src/lib/types.ts", "src/lib/api.ts", "src/lib/auth.ts", "src/lib/icons.ts", "src/lib/useGreeting.ts"]
+  "include": ["src/index.ts", "src/components/**/*.tsx", "src/pages/settings/shared.tsx", "src/lib/types.ts", "src/lib/api.ts", "src/lib/auth.ts", "src/lib/icons.ts", "src/lib/toast.ts", "src/lib/sharedUi.ts", "src/lib/useGreeting.ts"]
 }

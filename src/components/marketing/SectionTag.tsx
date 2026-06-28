@@ -5,20 +5,22 @@ export interface SectionTagProps {
   variant?: 'cyan' | 'blue' | 'purple'
 }
 
+// Each variant tints one of the theme accent tokens (so marketing chips follow
+// the active theme rather than fixed hex values).
 const colors: Record<NonNullable<SectionTagProps['variant']>, { bg: string; border: string; text: string }> = {
   cyan: {
-    bg: 'rgba(34, 211, 238, 0.1)',
-    border: 'rgba(34, 211, 238, 0.25)',
+    bg: 'color-mix(in srgb, var(--lx-accent) 10%, transparent)',
+    border: 'color-mix(in srgb, var(--lx-accent) 25%, transparent)',
     text: 'var(--lx-accent)',
   },
   blue: {
-    bg: 'rgba(56, 189, 248, 0.1)',
-    border: 'rgba(56, 189, 248, 0.25)',
+    bg: 'color-mix(in srgb, var(--lx-accent-2) 10%, transparent)',
+    border: 'color-mix(in srgb, var(--lx-accent-2) 25%, transparent)',
     text: 'var(--lx-accent-2)',
   },
   purple: {
-    bg: 'rgba(129, 140, 248, 0.1)',
-    border: 'rgba(129, 140, 248, 0.25)',
+    bg: 'color-mix(in srgb, var(--lx-accent-3) 10%, transparent)',
+    border: 'color-mix(in srgb, var(--lx-accent-3) 25%, transparent)',
     text: 'var(--lx-accent-3)',
   },
 }

@@ -10,8 +10,8 @@ export default function FeatureCard({ icon, title, description }: FeatureCardPro
   return (
     <div
       style={{
-        background: 'rgba(15, 22, 41, 0.8)',
-        border: '1px solid rgba(255, 255, 255, 0.08)',
+        background: 'var(--lx-surface-glass)',
+        border: '1px solid var(--lx-border-soft)',
         borderRadius: '20px',
         padding: '2rem',
         display: 'flex',
@@ -29,7 +29,7 @@ export default function FeatureCard({ icon, title, description }: FeatureCardPro
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            background: 'rgba(34, 211, 238, 0.1)',
+            background: 'color-mix(in srgb, var(--lx-accent) 10%, transparent)',
             borderRadius: '12px',
             color: 'var(--lx-accent)',
             flexShrink: 0,

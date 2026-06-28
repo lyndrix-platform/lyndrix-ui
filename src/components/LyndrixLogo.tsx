@@ -41,7 +41,7 @@ export default function LyndrixLogo({ size = 24, className }: Props) {
       <polygon
         points="50,20 76,35 76,65 50,80 24,65 24,35"
         fill="none"
-        stroke="rgba(255,255,255,0.2)"
+        stroke="color-mix(in srgb, var(--lx-text) 20%, transparent)"
         strokeWidth="1.5"
         strokeDasharray="4 2"
       />
@@ -55,15 +55,15 @@ export default function LyndrixLogo({ size = 24, className }: Props) {
 
       {/* Center */}
       <circle cx="50" cy="50" r="6" fill="var(--lx-bg, #0a0e1a)" />
-      <circle cx="50" cy="50" r="2.5" fill="#ffffff" filter="url(#lx-logo-glow)" />
+      <circle cx="50" cy="50" r="2.5" fill="var(--lx-text)" filter="url(#lx-logo-glow)" />
 
       {/* Plugin nodes */}
-      <circle cx="50" cy="5" r="3" fill="#ffffff" />
-      <circle cx="90" cy="27.5" r="3" fill="#ffffff" />
-      <circle cx="90" cy="72.5" r="3" fill="#ffffff" />
-      <circle cx="50" cy="95" r="3" fill="#ffffff" />
-      <circle cx="10" cy="72.5" r="3" fill="#ffffff" />
-      <circle cx="10" cy="27.5" r="3" fill="#ffffff" />
+      <circle cx="50" cy="5" r="3" fill="var(--lx-text)" />
+      <circle cx="90" cy="27.5" r="3" fill="var(--lx-text)" />
+      <circle cx="90" cy="72.5" r="3" fill="var(--lx-text)" />
+      <circle cx="50" cy="95" r="3" fill="var(--lx-text)" />
+      <circle cx="10" cy="72.5" r="3" fill="var(--lx-text)" />
+      <circle cx="10" cy="27.5" r="3" fill="var(--lx-text)" />
 
       {/* Connection lines */}
       <line x1="50" y1="30" x2="50" y2="5" stroke="url(#lx-logo-grad-primary)" strokeWidth="1.5" />

@@ -1,49 +1,18 @@
-import { useState, useEffect } from 'react'
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { getPluginSettings, updatePluginSettings } from '../lib/api'
-import { Card, Field, SaveButton, StatusMsg, inputCls } from '../pages/settings/shared'
-import type { PluginSettingField } from '../lib/types'
+import type { EditableSettingMeta, PluginSettingField } from '../lib/types'
+import SettingsForm from './SettingsForm'
 
-function renderField(
-  field: PluginSettingField,
-  value: unknown,
-  onChange: (v: unknown) => void,
-) {
-  if (field.kind === 'bool') {
-    return (
-      <input
-        type="checkbox"
-        checked={Boolean(value)}
-        onChange={(e) => onChange(e.target.checked)}
-        className="w-4 h-4 accent-[var(--lx-accent)]"
-      />
-    )
+// Plugin setting fields share the generic form's metadata shape; map key→field.
+function toMeta(f: PluginSettingField): EditableSettingMeta {
+  return {
+    field: f.key,
+    label: f.label,
+    kind: f.kind,
+    options: f.options,
+    category: f.category,
+    description: f.description,
   }
-  if (field.kind === 'select') {
-    return (
-      <select
-        value={String(value ?? '')}
-        onChange={(e) => onChange(e.target.value)}
-        className={inputCls}
-      >
-        {field.options.map((opt) => (
-          <option key={opt} value={opt}>
-            {opt}
-          </option>
-        ))}
-      </select>
-    )
-  }
-  return (
-    <input
-      type={field.kind === 'int' ? 'number' : 'text'}
-      value={String(value ?? '')}
-      onChange={(e) =>
-        onChange(field.kind === 'int' ? Number(e.target.value) : e.target.value)
-      }
-      className={inputCls}
-    />
-  )
 }
 
 export default function PluginSettingsModal({
@@ -56,42 +25,25 @@ export default function PluginSettingsModal({
   onClose: () => void
 }) {
   const qc = useQueryClient()
-  const [formValues, setFormValues] = useState<Record<string, unknown>>({})
-  const [status, setStatus] = useState<{ ok: boolean; msg: string } | null>(null)
 
   const { data, isLoading } = useQuery({
     queryKey: ['plugin-settings', pluginId],
     queryFn: () => getPluginSettings(pluginId),
   })
 
-  useEffect(() => {
-    if (data) {
-      const initial: Record<string, unknown> = {}
-      for (const field of data.schema) {
-        initial[field.key] = data.values[field.key] ?? field.default ?? ''
-      }
-      setFormValues(initial)
-    }
-  }, [data])
-
-  const mut = useMutation({
-    mutationFn: () => updatePluginSettings(pluginId, formValues),
-    onSuccess: () => {
-      setStatus({ ok: true, msg: 'Einstellungen gespeichert.' })
-      void qc.invalidateQueries({ queryKey: ['plugin-settings', pluginId] })
-    },
-    onError: (e) =>
-      setStatus({ ok: false, msg: e instanceof Error ? e.message : 'Fehler beim Speichern.' }),
-  })
-
-  const categories = data ? [...new Set(data.schema.map((f) => f.category))] : []
+  const metas = data ? data.schema.map(toMeta) : []
+  const config: Record<string, unknown> = data
+    ? Object.fromEntries(
+        data.schema.map((f) => [f.key, data.values[f.key] ?? f.default ?? '']),
+      )
+    : {}
 
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm"
       onClick={(e) => e.target === e.currentTarget && onClose()}
     >
-      <div className="w-full max-w-lg mx-4 p-6 rounded-xl bg-[var(--lx-surface)] border border-[var(--lx-border-soft)] shadow-xl max-h-[80vh] flex flex-col">
+      <div className="w-full max-w-lg mx-4 p-6 rounded-xl bg-[var(--lx-surface-glass)] backdrop-blur-[20px] border border-[var(--lx-glass-border)] shadow-2xl max-h-[80vh] flex flex-col">
         <div className="flex items-center justify-between mb-5 shrink-0">
           <div>
             <h3 className="text-sm font-semibold text-[var(--lx-text)]">
@@ -121,37 +73,14 @@ export default function PluginSettingsModal({
           )}
 
           {data && data.schema.length > 0 && (
-            <div className="flex flex-col gap-4">
-              {categories.map((cat) => (
-                <Card key={cat}>
-                  {categories.length > 1 && (
-                    <h4 className="text-xs uppercase tracking-widest text-[var(--lx-text-muted)] font-medium mb-3">
-                      {cat}
-                    </h4>
-                  )}
-                  <div className="flex flex-col gap-3">
-                    {data.schema
-                      .filter((f) => f.category === cat)
-                      .map((field) => (
-                        <Field
-                          key={field.key}
-                          label={field.label}
-                          hint={field.description || undefined}
-                        >
-                          {renderField(field, formValues[field.key], (v) =>
-                            setFormValues((prev) => ({ ...prev, [field.key]: v })),
-                          )}
-                        </Field>
-                      ))}
-                  </div>
-                </Card>
-              ))}
-
-              {status && <StatusMsg ok={status.ok} msg={status.msg} />}
-              <div className="flex justify-end">
-                <SaveButton onClick={() => mut.mutate()} loading={mut.isPending} />
-              </div>
-            </div>
+            <SettingsForm
+              metas={metas}
+              config={config}
+              submitFn={(updates) => updatePluginSettings(pluginId, updates)}
+              onSaved={() =>
+                void qc.invalidateQueries({ queryKey: ['plugin-settings', pluginId] })
+              }
+            />
           )}
         </div>
       </div>

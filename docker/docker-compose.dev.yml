@@ -25,8 +25,26 @@ services:
       - "host.docker.internal:host-gateway"
     environment:
       # Proxy /api requests to lyndrix-core on the host.
-      - API_PROXY_TARGET=http://host.docker.internal:8081
+      - API_PROXY_TARGET=http://10.1.10.137:8081
       # Plugin UI links open lyndrix-core pages in a new tab.
-      - VITE_CORE_URL=http://localhost:8081
+      - VITE_CORE_URL=http://10.1.10.137:8081
       # Polling is required for inotify to work reliably in WSL2 volume mounts.
       - CHOKIDAR_USEPOLLING=true
+    networks:
+      - default
+      - secured
+    labels:
+      traefik.enable: "true"
+      traefik.http.routers.lyndrix-ui-dev.rule: "Host(`ui.dev.int.fam-feser.de`)"
+      traefik.http.routers.lyndrix-ui-dev.entrypoints: "websecure"
+      traefik.http.routers.lyndrix-ui-dev.tls: "true"
+      traefik.http.routers.lyndrix-ui-dev.tls.certresolver: "ionos"
+      traefik.docker.network: "dev-secured"
+      traefik.http.services.lyndrix-ui-dev.loadbalancer.server.port: "5173"
+      traefik.http.services.lyndrix-ui-dev.loadbalancer.server.scheme: "http"
+
+networks:
+  default: {}
+  secured:
+    name: "dev-secured"
+    external: true

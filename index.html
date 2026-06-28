@@ -15,6 +15,11 @@
   </head>
   <body>
     <div id="root"></div>
+    <!-- Apply saved theme + UI scale before React renders to prevent a flash of the wrong size/theme.
+         The UI-scale formula MUST match src/lib/uiScale.ts (key 'lyndrix_ui_scale', scale*100 + '%'). -->
+    <script>
+      (function(){var t=localStorage.getItem('lyndrix_theme');if(t)document.documentElement.setAttribute('data-theme',t);var s=parseFloat(localStorage.getItem('lyndrix_ui_scale'));if(s>0)document.documentElement.style.fontSize=(s*100)+'%';}());
+    </script>
     <script type="module" src="/src/main.tsx"></script>
     <script>
       // Register the service worker (required for PWA installability / TWA).

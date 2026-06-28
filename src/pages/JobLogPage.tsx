@@ -11,7 +11,7 @@ export default function JobLogPage() {
   const id = Number(jobId)
 
   if (!Number.isFinite(id)) {
-    return <div className="p-6 text-sm text-red-400">Invalid job id.</div>
+    return <div className="p-6 text-sm text-[var(--lx-state-down)]">Invalid job id.</div>
   }
 
   return (

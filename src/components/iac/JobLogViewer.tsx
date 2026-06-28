@@ -47,35 +47,35 @@ export default function JobLogViewer({ jobId, live = true, height = 600 }: JobLo
   const Row = ({ index, style }: ListChildComponentProps) => (
     <div
       style={style}
-      className="px-3 whitespace-pre font-mono text-[11px] leading-[18px] text-emerald-400"
+      className="px-3 whitespace-pre font-mono text-[11px] leading-[18px] text-[var(--lx-log-accent)]"
     >
       {lines[index]}
     </div>
   )
 
   return (
-    <div className="flex flex-col rounded-lg overflow-hidden border border-zinc-800 bg-black">
-      <div className="flex items-center gap-2 p-2 border-b border-zinc-800 bg-zinc-900">
+    <div className="flex flex-col rounded-lg overflow-hidden border border-[var(--lx-border-soft)] bg-[var(--lx-log-bg)]">
+      <div className="flex items-center gap-2 p-2 border-b border-[var(--lx-border-soft)] bg-[var(--lx-log-bg)]">
         <div className="relative flex-1 min-w-0">
-          <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
+          <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--lx-text-muted)]" />
           <input
             value={grepInput}
             onChange={(e) => setGrepInput(e.target.value)}
             placeholder="Filter logs (grep)…"
-            className="w-full pl-8 pr-2 py-1.5 text-sm rounded bg-zinc-950 border border-zinc-800 text-zinc-200 outline-none focus:border-zinc-600"
+            className="w-full pl-8 pr-2 py-1.5 text-sm rounded bg-[var(--lx-log-bg)] border border-[var(--lx-border-soft)] text-[var(--lx-log-fg)] outline-none focus:border-[var(--lx-border)]"
           />
         </div>
         <a
           href={jobLogRawUrl(jobId)}
           target="_blank"
           rel="noreferrer"
-          className="inline-flex items-center gap-1 px-2 py-1.5 text-sm rounded text-zinc-300 hover:bg-zinc-800 shrink-0"
+          className="inline-flex items-center gap-1 px-2 py-1.5 text-sm rounded text-[var(--lx-log-fg)] hover:bg-[var(--lx-border-soft)] shrink-0"
         >
           <ExternalLink className="w-4 h-4" /> Full log
         </a>
         <a
           href={jobLogRawUrl(jobId, true)}
-          className="inline-flex items-center gap-1 px-2 py-1.5 text-sm rounded text-zinc-300 hover:bg-zinc-800 shrink-0"
+          className="inline-flex items-center gap-1 px-2 py-1.5 text-sm rounded text-[var(--lx-log-fg)] hover:bg-[var(--lx-border-soft)] shrink-0"
         >
           <Download className="w-4 h-4" /> Download
         </a>
@@ -83,9 +83,9 @@ export default function JobLogViewer({ jobId, live = true, height = 600 }: JobLo
 
       <div style={{ height }}>
         {error ? (
-          <div className="p-3 text-sm text-red-400">{error}</div>
+          <div className="p-3 text-sm text-[var(--lx-state-down)]">{error}</div>
         ) : lines.length === 0 ? (
-          <div className="p-3 text-sm text-zinc-500">{isLoading ? 'Loading…' : 'No log output.'}</div>
+          <div className="p-3 text-sm text-[var(--lx-text-muted)]">{isLoading ? 'Loading…' : 'No log output.'}</div>
         ) : (
           <FixedSizeList
             ref={listRef}

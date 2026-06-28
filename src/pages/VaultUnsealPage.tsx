@@ -17,8 +17,8 @@ const gridBg: React.CSSProperties = {
   position: 'absolute',
   inset: 0,
   backgroundImage: [
-    'linear-gradient(rgba(0, 212, 255, 0.04) 1px, transparent 1px)',
-    'linear-gradient(90deg, rgba(0, 212, 255, 0.04) 1px, transparent 1px)',
+    'linear-gradient(color-mix(in srgb, var(--lx-accent) 4%, transparent) 1px, transparent 1px)',
+    'linear-gradient(90deg, color-mix(in srgb, var(--lx-accent) 4%, transparent) 1px, transparent 1px)',
   ].join(','),
   backgroundSize: '40px 40px',
   maskImage: 'radial-gradient(ellipse 80% 80% at 50% 50%, black 20%, transparent 100%)',
@@ -67,13 +67,13 @@ export default function VaultUnsealPage() {
   const isAutoUnseal = vaultStatus && !vaultStatus.sealed
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-[var(--lx-bg)] relative overflow-hidden">
+    <div className="min-h-screen flex items-center justify-center relative overflow-hidden">
       <div style={gridBg} />
 
       <div style={{
         position: 'absolute', top: '-200px', right: '-200px',
         width: '600px', height: '600px',
-        background: 'radial-gradient(circle, rgba(139, 92, 246, 0.12), transparent 70%)',
+        background: 'radial-gradient(circle, color-mix(in srgb, var(--lx-accent-3) 12%, transparent), transparent 70%)',
         filter: 'blur(80px)', opacity: 0.5, pointerEvents: 'none',
       }} />
 

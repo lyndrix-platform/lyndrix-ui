@@ -85,7 +85,14 @@ export async function apiFetch<T = unknown>(path: string, options: FetchOptions 
 
   if (!res.ok) {
     const body = await res.json().catch(() => ({ detail: res.statusText }))
-    throw new Error(body?.detail ?? `HTTP ${res.status}`)
+    const detail = body?.detail
+    const message =
+      typeof detail === 'string'
+        ? detail
+        : Array.isArray(detail)
+          ? detail.map((e: { msg?: string }) => e.msg ?? JSON.stringify(e)).join(', ')
+          : `HTTP ${res.status}`
+    throw new Error(message)
   }
 
   if (res.status === 204) return undefined as T

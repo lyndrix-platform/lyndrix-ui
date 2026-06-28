@@ -1,6 +1,11 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useTranslation } from 'react-i18next'
+import i18nInstance from '../../../lib/i18n'
+import { Moon, Sun } from 'lucide-react'
 import { apiFetch, getToken, clearToken } from '../../../lib/api'
+import { LANG_KEY, loadCatalog, useSupportedLanguages } from '../../../lib/i18n'
+import { useTheme } from '../../../theme/ThemeProvider'
 import type { ThemeOut } from '../../../lib/types'
 import { Card, SectionTitle } from '../shared'
 
@@ -8,6 +13,8 @@ export default function AppearanceSection(_: {
   config: Record<string, unknown>
   envLocked: string[]
 }) {
+  const { t } = useTranslation('ui')
+  const { themeId, setTheme, selectedThemeId, setSelectedTheme, refreshTheme } = useTheme()
   const qc = useQueryClient()
   const [uploadStatus, setUploadStatus] = useState<string | null>(null)
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null)
@@ -45,9 +52,6 @@ export default function AppearanceSection(_: {
     const fd = new FormData()
     fd.append('file', file)
     try {
-      // Multipart upload can't use apiFetch (it forces JSON), so replicate its
-      // auth + 401 handling here: a dead session redirects to login instead of
-      // failing silently.
       const token = getToken()
       const r = await fetch('/api/themes', {
         method: 'POST',
@@ -63,20 +67,132 @@ export default function AppearanceSection(_: {
         const body = await r.json().catch(() => ({ detail: r.statusText }))
         throw new Error((body as { detail?: string })?.detail ?? r.statusText)
       }
-      setUploadStatus('Theme hochgeladen.')
+      setUploadStatus(t('appearance.uploaded'))
       qc.invalidateQueries({ queryKey: ['themes'] })
+      refreshTheme()
     } catch (e) {
-      setUploadStatus(e instanceof Error ? e.message : 'Upload fehlgeschlagen')
+      setUploadStatus(e instanceof Error ? e.message : t('appearance.upload_failed'))
+    }
+  }
+
+  const currentLang = i18nInstance.language
+  const { supported } = useSupportedLanguages()
+
+  // Endonyms for the languages we expect; falls back to the code for any other
+  // locale core may advertise.
+  const LANG_ENDONYMS: Record<string, string> = { de: 'Deutsch', en: 'English' }
+
+  async function handleLangChange(lang: string) {
+    // Ensure the new locale's catalog is loaded/cached before switching, so the
+    // UI doesn't flash untranslated keys.
+    await loadCatalog(lang)
+    await i18nInstance.changeLanguage(lang)
+    try {
+      localStorage.setItem(LANG_KEY, lang)
+    } catch {
+      // best-effort persistence
     }
   }
 
   return (
     <div className="flex flex-col gap-4">
+      {/* Dark / Light mode */}
       <Card>
-        <SectionTitle>Theme auswählen</SectionTitle>
+        <SectionTitle>{t('appearance.color_scheme')}</SectionTitle>
+        <div className="flex gap-2 mt-1">
+          {(['dark', 'light'] as const).map((id) => {
+            const Icon = id === 'dark' ? Moon : Sun
+            const label = id === 'dark' ? t('appearance.dark') : t('appearance.light')
+            const isActive = themeId === id
+            return (
+              <button
+                key={id}
+                onClick={() => setTheme(id)}
+                className={[
+                  'flex items-center gap-2 px-4 py-2 rounded-lg border text-sm font-medium transition-colors',
+                  isActive
+                    ? 'border-[var(--lx-accent)] bg-[var(--lx-accent)]/10 text-[var(--lx-accent)]'
+                    : 'border-[var(--lx-border-soft)] bg-[var(--lx-elevated)] text-[var(--lx-text-muted)] hover:text-[var(--lx-text)] hover:border-[var(--lx-accent)]/40',
+                ].join(' ')}
+              >
+                <Icon size={15} />
+                {label}
+              </button>
+            )
+          })}
+        </div>
+      </Card>
+
+      {/* Language */}
+      <Card>
+        <SectionTitle>{t('appearance.language')}</SectionTitle>
+        <div className="flex gap-2 mt-1">
+          {supported.map((lang) => {
+            const label = LANG_ENDONYMS[lang] ?? lang.toUpperCase()
+            const isActive = currentLang === lang
+            return (
+              <button
+                key={lang}
+                onClick={() => void handleLangChange(lang)}
+                className={[
+                  'px-4 py-2 rounded-lg border text-sm font-medium transition-colors',
+                  isActive
+                    ? 'border-[var(--lx-accent)] bg-[var(--lx-accent)]/10 text-[var(--lx-accent)]'
+                    : 'border-[var(--lx-border-soft)] bg-[var(--lx-elevated)] text-[var(--lx-text-muted)] hover:text-[var(--lx-text)] hover:border-[var(--lx-accent)]/40',
+                ].join(' ')}
+              >
+                {label}
+              </button>
+            )
+          })}
+        </div>
+      </Card>
+
+      {/* App theme (React UI) — independent of the NiceGUI active theme */}
+      <Card>
+        <SectionTitle>{t('appearance.app_theme', { defaultValue: 'App theme' })}</SectionTitle>
+        <p className="text-xs text-[var(--lx-text-muted)] mb-2">
+          {t('appearance.app_theme_hint', {
+            defaultValue: 'Theme applied to this interface. Can differ from the server theme.',
+          })}
+        </p>
         <div className="flex flex-col gap-2">
-          {(themes ?? []).map((t) => {
-            const tid = typeof t === 'string' ? t : (t as ThemeOut).id
+          {(themes ?? []).map((t_) => {
+            const tid = typeof t_ === 'string' ? t_ : (t_ as ThemeOut).id
+            const isActive = tid === selectedThemeId
+            return (
+              <div
+                key={tid}
+                className={`flex items-center justify-between px-4 py-2.5 rounded-md border text-sm cursor-pointer transition-colors ${
+                  isActive
+                    ? 'border-[var(--lx-accent)] bg-[var(--lx-accent)]/5 text-[var(--lx-accent)]'
+                    : 'border-[var(--lx-border-soft)] bg-[var(--lx-elevated)] text-[var(--lx-text)] hover:border-[var(--lx-accent)]/40'
+                }`}
+                onClick={() => !isActive && setSelectedTheme(tid)}
+              >
+                <span className="capitalize">{tid}</span>
+                {isActive && (
+                  <span className="text-[10px] uppercase tracking-wide text-[var(--lx-accent)]">
+                    {t('appearance.badge_active')}
+                  </span>
+                )}
+              </div>
+            )
+          })}
+        </div>
+      </Card>
+
+      {/* Personalization — per-mode --lx-* colour overrides on top of the theme */}
+      <BackgroundCard />
+
+      <PersonalizationCard />
+
+      {/* Server-side NiceGUI theme */}
+      <Card>
+        <SectionTitle>{t('appearance.server_theme')}</SectionTitle>
+        <div className="flex flex-col gap-2">
+          {(themes ?? []).map((t_) => {
+            const tid = typeof t_ === 'string' ? t_ : (t_ as ThemeOut).id
             const isActive = tid === activeTheme
             return (
               <div
@@ -92,7 +208,7 @@ export default function AppearanceSection(_: {
                 <div className="flex items-center gap-2">
                   {isActive && (
                     <span className="text-[10px] uppercase tracking-wide text-[var(--lx-accent)]">
-                      Aktiv
+                      {t('appearance.badge_active')}
                     </span>
                   )}
                   {tid !== 'default' && (
@@ -115,31 +231,50 @@ export default function AppearanceSection(_: {
 
         {deleteConfirm && (
           <div className="mt-3 p-3 rounded-md bg-[var(--lx-elevated)] border border-[var(--lx-state-down)]/30 text-sm">
-            <p className="text-[var(--lx-text)] mb-2">Theme „{deleteConfirm}" löschen?</p>
+            <p className="text-[var(--lx-text)] mb-2">
+              {t('appearance.confirm_delete', { name: deleteConfirm })}
+            </p>
             <div className="flex gap-2">
               <button
                 onClick={() => deleteMut.mutate(deleteConfirm)}
                 className="px-3 py-1 rounded text-xs bg-[var(--lx-state-down)] text-white"
               >
-                Löschen
+                {t('appearance.delete')}
               </button>
               <button
                 onClick={() => setDeleteConfirm(null)}
                 className="px-3 py-1 rounded text-xs text-[var(--lx-text-muted)]"
               >
-                Abbrechen
+                {t('appearance.cancel')}
               </button>
             </div>
           </div>
         )}
       </Card>
 
+      {/* Upload */}
       <Card>
-        <SectionTitle>Theme hochladen</SectionTitle>
+        <SectionTitle>{t('appearance.upload_theme')}</SectionTitle>
         <p className="text-xs text-[var(--lx-text-muted)] mb-3">
-          ZIP-Datei mit{' '}
-          <code className="text-[var(--lx-accent)]">tokens.json</code> und{' '}
-          <code className="text-[var(--lx-accent)]">components.json</code>.
+          {t('appearance.upload_hint').split('tokens.json').map((part, i, arr) =>
+            i < arr.length - 1 ? (
+              <>
+                {part}
+                <code className="text-[var(--lx-accent)]">tokens.json</code>
+              </>
+            ) : (
+              part.split('components.json').map((p, j, a) =>
+                j < a.length - 1 ? (
+                  <>
+                    {p}
+                    <code className="text-[var(--lx-accent)]">components.json</code>
+                  </>
+                ) : (
+                  p
+                ),
+              )
+            ),
+          )}
         </p>
         <input
           type="file"
@@ -155,5 +290,214 @@ export default function AppearanceSection(_: {
         )}
       </Card>
     </div>
+  )
+}
+
+// ── Personalization ───────────────────────────────────────────────────────────
+
+// Curated set of solid-colour --lx-* tokens that make sense to pick directly
+// (composited tokens like borders/glow are derived and intentionally omitted).
+const SWATCHES: { var: string; key: string; def: string }[] = [
+  { var: '--lx-accent', key: 'accent', def: 'Primary' },
+  { var: '--lx-accent-2', key: 'accent2', def: 'Secondary' },
+  { var: '--lx-accent-3', key: 'accent3', def: 'Tertiary' },
+  { var: '--lx-bg', key: 'bg', def: 'Background' },
+  { var: '--lx-surface', key: 'surface', def: 'Surface' },
+  { var: '--lx-text', key: 'text', def: 'Text' },
+  { var: '--lx-state-up', key: 'success', def: 'Success' },
+  { var: '--lx-state-down', key: 'danger', def: 'Danger' },
+  { var: '--lx-state-paused', key: 'warning', def: 'Warning' },
+]
+
+/** Normalize a computed colour value (#rgb, #rrggbb, rgb()/rgba()) to #rrggbb for <input type="color">. */
+function toHex(value: string): string {
+  const v = value.trim()
+  if (/^#[0-9a-f]{6}$/i.test(v)) return v.toLowerCase()
+  if (/^#[0-9a-f]{3}$/i.test(v)) return ('#' + v[1] + v[1] + v[2] + v[2] + v[3] + v[3]).toLowerCase()
+  const m = v.match(/^rgba?\(([^)]+)\)/i)
+  if (m) {
+    const [r, g, b] = m[1].split(',').map((x) => parseFloat(x))
+    const h = (n: number) => Math.max(0, Math.min(255, Math.round(n || 0))).toString(16).padStart(2, '0')
+    return ('#' + h(r) + h(g) + h(b)).toLowerCase()
+  }
+  return '#000000'
+}
+
+function PersonalizationCard() {
+  const { t } = useTranslation('ui')
+  const { themeId, personal, setPersonalColor, clearPersonalColor, resetPersonal } = useTheme()
+  const overrides = personal[themeId]
+  const anyOverride =
+    Object.keys(personal.light).length > 0 || Object.keys(personal.dark).length > 0
+
+  // Effective value: an explicit override wins; otherwise the live computed token
+  // (which reflects the selected theme for the current mode).
+  const effective = (varName: string): string => {
+    const o = overrides[varName]
+    if (o) return o
+    return toHex(getComputedStyle(document.documentElement).getPropertyValue(varName))
+  }
+
+  return (
+    <Card>
+      <SectionTitle>{t('appearance.personalize', { defaultValue: 'Personalize colors' })}</SectionTitle>
+      <p className="text-xs text-[var(--lx-text-muted)] mb-3">
+        {t('appearance.personalize_hint', {
+          defaultValue:
+            'Override individual colors on top of the selected theme. Applies to the current mode ({{mode}}).',
+          mode: t(themeId === 'dark' ? 'appearance.dark' : 'appearance.light'),
+        })}
+      </p>
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+        {SWATCHES.map((s) => {
+          const isOver = s.var in overrides
+          const val = effective(s.var)
+          return (
+            <div key={s.var} className="flex items-center gap-2.5">
+              <label
+                className="relative shrink-0 w-9 h-9 rounded-lg border border-[var(--lx-border-soft)] cursor-pointer"
+                style={{ background: val }}
+                title={val}
+              >
+                <input
+                  type="color"
+                  value={val}
+                  onChange={(e) => setPersonalColor(themeId, s.var, e.target.value)}
+                  className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                />
+              </label>
+              <div className="min-w-0 flex-1">
+                <p className="text-xs font-medium text-[var(--lx-text)] truncate">
+                  {t(`appearance.color.${s.key}`, { defaultValue: s.def })}
+                </p>
+                <div className="flex items-center gap-1.5">
+                  <span className="text-[10px] font-mono text-[var(--lx-text-muted)]">{val}</span>
+                  {isOver && (
+                    <button
+                      onClick={() => clearPersonalColor(themeId, s.var)}
+                      className="text-[10px] text-[var(--lx-accent)] hover:underline"
+                    >
+                      {t('appearance.reset_color', { defaultValue: 'Reset' })}
+                    </button>
+                  )}
+                </div>
+              </div>
+            </div>
+          )
+        })}
+      </div>
+      {anyOverride && (
+        <button onClick={resetPersonal} className="lx-btn lx-btn--ghost lx-btn--sm mt-4">
+          {t('appearance.reset_all', { defaultValue: 'Reset all personalization' })}
+        </button>
+      )}
+    </Card>
+  )
+}
+
+// ── Background image ──────────────────────────────────────────────────────────
+
+function BackgroundCard() {
+  const { t } = useTranslation('ui')
+  const { themeId, userBg, refreshUserBg } = useTheme()
+  const [status, setStatus] = useState<string | null>(null)
+  const [busy, setBusy] = useState(false)
+
+  const hasCustom = !!userBg[themeId]
+  const modeLabel = t(themeId === 'dark' ? 'appearance.dark' : 'appearance.light')
+
+  async function upload(file: File) {
+    setBusy(true)
+    setStatus(null)
+    try {
+      const fd = new FormData()
+      fd.append('file', file)
+      const token = getToken()
+      const r = await fetch(`/api/me/background?mode=${themeId}`, {
+        method: 'POST',
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+        body: fd,
+      })
+      if (!r.ok) {
+        const b = await r.json().catch(() => null)
+        throw new Error((b && (b.detail as string)) || `HTTP ${r.status}`)
+      }
+      refreshUserBg()
+      setStatus(t('appearance.bg_uploaded', { defaultValue: 'Background updated.' }))
+    } catch (e) {
+      setStatus(e instanceof Error ? e.message : t('common.error'))
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  async function remove() {
+    setBusy(true)
+    setStatus(null)
+    try {
+      await apiFetch(`/api/me/background/${themeId}`, { method: 'DELETE' })
+      refreshUserBg()
+      setStatus(t('appearance.bg_removed', { defaultValue: 'Background removed.' }))
+    } catch (e) {
+      setStatus(e instanceof Error ? e.message : t('common.error'))
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <Card>
+      <SectionTitle>{t('appearance.background', { defaultValue: 'Background image' })}</SectionTitle>
+      <p className="text-xs text-[var(--lx-text-muted)] mb-3">
+        {t('appearance.background_hint', {
+          defaultValue:
+            'Personal backdrop for {{mode}} mode, shown behind the glass surfaces. Stored on the server.',
+          mode: modeLabel,
+        })}
+      </p>
+      <div
+        className="h-28 rounded-lg border border-[var(--lx-glass-border)] mb-3 overflow-hidden"
+        style={{
+          backgroundImage: 'var(--lx-bg-image, none)',
+          backgroundColor: 'var(--lx-bg)',
+          backgroundSize: 'cover',
+          backgroundPosition: 'center',
+        }}
+      />
+      <div className="flex flex-wrap items-center gap-2">
+        <label
+          className={`lx-btn lx-btn--secondary lx-btn--sm cursor-pointer ${
+            busy ? 'opacity-60 pointer-events-none' : ''
+          }`}
+        >
+          {busy
+            ? t('common.saving')
+            : hasCustom
+              ? t('appearance.bg_replace', { defaultValue: 'Replace image' })
+              : t('appearance.bg_upload', { defaultValue: 'Upload image' })}
+          <input
+            type="file"
+            accept="image/png,image/jpeg,image/webp"
+            className="hidden"
+            disabled={busy}
+            onChange={(e) => {
+              const f = e.target.files?.[0]
+              if (f) void upload(f)
+              e.target.value = ''
+            }}
+          />
+        </label>
+        {hasCustom && (
+          <button
+            className="lx-btn lx-btn--ghost lx-btn--sm"
+            disabled={busy}
+            onClick={() => void remove()}
+          >
+            {t('appearance.bg_remove', { defaultValue: 'Remove' })}
+          </button>
+        )}
+      </div>
+      {status && <p className="mt-2 text-xs text-[var(--lx-text-muted)]">{status}</p>}
+    </Card>
   )
 }

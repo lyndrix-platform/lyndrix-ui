@@ -1,4 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
+import { useTranslation } from 'react-i18next'
 import { getMe } from '../lib/auth'
 import { apiFetch } from '../lib/api'
 import WelcomeSection from '../components/dashboard/WelcomeSection'
@@ -6,6 +7,8 @@ import PluginLaunchpad from '../components/dashboard/PluginLaunchpad'
 import type { PluginOut, HealthResponse, VaultStatusResponse } from '../lib/types'
 
 export default function DashboardPage() {
+  const { t } = useTranslation('ui')
+
   const { data: me } = useQuery({
     queryKey: ['me'],
     queryFn: getMe,
@@ -34,6 +37,16 @@ export default function DashboardPage() {
 
   const vaultOk = !!vaultStatus && vaultStatus.connected && !vaultStatus.sealed
 
+  // Aggregate health is "unknown" unless a plugin implements health(), so treat
+  // unknown/ok as healthy and only flag actual error/degraded states.
+  const coreState: 'up' | 'down' | 'paused' = !health
+    ? 'down'
+    : health.status === 'error'
+      ? 'down'
+      : health.status === 'degraded'
+        ? 'paused'
+        : 'up'
+
   return (
     <div className="max-w-5xl mx-auto px-6 py-8 md:px-8 flex flex-col gap-9">
       {/* Welcome */}
@@ -41,34 +54,31 @@ export default function DashboardPage() {
 
       {/* Platform stat tiles */}
       <section>
-        <h2 className="lx-eyebrow mb-3">Plattform</h2>
+        <h2 className="lx-eyebrow mb-3">{t('dashboard.platform')}</h2>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           <StatTile
             icon="extension"
-            label="Plugins aktiv"
+            label={t('dashboard.plugins_active')}
             value={`${activePlugins.length} / ${totalPlugins.length}`}
             state="up"
           />
           <StatTile
             icon="dns"
-            label="Core"
+            label={t('dashboard.core')}
             value={health?.core_version ? `v${health.core_version}` : '—'}
-            state={health?.status === 'ok' ? 'up' : 'down'}
+            state={coreState}
           />
           <StatTile
             icon="lock"
-            label="Vault"
+            label={t('dashboard.vault')}
             value={vaultStatus?.ui_state ?? '—'}
             state={vaultOk ? 'up' : 'paused'}
           />
         </div>
       </section>
 
-      {/* Plugin Launchpad */}
-      <section>
-        <h2 className="lx-eyebrow mb-3">Apps</h2>
-        <PluginLaunchpad plugins={pluginList} />
-      </section>
+      {/* Core components, apps, tools & services — sectioned launchpad */}
+      <PluginLaunchpad plugins={pluginList} />
     </div>
   )
 }

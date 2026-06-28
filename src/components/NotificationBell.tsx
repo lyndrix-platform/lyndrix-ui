@@ -128,7 +128,7 @@ export default function NotificationBell() {
       </button>
 
       {open && (
-        <div className="lx-card absolute right-0 mt-2 w-80 z-50 shadow-xl overflow-hidden">
+        <div className="lx-popover absolute right-0 mt-2 w-80 z-50 overflow-hidden">
           <div className="flex items-center justify-between px-3 py-2 border-b border-[var(--lx-border-soft)]">
             <span className="text-sm font-semibold text-[var(--lx-text)]">
               Benachrichtigungen

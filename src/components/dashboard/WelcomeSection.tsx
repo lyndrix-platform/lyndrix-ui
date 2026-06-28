@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { useTranslation } from 'react-i18next'
 import { Check, Pencil, X } from 'lucide-react'
 import { apiFetch } from '../../lib/api'
 import { useGreeting } from '../../lib/useGreeting'
@@ -13,6 +14,7 @@ interface Props {
 }
 
 export default function WelcomeSection({ me, health, vaultStatus }: Props) {
+  const { t } = useTranslation('ui')
   const { greeting } = useGreeting()
   const queryClient = useQueryClient()
 
@@ -55,6 +57,11 @@ export default function WelcomeSection({ me, health, vaultStatus }: Props) {
   const coreVersion = health?.core_version ? `v${health.core_version}` : '…'
   const roles = me?.roles?.join(', ') ?? ''
 
+  // The aggregate health status is "unknown" whenever no plugin implements
+  // health() — which is the normal case — so only error/degraded are real
+  // problems. Treat everything else (ok, unknown) as healthy.
+  const coreHealthy = !!health && health.status !== 'error' && health.status !== 'degraded'
+
   return (
     <div className="flex flex-col gap-1">
       {/* Greeting row */}
@@ -76,14 +83,14 @@ export default function WelcomeSection({ me, health, vaultStatus }: Props) {
                 onClick={saveEdit}
                 disabled={mutation.isPending}
                 className="text-[var(--lx-accent)] hover:opacity-80 transition-opacity disabled:opacity-40"
-                title="Speichern"
+                title={t('dashboard.save_name')}
               >
                 <Check size={16} />
               </button>
               <button
                 onClick={cancelEdit}
                 className="text-[var(--lx-text-muted)] hover:text-[var(--lx-text)] transition-colors"
-                title="Abbrechen"
+                title={t('dashboard.cancel_edit')}
               >
                 <X size={16} />
               </button>
@@ -107,7 +114,7 @@ export default function WelcomeSection({ me, health, vaultStatus }: Props) {
               <button
                 onClick={startEdit}
                 className="text-[var(--lx-text-muted)] opacity-0 group-hover:opacity-100 transition-opacity hover:text-[var(--lx-text)]"
-                title="Namen bearbeiten"
+                title={t('dashboard.edit_name')}
               >
                 <Pencil size={13} />
               </button>
@@ -119,7 +126,7 @@ export default function WelcomeSection({ me, health, vaultStatus }: Props) {
         <p className="text-xs text-[var(--lx-text-muted)] shrink-0 pt-1.5">
           <span
             className={`inline-block w-1.5 h-1.5 rounded-full mr-1.5 align-middle ${
-              health?.status === 'ok' ? 'bg-[var(--lx-state-up)]' : 'bg-[var(--lx-state-down)]'
+              coreHealthy ? 'bg-[var(--lx-state-up)]' : 'bg-[var(--lx-state-down)]'
             }`}
           />
           Core {coreVersion} · Vault {vaultLabel}

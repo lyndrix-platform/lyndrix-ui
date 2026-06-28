@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useTranslation } from 'react-i18next'
 import { apiFetch } from '../lib/api'
 import type { UserOut, ApiKeyOut, GroupOut, PermissionDefOut } from '../lib/types'
 
@@ -63,11 +64,11 @@ function SearchInput({
 // ── Per-user direct permission grants ──────────────────────────────────────────
 
 function UserPermissionsSection({ username }: { username: string }) {
+  const { t } = useTranslation('ui')
   const qc = useQueryClient()
   const [status, setStatus] = useState<{ ok: boolean; msg: string } | null>(null)
   const [search, setSearch] = useState('')
 
-  // Shared cache key with GroupsTab — the catalog is fetched once.
   const { data: catalog } = useQuery({
     queryKey: ['permissions-catalog'],
     queryFn: () =>
@@ -89,11 +90,11 @@ function UserPermissionsSection({ username }: { username: string }) {
         body: JSON.stringify({ permissions }),
       }),
     onSuccess: () => {
-      setStatus({ ok: true, msg: 'Berechtigungen aktualisiert.' })
+      setStatus({ ok: true, msg: t('users_page.permissions_updated') })
       qc.invalidateQueries({ queryKey: ['user-permissions', username] })
       qc.invalidateQueries({ queryKey: ['users'] })
     },
-    onError: (e) => setStatus({ ok: false, msg: e instanceof Error ? e.message : 'Fehler' }),
+    onError: (e) => setStatus({ ok: false, msg: e instanceof Error ? e.message : t('common.error') }),
   })
 
   const extra = perms?.extra_permissions ?? []
@@ -114,18 +115,17 @@ function UserPermissionsSection({ username }: { username: string }) {
         (p.category || '').toLowerCase().includes(q),
     )
     .reduce<Record<string, PermissionDefOut[]>>((acc, p) => {
-      ;(acc[p.category || 'Allgemein'] ||= []).push(p)
+      ;(acc[p.category || t('users_page.groups_label')] ||= []).push(p)
       return acc
     }, {})
 
   return (
     <div>
-      <SectionTitle>Direkte Berechtigungen</SectionTitle>
+      <SectionTitle>{t('users_page.direct_perms')}</SectionTitle>
       <p className="text-[11px] text-[var(--lx-text-muted)] -mt-3 mb-3">
-        Zusätzliche Rechte für diesen Benutzer. Aus Gruppen/Rollen geerbte Rechte sind gesperrt
-        (mit „✓ via Gruppe" markiert) und werden im Gruppen-Tab verwaltet.
+        {t('users_page.direct_perms_hint')}
       </p>
-      <SearchInput value={search} onChange={setSearch} placeholder="Berechtigung suchen…" />
+      <SearchInput value={search} onChange={setSearch} placeholder={t('users_page.search_perm')} />
       <div className="flex flex-col gap-4">
         {Object.entries(byCategory).map(([category, ps]) => (
           <div key={category}>
@@ -139,17 +139,17 @@ function UserPermissionsSection({ username }: { username: string }) {
                     key={perm.id}
                     disabled={fromGroup || putMut.isPending}
                     onClick={() => toggle(perm.id)}
-                    title={fromGroup ? 'Über Gruppe/Rolle vererbt' : perm.description || perm.id}
+                    title={fromGroup ? t('users_page.via_group_tooltip') : perm.description || perm.id}
                     className={`px-2 py-1 text-xs rounded border transition-colors ${
                       fromGroup
-                        ? 'border-[var(--lx-border-soft)] bg-[var(--lx-elevated)] text-[var(--lx-text-muted)] opacity-70 cursor-not-allowed'
+                        ? 'border-[var(--lx-border-soft)] bg-[var(--lx-elevated-glass)] text-[var(--lx-text-muted)] opacity-70 cursor-not-allowed'
                         : direct
                           ? 'border-[var(--lx-accent)] bg-[var(--lx-accent)]/10 text-[var(--lx-accent)]'
-                          : 'border-[var(--lx-border-soft)] bg-[var(--lx-elevated)] text-[var(--lx-text-muted)]'
+                          : 'border-[var(--lx-border-soft)] bg-[var(--lx-elevated-glass)] text-[var(--lx-text-muted)]'
                     }`}
                   >
                     {perm.label || perm.id}
-                    {fromGroup && <span className="ml-1 font-medium">✓ via Gruppe</span>}
+                    {fromGroup && <span className="ml-1 font-medium">{t('users_page.via_group_label')}</span>}
                   </button>
                 )
               })}
@@ -157,7 +157,7 @@ function UserPermissionsSection({ username }: { username: string }) {
           </div>
         ))}
         {Object.keys(byCategory).length === 0 && (
-          <p className="text-xs text-[var(--lx-text-muted)]">Keine Berechtigungen gefunden.</p>
+          <p className="text-xs text-[var(--lx-text-muted)]">{t('users_page.no_perms_found')}</p>
         )}
       </div>
       {status && (
@@ -178,6 +178,7 @@ function UserDetailPanel({
   user: UserOut
   onClose: () => void
 }) {
+  const { t } = useTranslation('ui')
   const qc = useQueryClient()
   const [form, setForm] = useState({
     full_name: user.full_name ?? '',
@@ -220,10 +221,10 @@ function UserDetailPanel({
       })
     },
     onSuccess: () => {
-      setStatus({ ok: true, msg: 'Benutzer gespeichert.' })
+      setStatus({ ok: true, msg: t('users_page.user_saved') })
       qc.invalidateQueries({ queryKey: ['users'] })
     },
-    onError: (e) => setStatus({ ok: false, msg: e instanceof Error ? e.message : 'Fehler' }),
+    onError: (e) => setStatus({ ok: false, msg: e instanceof Error ? e.message : t('common.error') }),
   })
 
   const deleteUserMut = useMutation({
@@ -256,7 +257,7 @@ function UserDetailPanel({
   return (
     <div className="fixed inset-0 z-40 flex">
       <div className="flex-1 bg-black/40" onClick={onClose} />
-      <div className="w-full max-w-md bg-[var(--lx-surface)] border-l border-[var(--lx-border-soft)] overflow-y-auto flex flex-col">
+      <div className="w-full max-w-md bg-[var(--lx-surface-glass)] backdrop-blur-[16px] backdrop-saturate-150 border-l border-[var(--lx-border-soft)] overflow-y-auto flex flex-col">
         <div className="px-5 py-4 border-b border-[var(--lx-border-soft)] flex items-center justify-between">
           <div>
             <p className="text-sm font-medium text-[var(--lx-text)]">@{user.username}</p>
@@ -268,14 +269,14 @@ function UserDetailPanel({
         <div className="flex-1 px-5 py-4 flex flex-col gap-5">
           {/* Edit form */}
           <div>
-            <SectionTitle>Profil bearbeiten</SectionTitle>
+            <SectionTitle>{t('users_page.edit_profile')}</SectionTitle>
             <div className="flex flex-col gap-3">
-              {[
-                { label: 'Anzeigename', key: 'full_name' },
-                { label: 'E-Mail', key: 'email' },
-                { label: 'Neues Passwort', key: 'password', type: 'password' },
-                { label: 'Rollen (kommagetrennt)', key: 'roles' },
-              ].map(({ label, key, type }) => (
+              {([
+                { label: t('users_page.field_full_name'), key: 'full_name' },
+                { label: t('users_page.field_email'), key: 'email' },
+                { label: t('users_page.field_new_password'), key: 'password', type: 'password' },
+                { label: t('users_page.field_roles'), key: 'roles' },
+              ] as { label: string; key: string; type?: string }[]).map(({ label, key, type }) => (
                 <div key={key} className="flex flex-col gap-1">
                   <label className="lx-label">{label}</label>
                   <input
@@ -283,13 +284,13 @@ function UserDetailPanel({
                     type={type ?? 'text'}
                     value={(form as Record<string, string>)[key]}
                     onChange={(e) => setForm((f) => ({ ...f, [key]: e.target.value }))}
-                    placeholder={type === 'password' ? 'Leer lassen = kein Änderung' : ''}
+                    placeholder={type === 'password' ? t('users_page.pw_no_change') : ''}
                   />
                 </div>
               ))}
               <div className="flex flex-col gap-1">
-                <label className="lx-label">Gruppen</label>
-                <SearchInput value={groupSearch} onChange={setGroupSearch} placeholder="Gruppe suchen…" />
+                <label className="lx-label">{t('users_page.field_groups')}</label>
+                <SearchInput value={groupSearch} onChange={setGroupSearch} placeholder={t('users_page.search_group')} />
                 <div className="flex flex-wrap gap-2">
                   {(allGroups ?? [])
                     .filter((g) => !groupSearch.trim() || g.name.toLowerCase().includes(groupSearch.trim().toLowerCase()))
@@ -305,7 +306,7 @@ function UserDetailPanel({
                         className={`px-2 py-1 text-xs rounded border transition-colors ${
                           member
                             ? 'border-[var(--lx-accent)] bg-[var(--lx-accent)]/10 text-[var(--lx-accent)]'
-                            : 'border-[var(--lx-border-soft)] bg-[var(--lx-elevated)] text-[var(--lx-text-muted)]'
+                            : 'border-[var(--lx-border-soft)] bg-[var(--lx-elevated-glass)] text-[var(--lx-text-muted)]'
                         }`}
                       >
                         {g.name}
@@ -313,11 +314,11 @@ function UserDetailPanel({
                     )
                   })}
                   {(allGroups ?? []).length === 0 && (
-                    <span className="text-xs text-[var(--lx-text-muted)]">Keine Gruppen vorhanden.</span>
+                    <span className="text-xs text-[var(--lx-text-muted)]">{t('users_page.no_groups')}</span>
                   )}
                 </div>
                 <p className="text-[10px] text-[var(--lx-text-muted)]">
-                  Mehrfachzuordnung möglich · mit „Speichern" übernehmen.
+                  {t('users_page.groups_hint')}
                 </p>
               </div>
             </div>
@@ -327,7 +328,7 @@ function UserDetailPanel({
               </p>
             )}
             <button onClick={() => patchMut.mutate()} disabled={patchMut.isPending} className="lx-btn lx-btn--primary mt-4">
-              {patchMut.isPending ? 'Speichern…' : 'Speichern'}
+              {patchMut.isPending ? t('common.saving') : t('common.save')}
             </button>
           </div>
 
@@ -336,33 +337,33 @@ function UserDetailPanel({
 
           {/* API Keys */}
           <div>
-            <SectionTitle>API-Schlüssel</SectionTitle>
+            <SectionTitle>{t('users_page.api_keys')}</SectionTitle>
             {newKeyResult && (
               <div className="mb-2 p-2 rounded-md bg-[var(--lx-state-up)]/10 border border-[var(--lx-state-up)]/20 text-xs">
-                <p className="text-[var(--lx-state-up)] mb-1 font-medium">Schlüssel (einmalig sichtbar):</p>
+                <p className="text-[var(--lx-state-up)] mb-1 font-medium">{t('users_page.key_once_visible')}</p>
                 <code className="text-[var(--lx-text)] break-all">{newKeyResult}</code>
               </div>
             )}
             <div className="flex flex-col gap-1 mb-2">
               {(apiKeys ?? []).map((k) => (
-                <div key={k.id} className="flex items-center justify-between px-3 py-1.5 rounded-md bg-[var(--lx-elevated)] text-xs">
+                <div key={k.id} className="flex items-center justify-between px-3 py-1.5 rounded-md bg-[var(--lx-elevated-glass)] text-xs">
                   <div>
                     <span className="text-[var(--lx-text)]">{k.label}</span>
                     <span className="ml-2 text-[var(--lx-text-muted)]">{k.prefix}…</span>
                   </div>
-                  <ActionButton small label="Widerrufen" danger onClick={() => revokeKeyMut.mutate(k.id)} />
+                  <ActionButton small label={t('users_page.revoke')} danger onClick={() => revokeKeyMut.mutate(k.id)} />
                 </div>
               ))}
             </div>
             <div className="flex gap-2">
-              <input className={`${inputCls} flex-1 text-xs py-1`} placeholder="Label für neuen Schlüssel"
+              <input className={`${inputCls} flex-1 text-xs py-1`} placeholder={t('users_page.key_label_placeholder')}
                 value={newKeyLabel} onChange={(e) => setNewKeyLabel(e.target.value)} />
               <button
                 onClick={() => createKeyMut.mutate()}
                 disabled={!newKeyLabel || createKeyMut.isPending}
                 className="lx-btn lx-btn--primary lx-btn--sm shrink-0"
               >
-                Erstellen
+                {t('users_page.create')}
               </button>
             </div>
           </div>
@@ -371,12 +372,12 @@ function UserDetailPanel({
           <div className="mt-auto pt-4 border-t border-[var(--lx-border-soft)]">
             {deleteConfirm ? (
               <div className="flex gap-2 items-center">
-                <span className="text-xs text-[var(--lx-state-down)]">Benutzer wirklich löschen?</span>
-                <ActionButton small label="Ja, löschen" danger onClick={() => deleteUserMut.mutate()} />
-                <ActionButton small label="Abbrechen" onClick={() => setDeleteConfirm(false)} />
+                <span className="text-xs text-[var(--lx-state-down)]">{t('users_page.delete_confirm')}</span>
+                <ActionButton small label={t('users_page.delete_yes')} danger onClick={() => deleteUserMut.mutate()} />
+                <ActionButton small label={t('users_page.cancel')} onClick={() => setDeleteConfirm(false)} />
               </div>
             ) : (
-              <ActionButton label="Benutzer löschen" danger onClick={() => setDeleteConfirm(true)} />
+              <ActionButton label={t('users_page.delete_user')} danger onClick={() => setDeleteConfirm(true)} />
             )}
           </div>
         </div>
@@ -388,6 +389,7 @@ function UserDetailPanel({
 // ── Create user modal ─────────────────────────────────────────────────────────
 
 function CreateUserModal({ onClose }: { onClose: () => void }) {
+  const { t } = useTranslation('ui')
   const qc = useQueryClient()
   const [form, setForm] = useState({ username: '', password: '', full_name: '', email: '' })
   const [error, setError] = useState<string | null>(null)
@@ -399,24 +401,24 @@ function CreateUserModal({ onClose }: { onClose: () => void }) {
       qc.invalidateQueries({ queryKey: ['users'] })
       onClose()
     },
-    onError: (e) => setError(e instanceof Error ? e.message : 'Fehler'),
+    onError: (e) => setError(e instanceof Error ? e.message : t('common.error')),
   })
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       <div className="absolute inset-0 bg-black/50" onClick={onClose} />
-      <div className="relative z-10 w-full max-w-sm bg-[var(--lx-surface)] rounded-lg border border-[var(--lx-border-soft)] p-6">
+      <div className="relative z-10 w-full max-w-sm bg-[var(--lx-surface-glass)] backdrop-blur-[16px] backdrop-saturate-150 rounded-lg border border-[var(--lx-border-soft)] p-6">
         <div className="flex items-center justify-between mb-4">
-          <h3 className="font-medium text-[var(--lx-text)]">Neuer Benutzer</h3>
+          <h3 className="font-medium text-[var(--lx-text)]">{t('users_page.create_user_title')}</h3>
           <button onClick={onClose} className="text-[var(--lx-text-muted)] hover:text-[var(--lx-text)]">✕</button>
         </div>
         <div className="flex flex-col gap-3">
-          {[
-            { label: 'Benutzername', key: 'username' },
-            { label: 'Passwort', key: 'password', type: 'password' },
-            { label: 'Anzeigename', key: 'full_name' },
-            { label: 'E-Mail', key: 'email' },
-          ].map(({ label, key, type }) => (
+          {([
+            { label: t('users_page.field_username'), key: 'username' },
+            { label: t('users_page.field_password'), key: 'password', type: 'password' },
+            { label: t('users_page.field_full_name'), key: 'full_name' },
+            { label: t('users_page.field_email'), key: 'email' },
+          ] as { label: string; key: string; type?: string }[]).map(({ label, key, type }) => (
             <div key={key} className="flex flex-col gap-1">
               <label className="lx-label">{label}</label>
               <input className={inputCls} type={type ?? 'text'}
@@ -430,7 +432,7 @@ function CreateUserModal({ onClose }: { onClose: () => void }) {
             disabled={!form.username || !form.password || mut.isPending}
             className="lx-btn lx-btn--primary lx-btn--block mt-2"
           >
-            {mut.isPending ? 'Erstellen…' : 'Erstellen'}
+            {mut.isPending ? t('users_page.creating') : t('users_page.create')}
           </button>
         </div>
       </div>
@@ -438,9 +440,10 @@ function CreateUserModal({ onClose }: { onClose: () => void }) {
   )
 }
 
-// ── Group membership (manage which users belong to a group) ─────────────────────
+// ── Group membership ──────────────────────────────────────────────────────────
 
 function GroupMembersSection({ group }: { group: GroupOut }) {
+  const { t } = useTranslation('ui')
   const qc = useQueryClient()
   const [search, setSearch] = useState('')
   const { data: users } = useQuery({
@@ -448,8 +451,6 @@ function GroupMembersSection({ group }: { group: GroupOut }) {
     queryFn: () => apiFetch<{ users: UserOut[] }>('/api/users').then((r) => r.users),
   })
 
-  // Membership lives on the user (user.groups by name), so toggling membership
-  // PATCHes the user's group list — naturally supports multiple groups per user.
   const patchUser = useMutation({
     mutationFn: ({ username, groups }: { username: string; groups: string[] }) =>
       apiFetch(`/api/users/${username}`, { method: 'PATCH', body: JSON.stringify({ groups }) }),
@@ -472,8 +473,8 @@ function GroupMembersSection({ group }: { group: GroupOut }) {
 
   return (
     <div className="mt-6 pt-4 border-t border-[var(--lx-border-soft)]">
-      <p className="lx-eyebrow mb-2">Mitglieder</p>
-      <SearchInput value={search} onChange={setSearch} placeholder="Mitglied suchen…" />
+      <p className="lx-eyebrow mb-2">{t('users_page.members')}</p>
+      <SearchInput value={search} onChange={setSearch} placeholder={t('users_page.search_member')} />
       <div className="flex flex-wrap gap-2">
         {filtered.map((u) => {
           const member = u.groups.includes(group.name)
@@ -487,7 +488,7 @@ function GroupMembersSection({ group }: { group: GroupOut }) {
               className={`px-2 py-1 text-xs rounded border transition-colors ${
                 member
                   ? 'border-[var(--lx-accent)] bg-[var(--lx-accent)]/10 text-[var(--lx-accent)]'
-                  : 'border-[var(--lx-border-soft)] bg-[var(--lx-elevated)] text-[var(--lx-text-muted)]'
+                  : 'border-[var(--lx-border-soft)] bg-[var(--lx-elevated-glass)] text-[var(--lx-text-muted)]'
               }`}
             >
               {u.full_name || u.username}
@@ -495,7 +496,7 @@ function GroupMembersSection({ group }: { group: GroupOut }) {
           )
         })}
         {filtered.length === 0 && (
-          <span className="text-xs text-[var(--lx-text-muted)]">Keine Benutzer gefunden.</span>
+          <span className="text-xs text-[var(--lx-text-muted)]">{t('users_page.no_users_found')}</span>
         )}
       </div>
     </div>
@@ -505,6 +506,7 @@ function GroupMembersSection({ group }: { group: GroupOut }) {
 // ── Groups tab ────────────────────────────────────────────────────────────────
 
 function GroupsTab() {
+  const { t } = useTranslation('ui')
   const qc = useQueryClient()
   const [selected, setSelected] = useState<GroupOut | null>(null)
   const [creating, setCreating] = useState(false)
@@ -517,7 +519,6 @@ function GroupsTab() {
       apiFetch<{ groups: GroupOut[] }>('/api/permissions/groups').then((r) => r.groups),
   })
 
-  // NB: /catalog returns permission *definitions* (objects), not bare strings.
   const { data: catalog } = useQuery({
     queryKey: ['permissions-catalog'],
     queryFn: () =>
@@ -572,7 +573,7 @@ function GroupsTab() {
         (p.category || '').toLowerCase().includes(permQuery),
     )
     .reduce<Record<string, PermissionDefOut[]>>((acc, p) => {
-      ;(acc[p.category || 'Allgemein'] ||= []).push(p)
+      ;(acc[p.category || t('users_page.groups_label')] ||= []).push(p)
       return acc
     }, {})
 
@@ -581,18 +582,18 @@ function GroupsTab() {
       {/* Group list */}
       <div className="md:col-span-1">
         <div className="flex items-center justify-between mb-2">
-          <span className="lx-eyebrow">Gruppen</span>
+          <span className="lx-eyebrow">{t('users_page.groups_label')}</span>
           <button
             onClick={() => setCreating(true)}
             className="text-xs text-[var(--lx-accent)] hover:opacity-80"
           >
-            + Neu
+            {t('users_page.new_group')}
           </button>
         </div>
 
         {creating && (
           <div className="mb-2 flex gap-2">
-            <input className={`${inputCls} text-xs py-1 flex-1`} placeholder="Gruppenname"
+            <input className={`${inputCls} text-xs py-1 flex-1`} placeholder={t('users_page.group_name_placeholder')}
               value={newGroupName} onChange={(e) => setNewGroupName(e.target.value)} />
             <button onClick={() => createGroupMut.mutate()} disabled={!newGroupName}
               className="lx-btn lx-btn--primary lx-btn--sm shrink-0">
@@ -609,7 +610,7 @@ function GroupsTab() {
               className={`px-3 py-2 rounded-md text-sm text-left transition-colors border ${
                 selected?.id === g.id
                   ? 'border-[var(--lx-accent)] bg-[var(--lx-accent)]/5 text-[var(--lx-accent)]'
-                  : 'border-[var(--lx-border-soft)] bg-[var(--lx-elevated)] text-[var(--lx-text)] hover:border-[var(--lx-accent)]/30'
+                  : 'border-[var(--lx-border-soft)] bg-[var(--lx-elevated-glass)] text-[var(--lx-text)] hover:border-[var(--lx-accent)]/30'
               }`}
             >
               {g.name}
@@ -623,10 +624,10 @@ function GroupsTab() {
         {selected ? (
           <Card>
             <div className="flex items-center justify-between mb-4">
-              <SectionTitle>Berechtigungen: {selected.name}</SectionTitle>
-              <ActionButton small label="Löschen" danger onClick={() => deleteGroupMut.mutate(selected.id)} />
+              <SectionTitle>{t('users_page.group_perms_title', { name: selected.name })}</SectionTitle>
+              <ActionButton small label={t('users_page.delete')} danger onClick={() => deleteGroupMut.mutate(selected.id)} />
             </div>
-            <SearchInput value={permSearch} onChange={setPermSearch} placeholder="Berechtigung suchen…" />
+            <SearchInput value={permSearch} onChange={setPermSearch} placeholder={t('users_page.search_perm')} />
             <div className="flex flex-col gap-4">
               {Object.entries(groupDetailByCat).map(([category, perms]) => (
                 <div key={category}>
@@ -642,7 +643,7 @@ function GroupsTab() {
                           className={`px-2 py-1 text-xs rounded border transition-colors ${
                             active
                               ? 'border-[var(--lx-accent)] bg-[var(--lx-accent)]/10 text-[var(--lx-accent)]'
-                              : 'border-[var(--lx-border-soft)] bg-[var(--lx-elevated)] text-[var(--lx-text-muted)]'
+                              : 'border-[var(--lx-border-soft)] bg-[var(--lx-elevated-glass)] text-[var(--lx-text-muted)]'
                           }`}
                         >
                           {perm.label || perm.id}
@@ -653,14 +654,14 @@ function GroupsTab() {
                 </div>
               ))}
               {Object.keys(groupDetailByCat).length === 0 && (
-                <p className="text-xs text-[var(--lx-text-muted)]">Keine Berechtigungen gefunden.</p>
+                <p className="text-xs text-[var(--lx-text-muted)]">{t('users_page.no_perms_found')}</p>
               )}
             </div>
             <GroupMembersSection group={selected} />
           </Card>
         ) : (
           <div className="flex items-center justify-center h-32 text-sm text-[var(--lx-text-muted)]">
-            Gruppe auswählen
+            {t('users_page.select_group')}
           </div>
         )}
       </div>
@@ -671,6 +672,7 @@ function GroupsTab() {
 // ── Users tab ─────────────────────────────────────────────────────────────────
 
 function UsersTab() {
+  const { t } = useTranslation('ui')
   const [selectedUser, setSelectedUser] = useState<UserOut | null>(null)
   const [creating, setCreating] = useState(false)
 
@@ -683,11 +685,11 @@ function UsersTab() {
     <div>
       <div className="flex items-center justify-between mb-4">
         <span className="lx-eyebrow">
-          {users?.length ?? 0} Benutzer
+          {t('users_page.user_count', { count: users?.length ?? 0 })}
         </span>
         <button onClick={() => setCreating(true)} className="lx-btn lx-btn--primary lx-btn--sm">
           <span className="material-icons" style={{ fontSize: 16 }}>add</span>
-          Benutzer erstellen
+          {t('users_page.create_user_btn')}
         </button>
       </div>
 
@@ -696,10 +698,10 @@ function UsersTab() {
           <div
             key={u.username}
             onClick={() => setSelectedUser(u)}
-            className="flex items-center justify-between px-4 py-3 rounded-md bg-[var(--lx-surface)] border border-[var(--lx-border-soft)] hover:border-[var(--lx-accent)]/30 cursor-pointer transition-colors"
+            className="flex items-center justify-between px-4 py-3 rounded-md bg-[var(--lx-surface-glass)] backdrop-blur-[16px] backdrop-saturate-150 border border-[var(--lx-border-soft)] hover:border-[var(--lx-accent)]/30 cursor-pointer transition-colors"
           >
             <div className="flex items-center gap-3">
-              <div className="w-7 h-7 rounded-full bg-[var(--lx-elevated)] flex items-center justify-center text-xs font-medium text-[var(--lx-accent)]">
+              <div className="w-7 h-7 rounded-full bg-[var(--lx-elevated-glass)] flex items-center justify-center text-xs font-medium text-[var(--lx-accent)]">
                 {u.username[0].toUpperCase()}
               </div>
               <div>
@@ -728,29 +730,34 @@ function UsersTab() {
 
 // ── Main page ─────────────────────────────────────────────────────────────────
 
-const TABS = ['Benutzer', 'Gruppen & Rechte'] as const
-type Tab = (typeof TABS)[number]
+type Tab = 'users' | 'groups'
 
 export default function UsersPage() {
-  const [tab, setTab] = useState<Tab>('Benutzer')
+  const { t } = useTranslation('ui')
+  const [tab, setTab] = useState<Tab>('users')
+
+  const tabs: { id: Tab; label: string }[] = [
+    { id: 'users', label: t('users_page.tab_users') },
+    { id: 'groups', label: t('users_page.tab_groups') },
+  ]
 
   return (
     <div className="max-w-5xl mx-auto px-6 py-8 md:px-8">
       <div className="mb-6">
-        <h1 className="text-xl font-semibold text-[var(--lx-text)] tracking-tight">Benutzerverwaltung</h1>
-        <p className="text-sm text-[var(--lx-text-muted)] mt-1">Benutzer, Gruppen und Berechtigungen</p>
+        <h1 className="text-xl font-semibold text-[var(--lx-text)] tracking-tight">{t('users_page.page_title')}</h1>
+        <p className="text-sm text-[var(--lx-text-muted)] mt-1">{t('users_page.page_subtitle')}</p>
       </div>
 
       <div className="lx-tabs mb-6">
-        {TABS.map((t) => (
-          <button key={t} onClick={() => setTab(t)} className={`lx-tab ${tab === t ? 'lx-tab--active' : ''}`}>
-            {t}
+        {tabs.map((tab_) => (
+          <button key={tab_.id} onClick={() => setTab(tab_.id)} className={`lx-tab ${tab === tab_.id ? 'lx-tab--active' : ''}`}>
+            {tab_.label}
           </button>
         ))}
       </div>
 
-      {tab === 'Benutzer' && <UsersTab />}
-      {tab === 'Gruppen & Rechte' && <GroupsTab />}
+      {tab === 'users' && <UsersTab />}
+      {tab === 'groups' && <GroupsTab />}
     </div>
   )
 }

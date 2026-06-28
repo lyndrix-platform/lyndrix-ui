@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useTranslation } from 'react-i18next'
 import { RefreshCw, ArrowUpCircle, Trash2, Check, Package, Settings } from 'lucide-react'
 import { apiFetch } from '../lib/api'
 import { toast } from '../lib/toast'
@@ -19,19 +20,19 @@ function Tabs({
   active,
   onChange,
 }: {
-  tabs: string[]
+  tabs: { id: string; label: string }[]
   active: string
-  onChange: (t: string) => void
+  onChange: (id: string) => void
 }) {
   return (
     <div className="lx-tabs mb-6">
       {tabs.map((t) => (
         <button
-          key={t}
-          onClick={() => onChange(t)}
-          className={`lx-tab ${active === t ? 'lx-tab--active' : ''}`}
+          key={t.id}
+          onClick={() => onChange(t.id)}
+          className={`lx-tab ${active === t.id ? 'lx-tab--active' : ''}`}
         >
-          {t}
+          {t.label}
         </button>
       ))}
     </div>
@@ -117,7 +118,7 @@ function IconBtn({
         'p-1.5 rounded-md transition-colors disabled:opacity-40',
         variant === 'danger'
           ? 'text-[var(--lx-text-muted)] hover:text-[var(--lx-state-down)] hover:bg-[var(--lx-state-down)]/10'
-          : 'text-[var(--lx-text-muted)] hover:text-[var(--lx-text)] hover:bg-[var(--lx-elevated)]',
+          : 'text-[var(--lx-text-muted)] hover:text-[var(--lx-text)] hover:bg-[var(--lx-elevated-glass)]',
       ].join(' ')}
     >
       {children}
@@ -140,20 +141,18 @@ function ConfirmDialog({
   onCancel: () => void
   loading: boolean
 }) {
+  const { t } = useTranslation('ui')
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
-      <div className="w-full max-w-sm mx-4 p-5 rounded-xl bg-[var(--lx-surface)] border border-[var(--lx-border-soft)] shadow-xl">
+      <div className="w-full max-w-sm mx-4 p-5 rounded-xl bg-[var(--lx-surface-glass)] backdrop-blur-[16px] backdrop-saturate-150 border border-[var(--lx-border-soft)] shadow-xl">
         <h3 className="text-sm font-semibold text-[var(--lx-text)] mb-2">{title}</h3>
         <p className="text-sm text-[var(--lx-text-muted)] mb-5">{message}</p>
         <div className="flex justify-end gap-2">
-          <button
-            onClick={onCancel}
-            className="lx-btn lx-btn--secondary lx-btn--sm"
-          >
-            Abbrechen
+          <button onClick={onCancel} className="lx-btn lx-btn--secondary lx-btn--sm">
+            {t('plugins_page.cancel')}
           </button>
           <button onClick={onConfirm} disabled={loading} className="lx-btn lx-btn--danger lx-btn--sm">
-            {loading ? 'Bitte warten…' : 'Bestätigen'}
+            {loading ? t('plugins_page.please_wait') : t('plugins_page.confirm')}
           </button>
         </div>
       </div>
@@ -164,6 +163,7 @@ function ConfirmDialog({
 // ─── Install dialog ───────────────────────────────────────────────────────────
 
 function InstallDialog({ initialRepoUrl = '', onClose }: { initialRepoUrl?: string; onClose: () => void }) {
+  const { t } = useTranslation('ui')
   const queryClient = useQueryClient()
   const [repoUrl, setRepoUrl] = useState(initialRepoUrl)
   const [version, setVersion] = useState('latest')
@@ -185,20 +185,20 @@ function InstallDialog({ initialRepoUrl = '', onClose }: { initialRepoUrl?: stri
         body: JSON.stringify({ url: repoUrl, version }),
       }),
     onSuccess: () => {
-      toast.success('Installation gestartet')
+      toast.success(t('plugins_page.install_started'))
       void queryClient.invalidateQueries({ queryKey: ['plugins'] })
       onClose()
     },
     onError: (err) => {
-      toast.error(err instanceof Error ? err.message : 'Installation fehlgeschlagen')
+      toast.error(err instanceof Error ? err.message : t('plugins_page.install_failed'))
     },
   })
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
-      <div className="w-full max-w-md mx-4 p-6 rounded-xl bg-[var(--lx-surface)] border border-[var(--lx-border-soft)] shadow-xl">
+      <div className="w-full max-w-md mx-4 p-6 rounded-xl bg-[var(--lx-surface-glass)] backdrop-blur-[16px] backdrop-saturate-150 border border-[var(--lx-border-soft)] shadow-xl">
         <div className="flex items-center justify-between mb-5">
-          <h3 className="text-sm font-semibold text-[var(--lx-text)]">Plugin installieren</h3>
+          <h3 className="text-sm font-semibold text-[var(--lx-text)]">{t('plugins_page.install_title')}</h3>
           <button
             onClick={onClose}
             className="text-[var(--lx-text-muted)] hover:text-[var(--lx-text)] text-lg leading-none p-1"
@@ -210,7 +210,7 @@ function InstallDialog({ initialRepoUrl = '', onClose }: { initialRepoUrl?: stri
         <div className="flex flex-col gap-4">
           <div className="flex flex-col gap-1.5">
             <label className="text-xs text-[var(--lx-text-muted)] uppercase tracking-wide">
-              Repository-URL
+              {t('plugins_page.repo_url')}
             </label>
             <input
               type="text"
@@ -223,10 +223,10 @@ function InstallDialog({ initialRepoUrl = '', onClose }: { initialRepoUrl?: stri
 
           <div className="flex flex-col gap-1.5">
             <label className="text-xs text-[var(--lx-text-muted)] uppercase tracking-wide flex items-center gap-2">
-              Version
+              {t('plugins_page.version_label')}
               {versionsFetching && (
                 <span className="text-[var(--lx-accent)] normal-case tracking-normal font-normal">
-                  Lade…
+                  {t('common.loading')}
                 </span>
               )}
             </label>
@@ -245,7 +245,7 @@ function InstallDialog({ initialRepoUrl = '', onClose }: { initialRepoUrl?: stri
               <button
                 onClick={() => setRefreshCount((c) => c + 1)}
                 disabled={versionsFetching || repoUrl.length <= 10}
-                title="Verfügbare Versionen neu laden"
+                title={t('plugins_page.refresh_versions')}
                 className="px-2 rounded-md border border-[var(--lx-border-soft)] text-[var(--lx-text-muted)] hover:text-[var(--lx-accent)] hover:border-[var(--lx-accent)]/40 transition-colors disabled:opacity-40 shrink-0"
               >
                 <RefreshCw size={13} className={versionsFetching ? 'animate-spin' : ''} />
@@ -254,26 +254,23 @@ function InstallDialog({ initialRepoUrl = '', onClose }: { initialRepoUrl?: stri
           </div>
 
           {installMutation.isError && (
-            <p className="text-xs text-[var(--lx-state-down)] bg-[var(--lx-elevated)] px-3 py-2 rounded-md">
+            <p className="text-xs text-[var(--lx-state-down)] bg-[var(--lx-elevated-glass)] px-3 py-2 rounded-md">
               {installMutation.error instanceof Error
                 ? installMutation.error.message
-                : 'Installation fehlgeschlagen'}
+                : t('plugins_page.install_failed')}
             </p>
           )}
 
           <div className="flex justify-end gap-2 pt-1">
-            <button
-              onClick={onClose}
-              className="lx-btn lx-btn--secondary lx-btn--sm"
-            >
-              Abbrechen
+            <button onClick={onClose} className="lx-btn lx-btn--secondary lx-btn--sm">
+              {t('plugins_page.cancel')}
             </button>
             <button
               onClick={() => installMutation.mutate()}
               disabled={!repoUrl || installMutation.isPending}
               className="lx-btn lx-btn--primary lx-btn--sm"
             >
-              {installMutation.isPending ? 'Installiere…' : 'Installieren'}
+              {installMutation.isPending ? t('plugins_page.installing') : t('plugins_page.install_btn')}
             </button>
           </div>
         </div>
@@ -285,6 +282,7 @@ function InstallDialog({ initialRepoUrl = '', onClose }: { initialRepoUrl?: stri
 // ─── Upgrade dialog ───────────────────────────────────────────────────────────
 
 function UpgradeDialog({ plugin, onClose }: { plugin: PluginOut; onClose: () => void }) {
+  const { t } = useTranslation('ui')
   const queryClient = useQueryClient()
   const [version, setVersion] = useState('latest')
   const [refreshCount, setRefreshCount] = useState(0)
@@ -305,22 +303,26 @@ function UpgradeDialog({ plugin, onClose }: { plugin: PluginOut; onClose: () => 
         body: JSON.stringify({ version }),
       }),
     onSuccess: () => {
-      toast.success(`${plugin.name} wird aktualisiert`)
+      toast.success(t('plugins_page.upgrading_toast', { name: plugin.name }))
       void queryClient.invalidateQueries({ queryKey: ['plugins'] })
       onClose()
     },
     onError: (err) => {
-      toast.error(err instanceof Error ? err.message : 'Update fehlgeschlagen')
+      toast.error(err instanceof Error ? err.message : t('plugins_page.update_failed'))
     },
   })
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
-      <div className="w-full max-w-sm mx-4 p-6 rounded-xl bg-[var(--lx-surface)] border border-[var(--lx-border-soft)] shadow-xl">
+      <div className="w-full max-w-sm mx-4 p-6 rounded-xl bg-[var(--lx-surface-glass)] backdrop-blur-[16px] backdrop-saturate-150 border border-[var(--lx-border-soft)] shadow-xl">
         <div className="flex items-center justify-between mb-5">
           <div>
-            <h3 className="text-sm font-semibold text-[var(--lx-text)]">{plugin.name} aktualisieren</h3>
-            <p className="text-xs text-[var(--lx-text-muted)] mt-0.5">Aktuell: v{plugin.version}</p>
+            <h3 className="text-sm font-semibold text-[var(--lx-text)]">
+              {t('plugins_page.upgrade_title', { name: plugin.name })}
+            </h3>
+            <p className="text-xs text-[var(--lx-text-muted)] mt-0.5">
+              {t('plugins_page.current_version', { version: plugin.version })}
+            </p>
           </div>
           <button
             onClick={onClose}
@@ -333,10 +335,10 @@ function UpgradeDialog({ plugin, onClose }: { plugin: PluginOut; onClose: () => 
         <div className="flex flex-col gap-4">
           <div className="flex flex-col gap-1.5">
             <label className="text-xs text-[var(--lx-text-muted)] uppercase tracking-wide flex items-center gap-2">
-              Ziel-Version
+              {t('plugins_page.target_version')}
               {versionsFetching && (
                 <span className="text-[var(--lx-accent)] normal-case tracking-normal font-normal">
-                  Lade…
+                  {t('common.loading')}
                 </span>
               )}
             </label>
@@ -355,7 +357,7 @@ function UpgradeDialog({ plugin, onClose }: { plugin: PluginOut; onClose: () => 
               <button
                 onClick={() => setRefreshCount((c) => c + 1)}
                 disabled={versionsFetching}
-                title="Verfügbare Versionen neu laden"
+                title={t('plugins_page.refresh_versions')}
                 className="px-2 rounded-md border border-[var(--lx-border-soft)] text-[var(--lx-text-muted)] hover:text-[var(--lx-accent)] hover:border-[var(--lx-accent)]/40 transition-colors disabled:opacity-40 shrink-0"
               >
                 <RefreshCw size={13} className={versionsFetching ? 'animate-spin' : ''} />
@@ -364,26 +366,23 @@ function UpgradeDialog({ plugin, onClose }: { plugin: PluginOut; onClose: () => 
           </div>
 
           {upgradeMutation.isError && (
-            <p className="text-xs text-[var(--lx-state-down)] bg-[var(--lx-elevated)] px-3 py-2 rounded-md">
+            <p className="text-xs text-[var(--lx-state-down)] bg-[var(--lx-elevated-glass)] px-3 py-2 rounded-md">
               {upgradeMutation.error instanceof Error
                 ? upgradeMutation.error.message
-                : 'Update fehlgeschlagen'}
+                : t('plugins_page.update_failed')}
             </p>
           )}
 
           <div className="flex justify-end gap-2 pt-1">
-            <button
-              onClick={onClose}
-              className="lx-btn lx-btn--secondary lx-btn--sm"
-            >
-              Abbrechen
+            <button onClick={onClose} className="lx-btn lx-btn--secondary lx-btn--sm">
+              {t('plugins_page.cancel')}
             </button>
             <button
               onClick={() => upgradeMutation.mutate()}
               disabled={upgradeMutation.isPending}
               className="lx-btn lx-btn--primary lx-btn--sm"
             >
-              {upgradeMutation.isPending ? 'Aktualisiere…' : 'Aktualisieren'}
+              {upgradeMutation.isPending ? t('plugins_page.upgrading') : t('plugins_page.upgrade_btn')}
             </button>
           </div>
         </div>
@@ -395,6 +394,7 @@ function UpgradeDialog({ plugin, onClose }: { plugin: PluginOut; onClose: () => 
 // ─── Plugin card ──────────────────────────────────────────────────────────────
 
 function PluginCard({ plugin }: { plugin: PluginOut }) {
+  const { t } = useTranslation('ui')
   const queryClient = useQueryClient()
   const navigate = useNavigate()
   const [confirmUninstall, setConfirmUninstall] = useState(false)
@@ -419,16 +419,16 @@ function PluginCard({ plugin }: { plugin: PluginOut }) {
       apiFetch(`/api/plugins/${plugin.id}/${action}`, { method: 'POST' }),
     onSuccess: (_data, action) => {
       const msgs: Record<string, string> = {
-        enable: `${plugin.name} aktiviert`,
-        disable: `${plugin.name} deaktiviert`,
-        reload: `${plugin.name} neugeladen`,
-        uninstall: `${plugin.name} deinstalliert`,
+        enable: `${plugin.name} ${t('plugins_page.status_active').toLowerCase()}`,
+        disable: `${plugin.name} ${t('plugins_page.status_inactive').toLowerCase()}`,
+        reload: `${plugin.name} ${t('plugins_page.reload').toLowerCase()}`,
+        uninstall: `${plugin.name} ${t('plugins_page.uninstall').toLowerCase()}`,
       }
       toast.success(msgs[action])
       void queryClient.invalidateQueries({ queryKey: ['plugins'] })
     },
     onError: (err) => {
-      toast.error(err instanceof Error ? err.message : 'Aktion fehlgeschlagen')
+      toast.error(err instanceof Error ? err.message : t('plugins_page.action_failed'))
     },
   })
 
@@ -436,12 +436,12 @@ function PluginCard({ plugin }: { plugin: PluginOut }) {
   const isPlugin = plugin.type === 'PLUGIN'
 
   const statusLabel: Record<string, string> = {
-    active: 'Aktiv',
-    inactive: 'Inaktiv',
-    failed: 'Fehler',
-    loading: 'Lädt…',
-    installing: 'Installiert…',
-    upgrading: 'Aktualisiert…',
+    active: t('plugins_page.status_active'),
+    inactive: t('plugins_page.status_inactive'),
+    failed: t('plugins_page.status_failed'),
+    loading: t('plugins_page.status_loading'),
+    installing: t('plugins_page.status_installing'),
+    upgrading: t('plugins_page.status_upgrading'),
   }
 
   const statusBadge =
@@ -455,8 +455,8 @@ function PluginCard({ plugin }: { plugin: PluginOut }) {
     <>
       {confirmUninstall && (
         <ConfirmDialog
-          title={`Plugin „${plugin.name}" deinstallieren?`}
-          message="Das Plugin und seine Daten werden dauerhaft entfernt. Diese Aktion kann nicht rückgängig gemacht werden."
+          title={t('plugins_page.uninstall_title', { name: plugin.name })}
+          message={t('plugins_page.uninstall_message')}
           onConfirm={() => {
             actionMutation.mutate('uninstall')
             setConfirmUninstall(false)
@@ -478,7 +478,7 @@ function PluginCard({ plugin }: { plugin: PluginOut }) {
         />
       )}
 
-      <div className="rounded-xl bg-[var(--lx-surface)] border border-[var(--lx-border-soft)] overflow-hidden transition-colors hover:border-[var(--lx-border)]">
+      <div className="rounded-xl bg-[var(--lx-surface-glass)] backdrop-blur-[16px] backdrop-saturate-150 border border-[var(--lx-border-soft)] overflow-hidden transition-colors hover:border-[var(--lx-border)]">
         {/* Header */}
         <div className="p-4 flex gap-3">
           <div
@@ -506,7 +506,7 @@ function PluginCard({ plugin }: { plugin: PluginOut }) {
             )}
             {actionMutation.isError && (
               <p className="text-xs text-[var(--lx-state-down)] mt-1">
-                {actionMutation.error instanceof Error ? actionMutation.error.message : 'Fehler'}
+                {actionMutation.error instanceof Error ? actionMutation.error.message : t('plugins_page.action_failed')}
               </p>
             )}
             {showError && plugin.error_message && (
@@ -522,7 +522,7 @@ function PluginCard({ plugin }: { plugin: PluginOut }) {
             {plugin.error_message ? (
               <button
                 onClick={() => setShowError((v) => !v)}
-                title="Fehlerdetails anzeigen"
+                title={t('plugins_page.show_error')}
                 className={`lx-badge ${statusBadge} cursor-pointer hover:opacity-80 transition-opacity`}
               >
                 {statusLabel[plugin.status] ?? plugin.status}
@@ -538,7 +538,7 @@ function PluginCard({ plugin }: { plugin: PluginOut }) {
 
         {/* Action bar — only for user-managed plugins */}
         {isPlugin && (
-          <div className="flex items-center justify-between px-4 py-2.5 border-t border-[var(--lx-border-soft)] bg-[var(--lx-elevated)]/40">
+          <div className="flex items-center justify-between px-4 py-2.5 border-t border-[var(--lx-border-soft)] bg-[var(--lx-elevated-glass)]/40">
             <div className="flex items-center gap-2">
               <ToggleSwitch
                 checked={plugin.is_active}
@@ -546,10 +546,10 @@ function PluginCard({ plugin }: { plugin: PluginOut }) {
                   actionMutation.mutate(plugin.is_active ? 'disable' : 'enable')
                 }
                 disabled={isBusy}
-                label={plugin.is_active ? 'Deaktivieren' : 'Aktivieren'}
+                label={plugin.is_active ? t('plugins_page.disable') : t('plugins_page.enable')}
               />
               <span className="text-xs text-[var(--lx-text-muted)]">
-                {plugin.is_active ? 'Aktiv' : 'Inaktiv'}
+                {plugin.is_active ? t('plugins_page.status_active') : t('plugins_page.status_inactive')}
               </span>
             </div>
 
@@ -557,7 +557,7 @@ function PluginCard({ plugin }: { plugin: PluginOut }) {
               <IconBtn
                 onClick={() => actionMutation.mutate('reload')}
                 disabled={isBusy}
-                title="Neuladen"
+                title={t('plugins_page.reload')}
               >
                 <RefreshCw size={14} />
               </IconBtn>
@@ -566,7 +566,7 @@ function PluginCard({ plugin }: { plugin: PluginOut }) {
                 <IconBtn
                   onClick={openSettings}
                   disabled={isBusy}
-                  title="Einstellungen"
+                  title={t('plugins_page.settings_btn')}
                 >
                   <Settings size={14} />
                 </IconBtn>
@@ -576,7 +576,7 @@ function PluginCard({ plugin }: { plugin: PluginOut }) {
                 <IconBtn
                   onClick={() => setShowUpgrade(true)}
                   disabled={isBusy}
-                  title="Aktualisieren"
+                  title={t('plugins_page.upgrade')}
                 >
                   <ArrowUpCircle size={14} />
                 </IconBtn>
@@ -585,7 +585,7 @@ function PluginCard({ plugin }: { plugin: PluginOut }) {
               <IconBtn
                 onClick={() => setConfirmUninstall(true)}
                 disabled={isBusy}
-                title="Deinstallieren"
+                title={t('plugins_page.uninstall')}
                 variant="danger"
               >
                 <Trash2 size={14} />
@@ -601,6 +601,7 @@ function PluginCard({ plugin }: { plugin: PluginOut }) {
 // ─── Installed tab ────────────────────────────────────────────────────────────
 
 function InstalledTab() {
+  const { t } = useTranslation('ui')
   const [showInstall, setShowInstall] = useState(false)
 
   const { data: plugins, isLoading } = useQuery({
@@ -626,18 +627,18 @@ function InstalledTab() {
       <div className="flex flex-col gap-6">
         <div className="flex items-center justify-between">
           <span className="text-xs text-[var(--lx-text-muted)]">
-            {pluginModules.length} Plugin{pluginModules.length !== 1 ? 's' : ''} installiert
+            {t('plugins_page.installed_count', { count: pluginModules.length })}
           </span>
           <button onClick={() => setShowInstall(true)} className="lx-btn lx-btn--primary lx-btn--sm">
             <span className="material-icons" style={{ fontSize: 16 }}>add</span>
-            Plugin installieren
+            {t('plugins_page.install_plugin_btn')}
           </button>
         </div>
 
         {pluginModules.length > 0 && (
           <section>
             <h2 className="text-xs font-semibold uppercase tracking-wide text-[var(--lx-text-muted)] mb-3">
-              Plugins
+              {t('plugins_page.section_plugins')}
             </h2>
             <div className="flex flex-col gap-2">
               {pluginModules.map((p) => (
@@ -650,7 +651,7 @@ function InstalledTab() {
         {coreModules.length > 0 && (
           <section>
             <h2 className="text-xs font-semibold uppercase tracking-wide text-[var(--lx-text-muted)] mb-3">
-              Core-Module
+              {t('plugins_page.section_core')}
             </h2>
             <div className="flex flex-col gap-2">
               {coreModules.map((p) => (
@@ -664,10 +665,10 @@ function InstalledTab() {
           <div className="flex flex-col items-center justify-center gap-3 py-16 text-center">
             <Package size={32} className="text-[var(--lx-text-muted)] opacity-40" />
             <p className="text-sm text-[var(--lx-text-muted)]">
-              Keine Module installiert.
+              {t('plugins_page.no_modules')}
             </p>
             <button onClick={() => setShowInstall(true)} className="lx-btn lx-btn--primary">
-              Erstes Plugin installieren
+              {t('plugins_page.install_first')}
             </button>
           </div>
         )}
@@ -688,6 +689,7 @@ interface CustomRepo {
 }
 
 function MarketplaceTab() {
+  const { t } = useTranslation('ui')
   const queryClient = useQueryClient()
   const [installPlugin, setInstallPlugin] = useState<MarketplacePlugin | null>(null)
   const [upgradePlugin, setUpgradePlugin] = useState<PluginOut | null>(null)
@@ -701,7 +703,6 @@ function MarketplaceTab() {
       ),
   })
 
-  // Cross-reference to show "Installiert" badge on already-installed plugins
   const { data: installedPlugins } = useQuery({
     queryKey: ['plugins'],
     queryFn: () => apiFetch<{ plugins: PluginOut[] }>('/api/plugins').then((r) => r.plugins),
@@ -723,10 +724,10 @@ function MarketplaceTab() {
       void queryClient.invalidateQueries({ queryKey: ['custom-repos'] })
       void queryClient.invalidateQueries({ queryKey: ['marketplace'] })
       setNewRepoUrl('')
-      toast.success('Repository hinzugefügt')
+      toast.success(t('plugins_page.repo_added'))
     },
     onError: (err) => {
-      toast.error(err instanceof Error ? err.message : 'Fehler beim Hinzufügen')
+      toast.error(err instanceof Error ? err.message : t('plugins_page.repo_add_failed'))
     },
   })
 
@@ -760,7 +761,7 @@ function MarketplaceTab() {
       {/* Available plugins */}
       <section className="mb-8">
         <h2 className="text-xs font-semibold uppercase tracking-wide text-[var(--lx-text-muted)] mb-3">
-          Verfügbare Plugins
+          {t('plugins_page.marketplace_available')}
         </h2>
 
         {!marketplace && (
@@ -771,7 +772,7 @@ function MarketplaceTab() {
 
         {marketplace && marketplace.length === 0 && (
           <p className="text-sm text-[var(--lx-text-muted)] py-6 text-center">
-            Keine Plugins im Marketplace verfügbar.
+            {t('plugins_page.marketplace_empty')}
           </p>
         )}
 
@@ -785,9 +786,8 @@ function MarketplaceTab() {
               return (
                 <div
                   key={mp.repo_url}
-                  className="rounded-xl bg-[var(--lx-surface)] border border-[var(--lx-border-soft)] overflow-hidden transition-colors hover:border-[var(--lx-border)]"
+                  className="rounded-xl bg-[var(--lx-surface-glass)] backdrop-blur-[16px] backdrop-saturate-150 border border-[var(--lx-border-soft)] overflow-hidden transition-colors hover:border-[var(--lx-border)]"
                 >
-                  {/* Card body */}
                   <div className="p-4 flex gap-3">
                     <div
                       className="w-10 h-10 rounded-lg flex items-center justify-center shrink-0 text-[var(--lx-accent-2)]"
@@ -822,7 +822,7 @@ function MarketplaceTab() {
                           {mp.tags.map((tag) => (
                             <span
                               key={tag}
-                              className="text-[10px] px-1.5 py-0.5 rounded-full bg-[var(--lx-elevated)] text-[var(--lx-text-muted)]"
+                              className="text-[10px] px-1.5 py-0.5 rounded-full bg-[var(--lx-elevated-glass)] text-[var(--lx-text-muted)]"
                             >
                               {tag}
                             </span>
@@ -832,13 +832,11 @@ function MarketplaceTab() {
                     </div>
                   </div>
 
-                  {/* Action bar */}
-                  <div className="flex items-center justify-between px-4 py-2.5 border-t border-[var(--lx-border-soft)] bg-[var(--lx-elevated)]/40">
-                    {/* Left: installed version badge (only when installed) */}
+                  <div className="flex items-center justify-between px-4 py-2.5 border-t border-[var(--lx-border-soft)] bg-[var(--lx-elevated-glass)]/40">
                     {isInstalled && installedEntry ? (
                       <span className="inline-flex items-center gap-1.5 text-xs text-[var(--lx-state-up)]">
                         <Check size={12} />
-                        <span>Installiert</span>
+                        <span>{t('plugins_page.installed_badge')}</span>
                         <span className="font-mono px-1.5 py-0.5 rounded bg-[var(--lx-state-up)]/10">
                           v{installedEntry.version}
                         </span>
@@ -847,17 +845,16 @@ function MarketplaceTab() {
                       <span />
                     )}
 
-                    {/* Right: action button */}
                     {isInstalled && installedEntry ? (
                       <button
                         onClick={() => setUpgradePlugin(installedEntry)}
                         className="lx-btn lx-btn--secondary lx-btn--sm"
                       >
-                        Version ändern
+                        {t('plugins_page.change_version')}
                       </button>
                     ) : (
                       <button onClick={() => setInstallPlugin(mp)} className="lx-btn lx-btn--primary lx-btn--sm">
-                        Installieren
+                        {t('plugins_page.install_btn')}
                       </button>
                     )}
                   </div>
@@ -871,10 +868,10 @@ function MarketplaceTab() {
       {/* Custom repos */}
       <section>
         <h2 className="text-xs font-semibold uppercase tracking-wide text-[var(--lx-text-muted)] mb-3">
-          Eigene Repositories
+          {t('plugins_page.custom_repos')}
         </h2>
 
-        <div className="rounded-xl bg-[var(--lx-surface)] border border-[var(--lx-border-soft)] overflow-hidden transition-colors hover:border-[var(--lx-border)]">
+        <div className="rounded-xl bg-[var(--lx-surface-glass)] backdrop-blur-[16px] backdrop-saturate-150 border border-[var(--lx-border-soft)] overflow-hidden transition-colors hover:border-[var(--lx-border)]">
           {(customRepos ?? []).length > 0 && (
             <div className="divide-y divide-[var(--lx-border-soft)]">
               {(customRepos ?? []).map((repo) => (
@@ -908,7 +905,7 @@ function MarketplaceTab() {
 
           {(customRepos ?? []).length === 0 && (
             <p className="text-xs text-[var(--lx-text-muted)] px-4 pt-4 pb-0">
-              Keine eigenen Repositories konfiguriert.
+              {t('plugins_page.no_custom_repos')}
             </p>
           )}
 
@@ -931,7 +928,7 @@ function MarketplaceTab() {
               disabled={!newRepoUrl.trim() || addRepoMutation.isPending}
               className="lx-btn lx-btn--primary lx-btn--sm shrink-0"
             >
-              Hinzufügen
+              {t('plugins_page.add_repo')}
             </button>
           </div>
         </div>
@@ -943,21 +940,29 @@ function MarketplaceTab() {
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function PluginsPage() {
-  const [tab, setTab] = useState('Installiert')
+  const { t } = useTranslation('ui')
+  const [tab, setTab] = useState('installed')
 
   return (
     <div className="max-w-5xl mx-auto px-6 py-8 md:px-8">
       <div className="mb-6">
-        <h1 className="text-xl font-semibold text-[var(--lx-text)]">Plugin-Verwaltung</h1>
+        <h1 className="text-xl font-semibold text-[var(--lx-text)]">{t('plugins_page.page_title')}</h1>
         <p className="text-sm text-[var(--lx-text-muted)] mt-1">
-          Installierte Module verwalten und neue Plugins aus dem Marketplace hinzufügen.
+          {t('plugins_page.page_subtitle')}
         </p>
       </div>
 
-      <Tabs tabs={['Installiert', 'Marketplace']} active={tab} onChange={setTab} />
+      <Tabs
+        tabs={[
+          { id: 'installed', label: t('plugins_page.tab_installed') },
+          { id: 'marketplace', label: t('plugins_page.tab_marketplace') },
+        ]}
+        active={tab}
+        onChange={setTab}
+      />
 
-      {tab === 'Installiert' && <InstalledTab />}
-      {tab === 'Marketplace' && <MarketplaceTab />}
+      {tab === 'installed' && <InstalledTab />}
+      {tab === 'marketplace' && <MarketplaceTab />}
     </div>
   )
 }

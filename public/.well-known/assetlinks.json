@@ -8,5 +8,15 @@
         "2A:9F:B0:2C:85:62:BB:13:A9:CA:0D:B4:B1:B2:F5:AB:F1:55:95:C7:E5:DC:5D:52:A9:84:4A:98:22:4B:2F:49"
       ]
     }
+  },
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "de.famfeser.lyndrix.dev",
+      "sha256_cert_fingerprints": [
+        "C1:25:B6:8B:98:27:70:80:B7:C0:52:C5:FF:C1:D6:88:4F:9E:2C:05:B1:74:35:6C:FE:10:77:D8:62:72:11:F5"
+      ]
+    }
   }
 ]

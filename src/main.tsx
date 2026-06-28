@@ -1,6 +1,6 @@
 import * as React from 'react'
 import * as ReactDOMClient from 'react-dom/client'
-import { StrictMode, Suspense, lazy } from 'react'
+import { StrictMode, Suspense, lazy, useEffect, useState } from 'react'
 import { createRoot } from 'react-dom/client'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { BrowserRouter } from 'react-router-dom'
@@ -27,8 +27,14 @@ import '@fontsource/jetbrains-mono/600.css'
 import '@fontsource/jetbrains-mono/700.css'
 import 'material-icons/iconfont/filled.css'
 
+import * as ReactI18next from 'react-i18next'
+import i18n, { bootstrapI18n, hasUsableCatalog } from './lib/i18n'
+import { getCatalog } from './lib/catalogStore'
+import { sharedUi } from './lib/sharedUi'
 import './index.css'
 import App from './App.tsx'
+import LoadingSplash from './components/LoadingSplash'
+import { ThemeProvider } from './theme/ThemeProvider'
 
 // Expose React for IIFE plugin bundles so they share this instance.
 // Plugin vite.ui.config.ts should declare:
@@ -36,6 +42,12 @@ import App from './App.tsx'
 //   globals: { react: '__lyndrix_react', 'react-dom/client': '__lyndrix_react_dom_client' }
 ;(window as unknown as Record<string, unknown>)['__lyndrix_react'] = React
 ;(window as unknown as Record<string, unknown>)['__lyndrix_react_dom_client'] = ReactDOMClient
+// Shared UI library + i18n instance/context for federated plugin bundles.
+// Plugins externalize '@lyndrix/ui' → __lyndrix_ui, 'react-i18next' →
+// __lyndrix_react_i18next, 'i18next' → __lyndrix_i18n in their vite config.
+;(window as unknown as Record<string, unknown>)['__lyndrix_ui'] = sharedUi
+;(window as unknown as Record<string, unknown>)['__lyndrix_i18n'] = i18n
+;(window as unknown as Record<string, unknown>)['__lyndrix_react_i18next'] = ReactI18next
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -46,17 +58,61 @@ const queryClient = new QueryClient({
   },
 })
 
+/**
+ * Gates first paint on localization. With a cached catalog (returning visit) we
+ * render immediately and revalidate in the background — components re-render via
+ * i18next's `added` binding. On a true first run with no cache we show a neutral,
+ * string-free splash until the first catalog load resolves, retrying while the
+ * device is offline.
+ */
+function I18nGate({ children }: { children: React.ReactNode }) {
+  const hasCache = hasUsableCatalog(i18n.language) || !!getCatalog(i18n.language)
+  const [ready, setReady] = useState(hasCache)
+
+  useEffect(() => {
+    let alive = true
+    let backoff: ReturnType<typeof setTimeout> | undefined
+
+    async function attempt() {
+      const ok = await bootstrapI18n()
+      if (!alive) return
+      if (hasCache || ok) {
+        setReady(true)
+        return
+      }
+      // No cache and the fetch failed (offline first run): retry with backoff
+      // and immediately when connectivity returns.
+      backoff = setTimeout(attempt, 3000)
+    }
+
+    void attempt()
+    const onOnline = () => void attempt()
+    window.addEventListener('online', onOnline)
+    return () => {
+      alive = false
+      if (backoff) clearTimeout(backoff)
+      window.removeEventListener('online', onOnline)
+    }
+  }, [hasCache])
+
+  return ready ? <>{children}</> : <LoadingSplash />
+}
+
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <QueryClientProvider client={queryClient}>
-      <BrowserRouter basename={import.meta.env.BASE_URL.replace(/\/$/, '')}>
-        <App />
-      </BrowserRouter>
-      {ReactQueryDevtools && (
-        <Suspense fallback={null}>
-          <ReactQueryDevtools initialIsOpen={false} />
-        </Suspense>
-      )}
-    </QueryClientProvider>
+    <ThemeProvider>
+      <QueryClientProvider client={queryClient}>
+        <I18nGate>
+          <BrowserRouter basename={import.meta.env.BASE_URL.replace(/\/$/, '')}>
+            <App />
+          </BrowserRouter>
+        </I18nGate>
+        {ReactQueryDevtools && (
+          <Suspense fallback={null}>
+            <ReactQueryDevtools initialIsOpen={false} />
+          </Suspense>
+        )}
+      </QueryClientProvider>
+    </ThemeProvider>
   </StrictMode>,
 )

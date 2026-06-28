@@ -85,7 +85,7 @@ export default function ProfileMenu() {
       </button>
 
       {open && (
-        <div className="lx-card absolute right-0 mt-2 w-72 z-50 shadow-xl overflow-hidden">
+        <div className="lx-popover absolute right-0 mt-2 w-72 z-50 overflow-hidden">
           {/* Identity */}
           <div className="px-3 py-3 border-b border-[var(--lx-border-soft)]">
             <p className="text-sm font-semibold text-[var(--lx-text)] truncate">
