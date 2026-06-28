@@ -48,12 +48,16 @@ Vault auto-unseals via `LYNDRIX_MASTER_KEY` in `../lyndrix-core/docker/.env.dev`
 Verify both stacks respond:
 
 ```bash
-curl -s http://localhost:8081/api/health        # {"status":"unknown","core_version":"0.2.2","api_version":"1.2.0","plugins":{...}}  (core_version varies)
+curl -s http://localhost:8081/api/health        # {"status":"unknown"}  — unauth is trimmed to status only
 docker compose -f docker/docker-compose.dev.yml ps   # lyndrix-ui-dev Up
 ```
 
 `status` is `"unknown"` even when healthy — it aggregates plugin `health()`,
-which most plugins don't implement. A 200 with `core_version` means core is up;
+which most plugins don't implement (severity `error > degraded > unknown > ok`,
+so it lands on `unknown`; treat `unknown`/`ok` as healthy, only `error`/`degraded`
+as real problems). **Unauthenticated `/api/health` returns only `{"status":"unknown"}`**
+— `core_version` / `api_version` / `plugins` are auth-gated, so send a bearer token
+(see "Verify the backend API directly") to get them. A 200 at all means core booted;
 the dashboard header shows the real "Vault ready" state.
 
 ## Drive it (agent path — START HERE)
@@ -77,10 +81,11 @@ node .claude/skills/run-lyndrix-ui/driver.mjs /plugins /tmp/gear.png 'button[tit
 Then **look at the PNG** (Read the file). The deep-link command lands on
 "Docker Manager — Einstellungen" with the Docker Hosts list + add-host form.
 
-### Verified routes (this session, against core 0.2.2)
+### Verified routes (against core 0.3.1)
 
 | Route | What renders |
 |---|---|
+| `/dashboard` | Welcome header + top-right Core/Vault status dot, Platform stat tiles, then the sectioned launchpad: **Core** · **Apps** · **Tools** · **Dienste** (only non-empty sections render) |
 | `/settings` | Tabbed settings (lx-tabs bar): Allgemein · Darstellung · Auth-Anbieter · Plugins · Profil · System Info · Benachrichtigungen |
 | `/settings?section=notifications` | Notification endpoint bindings (active toggle + provider) + per-provider config cards |
 | `/users` | Benutzerverwaltung with **Benutzer** / **Gruppen & Rechte** tabs; user rows show role chips |
@@ -150,6 +155,33 @@ log in as `admin`. Useless headless — for any automated check use the driver.
   when reading the admin password; do the same in any shell extraction.
 - **chromium is the snap build** (`/snap/bin/chromium`). `--headless=new
   --no-sandbox` works; `--no-sandbox` is required in this container.
+- **Screenshots capture the viewport only — content below the fold is cut off.**
+  The app scrolls inside `<main className="flex-1 overflow-y-auto">`
+  (`AppShell.tsx`), NOT the document body, so CDP `captureBeyondViewport` does
+  **nothing** (the body is always viewport-height). The driver hardcodes
+  `--window-size=1400,900`. To see a long page (e.g. the full dashboard with all
+  launchpad sections), temporarily raise the window height — edit the
+  `--window-size` height in `driver.mjs` (e.g. `1400,1750`) for that run. A
+  click-to-scroll selector won't help; the whole page must fit the window.
+- **A core reload can HANG and make core unresponsive — `docker restart
+  lyndrix-core-dev` is the reliable fix.** uvicorn `--reload` watches core's tree
+  *including* mounted `plugins/`, so editing a plugin `.py` triggers a reload. But
+  the reload often gets stuck on `Waiting for connections to close. (CTRL+C to
+  force quit)` — a long-lived SSE stream or a State-Monitoring probe connection
+  never closes — and from then on **every HTTP request to :8081 hangs** (`curl`
+  exits 28 / timeout) even though `docker ps` shows the container "Up". Symptom in
+  `docker logs lyndrix-core-dev`: `WatchFiles detected changes ... Reloading` then
+  `Shutting down / Waiting for connections to close`. Cure: `docker restart
+  lyndrix-core-dev` and wait for `/api/health` to answer. Do this proactively after
+  editing any plugin `.py`, plugin manifest, or **core locale file**
+  (`app/locales/ui.{en,de}.json`) instead of trusting `--reload`. After locale
+  edits the React client revalidates the i18n catalog via `?v=` (the version
+  fingerprint bumps); sanity-check parity from lyndrix-core with `python3
+  scripts/check_i18n_keys.py` (en is source of truth). The Vite UI itself *does*
+  hot-reload cleanly — UI-only edits need no restart.
+- **Run the driver one at a time.** Login hashes with Argon2 (CPU-heavy); several
+  concurrent `driver.mjs` runs hammering `/api/auth/login` pile load on core and
+  can tip an already-reloading core over the edge. Screenshot pages sequentially.
 
 ## Troubleshooting
 
@@ -164,3 +196,10 @@ log in as `admin`. Useless headless — for any automated check use the driver.
   is missing the `/app` base.
 - `chromium remote-debugging endpoint never came up` → chromium failed to launch;
   run `chromium --headless=new --no-sandbox --version` to see the error.
+- **Every `curl http://localhost:8081/...` times out (exit 28) but `docker ps`
+  shows core "Up"** → core is stuck mid-`--reload` on `Waiting for connections to
+  close` (check `docker logs lyndrix-core-dev`). Fix: `docker restart
+  lyndrix-core-dev`, then poll `/api/health` until it answers. See Gotchas.
+- **Long page is cut off in the screenshot** → the viewport is only 900px tall and
+  the page scrolls inside `<main overflow-y-auto>`. Raise the `--window-size`
+  height in `driver.mjs` for that run; `captureBeyondViewport` won't help.
