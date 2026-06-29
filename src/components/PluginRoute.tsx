@@ -29,9 +29,9 @@ function createResource<T>(promise: Promise<T>): { read(): T } {
 
 const resourceCache = new Map<string, { read(): PluginModule }>()
 
-function getResource(pluginId: string) {
+function getResource(pluginId: string, version: string) {
   if (!resourceCache.has(pluginId)) {
-    resourceCache.set(pluginId, createResource(loadPluginModule(pluginId)))
+    resourceCache.set(pluginId, createResource(loadPluginModule(pluginId, version)))
   }
   return resourceCache.get(pluginId)!
 }
@@ -73,8 +73,8 @@ class PluginErrorBoundary extends Component<{ children: ReactNode; onRetry: () =
 
 // ─── Inner component (suspends via resource.read()) ───────────────────────────
 
-function RemotePlugin({ pluginId }: { pluginId: string }) {
-  const mod = getResource(pluginId).read()
+function RemotePlugin({ pluginId, version }: { pluginId: string; version: string }) {
+  const mod = getResource(pluginId, version).read()
   const { PluginApp } = mod
   return <PluginApp />
 }
@@ -92,7 +92,7 @@ function PluginSkeleton() {
 
 // ─── Public component ─────────────────────────────────────────────────────────
 
-export default function PluginRoute({ pluginId }: { pluginId: string }) {
+export default function PluginRoute({ pluginId, version = 'dev' }: { pluginId: string; version?: string }) {
   // A failed bundle load is cached as an `error` resource (PluginRoute cache) and
   // would otherwise stay broken until the page is reloaded. The retry drops the
   // cached resource + module and remounts the boundary (via the bumped key) so
@@ -107,7 +107,7 @@ export default function PluginRoute({ pluginId }: { pluginId: string }) {
   return (
     <PluginErrorBoundary key={attempt} onRetry={retry}>
       <Suspense fallback={<PluginSkeleton />}>
-        <RemotePlugin pluginId={pluginId} />
+        <RemotePlugin pluginId={pluginId} version={version} />
       </Suspense>
     </PluginErrorBoundary>
   )

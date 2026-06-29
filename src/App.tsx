@@ -158,15 +158,18 @@ export default function App() {
         plugin.react_routes.map((route) => {
           const safeId = plugin.id.replace(/\./g, '-')
           const routePath = `/apps/${safeId}${route.path}`
-          const version = pluginVersions[plugin.id] ?? 0
+          const invalidation = pluginVersions[plugin.id] ?? 0
+          // Stable cache key: manifest version + in-session invalidation counter.
+          // Allows browser HTTP cache between page loads; busts on plugin update.
+          const cacheKey = `${plugin.version}-${invalidation}`
           return (
             <Route
               key={routePath}
               path={routePath}
               element={
                 <AuthShell>
-                  {/* key on version forces unmount on plugin update, resetting any error boundary */}
-                  <PluginRoute key={version} pluginId={plugin.id} />
+                  {/* key on invalidation forces unmount/re-fetch on plugin:state_changed */}
+                  <PluginRoute key={invalidation} pluginId={plugin.id} version={cacheKey} />
                 </AuthShell>
               }
             />

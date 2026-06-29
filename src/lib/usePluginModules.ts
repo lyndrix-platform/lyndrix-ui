@@ -27,7 +27,7 @@ function globalName(pluginId: string): string {
   return `__lyndrix_plugin_${safeId(pluginId)}`
 }
 
-export async function loadPluginModule(pluginId: string): Promise<PluginModule> {
+export async function loadPluginModule(pluginId: string, version = 'dev'): Promise<PluginModule> {
   if (moduleCache.has(pluginId)) return moduleCache.get(pluginId)!
 
   const gName = globalName(pluginId)
@@ -40,8 +40,11 @@ export async function loadPluginModule(pluginId: string): Promise<PluginModule> 
 
     const script = document.createElement('script')
     script.id = scriptId
-    // Cache-bust on each fresh load so reloads after invalidation get new code.
-    script.src = `/api/plugins/${pluginId}/static/ui_bundle.js?t=${Date.now()}`
+    // Stable version-based cache key so the browser can cache between page loads.
+    // The version string combines the manifest version + an in-session invalidation
+    // counter (bumped on plugin:state_changed), so a re-install or new deploy
+    // always fetches fresh code while normal navigation hits the browser cache.
+    script.src = `/api/plugins/${pluginId}/static/ui_bundle.js?v=${encodeURIComponent(version)}`
 
     // Guard against a stalled response that never fires load/error: fail fast so
     // the Suspense boundary shows an error instead of an indefinite spinner.
