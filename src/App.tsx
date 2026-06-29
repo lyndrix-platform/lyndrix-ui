@@ -12,6 +12,7 @@ import { invalidatePluginModule } from './lib/usePluginModules'
 import { invalidatePluginRouteCache } from './components/PluginRoute'
 import AppShell from './components/layout/AppShell'
 import ErrorBoundary from './components/ErrorBoundary'
+import LiquidGlassDefs from './components/LiquidGlassDefs'
 import LoginPage from './pages/LoginPage'
 import DashboardPage from './pages/DashboardPage'
 import PluginsPage from './pages/PluginsPage'
@@ -134,6 +135,8 @@ export default function App() {
 
   return (
     <>
+    {/* One shared liquid-glass SVG filter for every GlassSurface in the app. */}
+    <LiquidGlassDefs />
     <TitleSync plugins={plugins} />
     <Routes>
       {/* Public: vault bootstrap */}

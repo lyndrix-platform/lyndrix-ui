@@ -131,6 +131,43 @@ body::before {
   border-radius: var(--lx-radius-md);
   box-shadow: var(--lx-popover-shadow);
 }
+/* Liquid-glass surface chrome (the refraction itself comes from the warp
+   layer's backdrop-filter + shared SVG filter; this just adds the rim, shadow
+   and a faint tint so content stays legible over busy backdrops). */
+.lx-glass-surface {
+  background: color-mix(in srgb, var(--lx-surface) 22%, transparent);
+  border: 1px solid var(--lx-glass-border);
+  box-shadow: var(--lx-glass-shadow), inset 0 1px 0 0 var(--lx-glass-highlight);
+}
+
+/* ── "Glass on all tiles" — applies the liquid-glass refraction to EVERY
+   `.lx-card` (host + every plugin, since plugins style their tiles with this
+   class and render into the host DOM). Toggled by `html.lx-glass-all`, which
+   the host syncs from the user's glass config. The frosting + SVG displacement
+   live on a `::before` warp layer behind the card content (you can't put
+   `filter: url()` on the card itself or it would distort the text too). */
+html.lx-glass-all .lx-card {
+  position: relative;
+  overflow: hidden;
+  /* Move the frost off the card onto the warp layer to avoid double-blur. */
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+html.lx-glass-all .lx-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  -webkit-backdrop-filter: blur(var(--lx-glass-blur-amt, 18px)) saturate(var(--lx-glass-sat, 160%));
+  backdrop-filter: blur(var(--lx-glass-blur-amt, 18px)) saturate(var(--lx-glass-sat, 160%));
+  filter: url(#lx-glass-filter);
+}
+/* Lift the card's real content above the warp pseudo-element. */
+html.lx-glass-all .lx-card > * {
+  position: relative;
+}
+
 .lx-card-hover {
   transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
 }

@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
+import GlassSurface from '../components/GlassSurface'
 import { getMe } from '../lib/auth'
 import { apiFetch } from '../lib/api'
 import WelcomeSection from '../components/dashboard/WelcomeSection'
@@ -96,21 +97,23 @@ function StatTile({
 }) {
   const color = `var(--lx-state-${state})`
   return (
-    <div className="lx-card lx-card-hover p-4 flex items-center gap-3.5">
-      <div
-        className="w-10 h-10 rounded-lg flex items-center justify-center shrink-0"
-        style={{ background: `color-mix(in srgb, ${color} 14%, transparent)`, color }}
-      >
-        <span className="material-icons" style={{ fontSize: 20 }}>
-          {icon}
-        </span>
+    <GlassSurface hover radius={16}>
+      <div className="p-4 flex items-center gap-3.5">
+        <div
+          className="w-10 h-10 rounded-lg flex items-center justify-center shrink-0"
+          style={{ background: `color-mix(in srgb, ${color} 14%, transparent)`, color }}
+        >
+          <span className="material-icons" style={{ fontSize: 20 }}>
+            {icon}
+          </span>
+        </div>
+        <div className="min-w-0">
+          <p className="text-[11px] text-[var(--lx-text-muted)]">{label}</p>
+          <p className="text-base font-semibold text-[var(--lx-text)] truncate leading-tight mt-0.5">
+            {value}
+          </p>
+        </div>
       </div>
-      <div className="min-w-0">
-        <p className="text-[11px] text-[var(--lx-text-muted)]">{label}</p>
-        <p className="text-base font-semibold text-[var(--lx-text)] truncate leading-tight mt-0.5">
-          {value}
-        </p>
-      </div>
-    </div>
+    </GlassSurface>
   )
 }

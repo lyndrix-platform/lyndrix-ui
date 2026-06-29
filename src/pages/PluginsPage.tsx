@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
-import { RefreshCw, ArrowUpCircle, Trash2, Check, Package, Settings } from 'lucide-react'
+import { RefreshCw, ArrowUpCircle, Trash2, Check, Package, Settings, Activity } from 'lucide-react'
 import { apiFetch } from '../lib/api'
 import { toast } from '../lib/toast'
 import { getPluginIcon } from '../lib/icons'
@@ -391,6 +391,160 @@ function UpgradeDialog({ plugin, onClose }: { plugin: PluginOut; onClose: () => 
   )
 }
 
+// ─── Health dialog ────────────────────────────────────────────────────────────
+
+interface PluginHealth {
+  status?: string
+  details?: Record<string, unknown>
+  latency_ms?: number | null
+}
+
+interface HealthResp {
+  status?: string
+  plugins?: Record<string, PluginHealth>
+}
+
+function healthTone(status?: string): string {
+  switch (status) {
+    case 'ok':
+      return 'var(--lx-state-up)'
+    case 'error':
+      return 'var(--lx-state-down)'
+    case 'degraded':
+      return 'var(--lx-state-paused)'
+    default:
+      return 'var(--lx-text-muted)'
+  }
+}
+
+function healthBadgeClass(status?: string): string {
+  switch (status) {
+    case 'ok':
+      return 'lx-badge--up'
+    case 'error':
+      return 'lx-badge--down'
+    case 'degraded':
+      return 'lx-badge--paused'
+    default:
+      return 'lx-badge--muted'
+  }
+}
+
+/** i18n key for a short health-state label, shown on the card badge. */
+function healthStateLabelKey(status?: string): string {
+  switch (status) {
+    case 'ok':
+      return 'plugins_page.health_state_ok'
+    case 'error':
+      return 'plugins_page.health_state_error'
+    case 'degraded':
+      return 'plugins_page.health_state_degraded'
+    default:
+      return 'plugins_page.health_state_unknown'
+  }
+}
+
+function HealthDialog({ plugin, onClose }: { plugin: PluginOut; onClose: () => void }) {
+  const { t } = useTranslation('ui')
+  const endpoint = `/api/health`
+
+  const { data, isFetching, isError, refetch } = useQuery({
+    queryKey: ['health'],
+    queryFn: () => apiFetch<HealthResp>(endpoint),
+    refetchOnMount: 'always',
+  })
+
+  const entry = data?.plugins?.[plugin.id]
+  const tone = healthTone(entry?.status)
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
+      <div className="w-full max-w-md mx-4 p-6 rounded-xl bg-[var(--lx-surface-glass)] backdrop-blur-[16px] backdrop-saturate-150 border border-[var(--lx-border-soft)] shadow-xl">
+        <div className="flex items-center justify-between mb-5">
+          <div className="min-w-0">
+            <h3 className="text-sm font-semibold text-[var(--lx-text)] flex items-center gap-2">
+              <Activity size={15} className="text-[var(--lx-accent)] shrink-0" />
+              {t('plugins_page.health_title', { name: plugin.name })}
+            </h3>
+            <p className="text-[11px] text-[var(--lx-text-muted)] font-mono mt-0.5 truncate">
+              GET {endpoint}
+            </p>
+          </div>
+          <button
+            onClick={onClose}
+            className="text-[var(--lx-text-muted)] hover:text-[var(--lx-text)] text-lg leading-none p-1 shrink-0"
+          >
+            &times;
+          </button>
+        </div>
+
+        {isFetching && !data ? (
+          <div className="flex justify-center py-8">
+            <div className="w-5 h-5 border-2 border-[var(--lx-accent)] border-t-transparent rounded-full animate-spin" />
+          </div>
+        ) : isError ? (
+          <p className="text-xs text-[var(--lx-state-down)] bg-[var(--lx-elevated-glass)] px-3 py-2 rounded-md">
+            {t('plugins_page.health_fetch_failed')}
+          </p>
+        ) : !entry ? (
+          <p className="text-sm text-[var(--lx-text-muted)] py-4">
+            {t('plugins_page.health_no_data')}
+          </p>
+        ) : (
+          <div className="flex flex-col gap-4">
+            <div className="flex items-center gap-4">
+              <div className="flex flex-col gap-1">
+                <span className="text-[10px] uppercase tracking-wide text-[var(--lx-text-muted)]">
+                  {t('plugins_page.health_status')}
+                </span>
+                <span className="inline-flex items-center gap-1.5 text-sm font-medium" style={{ color: tone }}>
+                  <span className="w-2 h-2 rounded-full" style={{ background: tone, boxShadow: `0 0 6px ${tone}` }} />
+                  {entry.status ?? 'unknown'}
+                </span>
+              </div>
+              {entry.latency_ms != null && (
+                <div className="flex flex-col gap-1">
+                  <span className="text-[10px] uppercase tracking-wide text-[var(--lx-text-muted)]">
+                    {t('plugins_page.health_latency')}
+                  </span>
+                  <span className="text-sm font-medium text-[var(--lx-text)] tabular-nums">
+                    {entry.latency_ms} ms
+                  </span>
+                </div>
+              )}
+            </div>
+
+            {entry.details && Object.keys(entry.details).length > 0 && (
+              <div className="flex flex-col gap-1.5">
+                <span className="text-[10px] uppercase tracking-wide text-[var(--lx-text-muted)]">
+                  {t('plugins_page.health_details')}
+                </span>
+                <pre className="text-[11px] font-mono text-[var(--lx-text)] bg-[var(--lx-elevated-glass)] px-3 py-2.5 rounded-md overflow-x-auto whitespace-pre-wrap break-words max-h-60">
+                  {JSON.stringify(entry.details, null, 2)}
+                </pre>
+              </div>
+            )}
+          </div>
+        )}
+
+        <div className="flex justify-end gap-2 pt-5">
+          <button
+            onClick={() => void refetch()}
+            disabled={isFetching}
+            className="lx-btn lx-btn--secondary lx-btn--sm"
+          >
+            <RefreshCw size={13} className={isFetching ? 'animate-spin' : ''} />
+            {t('plugins_page.health_refresh')}
+          </button>
+          <button onClick={onClose} className="lx-btn lx-btn--primary lx-btn--sm">
+            {t('plugins_page.health_close')}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // ─── Plugin card ──────────────────────────────────────────────────────────────
 
 function PluginCard({ plugin }: { plugin: PluginOut }) {
@@ -401,6 +555,7 @@ function PluginCard({ plugin }: { plugin: PluginOut }) {
   const [showUpgrade, setShowUpgrade] = useState(false)
   const [showError, setShowError] = useState(false)
   const [showSettings, setShowSettings] = useState(false)
+  const [showHealth, setShowHealth] = useState(false)
   const hasSettings = (plugin.settings_schema?.length ?? 0) > 0 || !!plugin.settings_ui_route
 
   function openSettings() {
@@ -413,6 +568,16 @@ function PluginCard({ plugin }: { plugin: PluginOut }) {
   }
 
   const Icon = getPluginIcon(plugin.icon)
+
+  // Health is only reported for active plugins; shared ['health'] key dedups
+  // this fetch across all cards, the sidebar widget and the health dialog.
+  const { data: healthData } = useQuery({
+    queryKey: ['health'],
+    queryFn: () => apiFetch<HealthResp>('/api/health'),
+    refetchInterval: 30_000,
+    enabled: plugin.is_active,
+  })
+  const healthEntry = healthData?.plugins?.[plugin.id]
 
   const actionMutation = useMutation({
     mutationFn: (action: 'enable' | 'disable' | 'reload' | 'uninstall') =>
@@ -478,6 +643,10 @@ function PluginCard({ plugin }: { plugin: PluginOut }) {
         />
       )}
 
+      {showHealth && (
+        <HealthDialog plugin={plugin} onClose={() => setShowHealth(false)} />
+      )}
+
       <div className="rounded-xl bg-[var(--lx-surface-glass)] backdrop-blur-[16px] backdrop-saturate-150 border border-[var(--lx-border-soft)] overflow-hidden transition-colors hover:border-[var(--lx-border)]">
         {/* Header */}
         <div className="p-4 flex gap-3">
@@ -532,6 +701,16 @@ function PluginCard({ plugin }: { plugin: PluginOut }) {
                 {statusLabel[plugin.status] ?? plugin.status}
               </span>
             )}
+            {isPlugin && plugin.is_active && (
+              <button
+                onClick={() => setShowHealth(true)}
+                title={t('plugins_page.health_btn')}
+                className={`lx-badge ${healthBadgeClass(healthEntry?.status)} cursor-pointer hover:opacity-80 transition-opacity`}
+              >
+                <span className="lx-dot" />
+                {t(healthStateLabelKey(healthEntry?.status))}
+              </button>
+            )}
             {plugin.react_ui && <span className="lx-badge lx-badge--accent">React</span>}
           </div>
         </div>
@@ -554,6 +733,16 @@ function PluginCard({ plugin }: { plugin: PluginOut }) {
             </div>
 
             <div className="flex items-center gap-0.5">
+              {plugin.is_active && (
+                <IconBtn
+                  onClick={() => setShowHealth(true)}
+                  disabled={isBusy}
+                  title={t('plugins_page.health_btn')}
+                >
+                  <Activity size={14} />
+                </IconBtn>
+              )}
+
               <IconBtn
                 onClick={() => actionMutation.mutate('reload')}
                 disabled={isBusy}

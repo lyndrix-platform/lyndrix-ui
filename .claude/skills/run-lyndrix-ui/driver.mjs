@@ -76,7 +76,7 @@ const main = async () => {
 
   const chrome = spawn('chromium', [
     '--headless=new', '--no-sandbox', '--disable-gpu',
-    `--remote-debugging-port=${DEBUG_PORT}`, '--window-size=1400,900', 'about:blank',
+    `--remote-debugging-port=${DEBUG_PORT}`, `--window-size=${process.env.WINDOW ?? '1400,900'}`, 'about:blank',
   ], { stdio: 'ignore' })
 
   try {
@@ -91,7 +91,9 @@ const main = async () => {
     await sleep(1500)
     await rpc(ws, id++, 'Runtime.evaluate', { expression: `localStorage.setItem('lyndrix_token', ${JSON.stringify(token)})` })
     await rpc(ws, id++, 'Page.navigate', { url: UI + route })
-    await sleep(3000)
+    // Plugin pages fetch data + render a federated bundle; override WAIT (ms)
+    // for slow ones so the screenshot isn't taken mid-load.
+    await sleep(Number(process.env.WAIT ?? 3000))
 
     if (clickSel) {
       const r = await rpc(ws, id++, 'Runtime.evaluate', {

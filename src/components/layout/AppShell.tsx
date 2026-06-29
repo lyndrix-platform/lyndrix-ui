@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Menu } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import Sidebar from './Sidebar'
@@ -30,6 +30,22 @@ export default function AppShell({ children }: Props) {
   const [collapsed, setCollapsed] = useState(
     () => localStorage.getItem(COLLAPSE_KEY) === '1',
   )
+  // The collapsed (icon-only) mode is a desktop affordance. On mobile the
+  // sidebar is a full-width drawer, so labels must always show — otherwise a
+  // collapsed-on-desktop state (persisted in localStorage) would render the
+  // mobile drawer as icons only.
+  const [isDesktop, setIsDesktop] = useState(
+    () => window.matchMedia('(min-width: 768px)').matches,
+  )
+
+  useEffect(() => {
+    const mql = window.matchMedia('(min-width: 768px)')
+    const onChange = () => setIsDesktop(mql.matches)
+    mql.addEventListener('change', onChange)
+    return () => mql.removeEventListener('change', onChange)
+  }, [])
+
+  const effectiveCollapsed = collapsed && isDesktop
 
   function toggleCollapsed() {
     setCollapsed((prev) => {
@@ -60,7 +76,7 @@ export default function AppShell({ children }: Props) {
           collapsed ? 'md:w-14' : 'md:w-56',
         ].join(' ')}
       >
-        <Sidebar onClose={() => setSidebarOpen(false)} collapsed={collapsed} />
+        <Sidebar onClose={() => setSidebarOpen(false)} collapsed={effectiveCollapsed} />
       </aside>
 
       {/* Main area */}

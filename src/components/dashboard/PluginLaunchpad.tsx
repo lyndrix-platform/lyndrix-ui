@@ -2,6 +2,8 @@ import { Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { ArrowRight, ExternalLink } from 'lucide-react'
 import { getPluginIcon } from '../../lib/icons'
+import { useGlassConfig } from '../../lib/glassConfig'
+import GlassSurface from '../GlassSurface'
 import type { PluginOut } from '../../lib/types'
 
 const CORE_URL = import.meta.env.VITE_CORE_URL ?? 'http://localhost:8081'
@@ -56,16 +58,12 @@ function PluginTile({
   dimmed: boolean
 }) {
   const Icon = getPluginIcon(plugin.icon)
+  const cfg = useGlassConfig()
   const interactive = !!href
+  const useGlass = cfg.enabled && cfg.allTiles
 
-  const inner = (
-    <div
-      className={[
-        'lx-card group/tile relative flex items-center gap-3.5 p-4 h-full',
-        interactive ? 'lx-card-hover cursor-pointer' : '',
-        dimmed ? 'opacity-45 cursor-not-allowed' : '',
-      ].join(' ')}
-    >
+  const body = (
+    <div className="group/tile relative flex items-center gap-3.5 p-4 h-full">
       <div
         className="w-11 h-11 flex items-center justify-center rounded-lg shrink-0 text-[var(--lx-accent)]"
         style={{ background: 'color-mix(in srgb, var(--lx-accent) 12%, transparent)' }}
@@ -93,6 +91,26 @@ function PluginTile({
             className="shrink-0 text-[var(--lx-text-muted)] transition-all group-hover/tile:text-[var(--lx-accent)] group-hover/tile:translate-x-0.5"
           />
         ))}
+    </div>
+  )
+
+  const inner = useGlass ? (
+    <GlassSurface
+      hover={interactive}
+      radius={16}
+      className={`h-full ${dimmed ? 'opacity-45 cursor-not-allowed' : ''}`}
+    >
+      {body}
+    </GlassSurface>
+  ) : (
+    <div
+      className={[
+        'lx-card h-full',
+        interactive ? 'lx-card-hover cursor-pointer' : '',
+        dimmed ? 'opacity-45 cursor-not-allowed' : '',
+      ].join(' ')}
+    >
+      {body}
     </div>
   )
 
