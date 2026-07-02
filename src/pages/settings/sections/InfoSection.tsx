@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
-import { apiFetch } from '../../../lib/api'
+import { ApiError, apiFetch } from '../../../lib/api'
 import type { SystemInfoOut } from '../../../lib/types'
 import { Card, SectionTitle, StatusMsg } from '../shared'
 import { APP_VERSION } from '../../../lib/version'
@@ -62,8 +62,15 @@ function RestartCard() {
     setErr(null)
     try {
       await apiFetch('/api/system/restart', { method: 'POST' })
-    } catch {
-      // Connection drops as the container goes down — expected, not a failure.
+    } catch (e) {
+      // A connection drop is expected as the container goes down — but an HTTP
+      // error (e.g. 503 "cannot self-restart") means the restart never started:
+      // surface it instead of spinning until the poll times out.
+      if (e instanceof ApiError) {
+        setPhase('error')
+        setErr(e.message)
+        return
+      }
     }
     const start = Date.now()
     const poll = async () => {

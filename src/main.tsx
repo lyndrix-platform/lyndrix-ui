@@ -2,7 +2,7 @@ import * as React from 'react'
 import * as ReactDOMClient from 'react-dom/client'
 import { StrictMode, Suspense, lazy, useEffect, useState } from 'react'
 import { createRoot } from 'react-dom/client'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { QueryCache, QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { BrowserRouter } from 'react-router-dom'
 
 // Devtools are lazily imported only in development so the module is never pulled
@@ -33,8 +33,11 @@ import { getCatalog } from './lib/catalogStore'
 import { sharedUi } from './lib/sharedUi'
 import './index.css'
 import App from './App.tsx'
+import ErrorBoundary from './components/ErrorBoundary'
 import LoadingSplash from './components/LoadingSplash'
 import { ThemeProvider } from './theme/ThemeProvider'
+import { ApiError } from './lib/api'
+import { toast } from './lib/toast'
 
 // Expose React for IIFE plugin bundles so they share this instance.
 // Plugin vite.ui.config.ts should declare:
@@ -50,6 +53,17 @@ import { ThemeProvider } from './theme/ThemeProvider'
 ;(window as unknown as Record<string, unknown>)['__lyndrix_react_i18next'] = ReactI18next
 
 const queryClient = new QueryClient({
+  // A failed *background* refetch otherwise fails silently and the page keeps
+  // showing stale data with no hint. Initial-load errors stay with the page
+  // (each page renders its own error state), and 401s are handled by the
+  // apiFetch redirect — both are excluded here to avoid double-reporting.
+  queryCache: new QueryCache({
+    onError: (error, query) => {
+      if (query.state.data === undefined) return
+      if (error instanceof ApiError && error.status === 401) return
+      toast.error(error instanceof Error ? error.message : String(error))
+    },
+  }),
   defaultOptions: {
     queries: {
       staleTime: 30_000,
@@ -104,7 +118,12 @@ createRoot(document.getElementById('root')!).render(
       <QueryClientProvider client={queryClient}>
         <I18nGate>
           <BrowserRouter basename={import.meta.env.BASE_URL.replace(/\/$/, '')}>
-            <App />
+            {/* Last-resort boundary: route generation, redirects and public pages
+                in App render OUTSIDE the per-page boundaries inside AuthShell — a
+                throw there previously white-screened the whole app. */}
+            <ErrorBoundary>
+              <App />
+            </ErrorBoundary>
           </BrowserRouter>
         </I18nGate>
         {ReactQueryDevtools && (

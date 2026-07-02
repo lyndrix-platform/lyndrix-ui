@@ -27,17 +27,23 @@ function createResource<T>(promise: Promise<T>): { read(): T } {
   }
 }
 
+// Keyed by `${pluginId}@${version}` so a version bump alone (upgrade/re-install)
+// suspends on a fresh bundle instead of replaying the cached old one.
 const resourceCache = new Map<string, { read(): PluginModule }>()
 
 function getResource(pluginId: string, version: string) {
-  if (!resourceCache.has(pluginId)) {
-    resourceCache.set(pluginId, createResource(loadPluginModule(pluginId, version)))
+  const key = `${pluginId}@${version}`
+  if (!resourceCache.has(key)) {
+    resourceCache.set(key, createResource(loadPluginModule(pluginId, version)))
   }
-  return resourceCache.get(pluginId)!
+  return resourceCache.get(key)!
 }
 
 export function invalidatePluginRouteCache(pluginId: string) {
-  resourceCache.delete(pluginId)
+  const prefix = `${pluginId}@`
+  for (const key of resourceCache.keys()) {
+    if (key.startsWith(prefix)) resourceCache.delete(key)
+  }
 }
 
 // ─── Error boundary ───────────────────────────────────────────────────────────

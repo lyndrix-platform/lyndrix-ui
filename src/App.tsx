@@ -4,7 +4,8 @@ import { useTranslation } from 'react-i18next'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { isLoggedIn } from './lib/auth'
 import { apiFetch } from './lib/api'
-import { useSSE } from './lib/useSSE'
+import { useSSE, useSSEStatus } from './lib/useSSE'
+import { toast } from './lib/toast'
 import { bootstrapI18n } from './lib/i18n'
 import { useTheme } from './theme/ThemeProvider'
 import { useAppTitle } from './lib/useAppTitle'
@@ -103,14 +104,41 @@ export default function App() {
   // Version counter per plugin — incremented on state_changed so the error boundary resets.
   const [pluginVersions, setPluginVersions] = useState<Record<string, number>>({})
 
+  const sseStatus = useSSEStatus()
+
   const { data: plugins } = useQuery({
     queryKey: ['plugins'],
     queryFn: () => apiFetch<{ plugins: PluginOut[] }>('/api/plugins').then((r) => r.plugins),
     enabled: isLoggedIn(),
+    // Live updates arrive over the authenticated SSE stream; whenever that
+    // channel is down (or stuck on the public subset), fall back to polling so
+    // the plugin list can never silently go stale.
+    refetchInterval: sseStatus === 'authenticated' ? false : 15_000,
   })
 
+  // Catch-up after every (re)connect of the live channel: events emitted while
+  // we were disconnected (e.g. during a core self-restart or uvicorn reload)
+  // are gone — resync the state they would have carried.
+  useEffect(() => {
+    if (sseStatus !== 'authenticated') return
+    void queryClient.invalidateQueries({ queryKey: ['plugins'] })
+    void queryClient.invalidateQueries({ queryKey: ['health'] })
+    void bootstrapI18n()
+  }, [sseStatus, queryClient])
+
   useSSE((topic, payload) => {
-    if (topic === 'plugin:state_changed') {
+    if (topic === 'plugin:installed') {
+      const p = payload as { repo?: string }
+      toast.success(t('plugins_page.install_completed', { repo: p?.repo ?? '?' }))
+      void queryClient.invalidateQueries({ queryKey: ['plugins'] })
+      void queryClient.invalidateQueries({ queryKey: ['health'] })
+    } else if (topic === 'plugin:install_failed') {
+      const p = payload as { repo?: string; error?: string }
+      toast.error(
+        t('plugins_page.install_failed_detail', { repo: p?.repo ?? '?', error: p?.error ?? '' }),
+      )
+      void queryClient.invalidateQueries({ queryKey: ['plugins'] })
+    } else if (topic === 'plugin:state_changed') {
       const p = payload as { plugin_id?: string }
       if (p?.plugin_id) {
         invalidatePluginModule(p.plugin_id)

@@ -17,6 +17,10 @@ export interface PluginModule {
   pluginRoutes?: Array<{ path: string; label: string; icon: string; sidebar_visible: boolean }>
 }
 
+// Keyed by `${pluginId}@${version}` — a bare pluginId key would keep serving the
+// old bundle after an upgrade bumped the version, until someone explicitly
+// invalidated it. With the version in the key, a version change alone is enough
+// to fetch fresh code.
 const moduleCache = new Map<string, PluginModule>()
 
 function safeId(pluginId: string): string {
@@ -27,8 +31,13 @@ function globalName(pluginId: string): string {
   return `__lyndrix_plugin_${safeId(pluginId)}`
 }
 
+function cacheKey(pluginId: string, version: string): string {
+  return `${pluginId}@${version}`
+}
+
 export async function loadPluginModule(pluginId: string, version = 'dev'): Promise<PluginModule> {
-  if (moduleCache.has(pluginId)) return moduleCache.get(pluginId)!
+  const key = cacheKey(pluginId, version)
+  if (moduleCache.has(key)) return moduleCache.get(key)!
 
   const gName = globalName(pluginId)
   delete (window as unknown as Record<string, unknown>)[gName]
@@ -65,7 +74,7 @@ export async function loadPluginModule(pluginId: string, version = 'dev'): Promi
         reject(new Error(`Plugin '${pluginId}' bundle did not expose PluginApp`))
         return
       }
-      moduleCache.set(pluginId, mod)
+      moduleCache.set(key, mod)
       resolve(mod)
     }
 
@@ -81,7 +90,10 @@ export async function loadPluginModule(pluginId: string, version = 'dev'): Promi
 }
 
 export function invalidatePluginModule(pluginId: string): void {
-  moduleCache.delete(pluginId)
+  const prefix = `${pluginId}@`
+  for (const key of moduleCache.keys()) {
+    if (key.startsWith(prefix)) moduleCache.delete(key)
+  }
   const scriptId = `plugin-script-${safeId(pluginId)}`
   document.getElementById(scriptId)?.remove()
   const gName = globalName(pluginId)

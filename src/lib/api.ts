@@ -18,6 +18,17 @@ interface FetchOptions extends RequestInit {
   skipAuth?: boolean
 }
 
+/** Error carrying the HTTP status so callers can distinguish a server-side
+ * rejection (e.g. 503 "cannot self-restart") from a network drop/timeout. */
+export class ApiError extends Error {
+  status: number
+  constructor(message: string, status: number) {
+    super(message)
+    this.name = 'ApiError'
+    this.status = status
+  }
+}
+
 // ─── Debug logging + request timeout ───────────────────────────────────────────
 // Flip on in the browser console:  localStorage.LX_DEBUG = '1'  (then reload).
 // Logs every request with timing/status; a hung request aborts after the timeout
@@ -34,6 +45,14 @@ function debugOn(): boolean {
 
 function now(): number {
   return typeof performance !== 'undefined' ? performance.now() : Date.now()
+}
+
+let loginRedirectPending = false
+
+function redirectToLoginOnce(): void {
+  if (loginRedirectPending || window.location.pathname === '/login') return
+  loginRedirectPending = true
+  window.location.href = '/login'
 }
 
 export async function apiFetch<T = unknown>(path: string, options: FetchOptions = {}): Promise<T> {
@@ -78,9 +97,15 @@ export async function apiFetch<T = unknown>(path: string, options: FetchOptions 
   }
 
   if (res.status === 401) {
-    clearToken()
-    window.location.href = '/login'
-    throw new Error('Unauthorized')
+    // Only an *authenticated* call failing means the session is dead. skipAuth
+    // calls (vault status etc.) must never nuke the app. The single-flight guard
+    // keeps a burst of concurrent 401s (N in-flight queries after token expiry)
+    // from firing N full-page navigations.
+    if (!skipAuth) {
+      clearToken()
+      redirectToLoginOnce()
+    }
+    throw new ApiError('Unauthorized', 401)
   }
 
   if (!res.ok) {
@@ -92,7 +117,7 @@ export async function apiFetch<T = unknown>(path: string, options: FetchOptions 
         : Array.isArray(detail)
           ? detail.map((e: { msg?: string }) => e.msg ?? JSON.stringify(e)).join(', ')
           : `HTTP ${res.status}`
-    throw new Error(message)
+    throw new ApiError(message, res.status)
   }
 
   if (res.status === 204) return undefined as T
