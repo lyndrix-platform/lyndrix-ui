@@ -24,7 +24,7 @@ export default function ToastStack() {
       {toasts.map((t) => (
         <div
           key={t.id}
-          className="pointer-events-auto flex items-center gap-2.5 px-4 py-2.5 rounded-lg shadow-lg border text-sm font-medium backdrop-blur-[8px]"
+          className="pointer-events-auto flex items-center gap-2.5 px-4 py-2.5 rounded-lg shadow-lg border text-sm font-medium backdrop-blur-[var(--lx-blur-sm)]"
           style={{
             background:
               t.level === 'error'

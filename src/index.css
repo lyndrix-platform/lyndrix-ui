@@ -17,10 +17,44 @@
   --lx-text-muted: #94a3b8;
   --lx-border: rgba(0, 212, 255, 0.2);
   --lx-border-soft: rgba(255, 255, 255, 0.08);
-  --lx-radius-sm: 6px;
-  --lx-radius-md: 12px;
-  --lx-radius-lg: 20px;
-  --lx-glow: 0 0 30px rgba(0, 212, 255, 0.3);
+  /* Theming v2 Phase 1 — radius, aligned to Tailwind's default border-radius
+     scale (see lyndrix-core/docs/theming-v2-plan.md token contract) so the
+     rounded-* utilities are theme-driven instead of hardcoded. */
+  --lx-radius-sm: 0.125rem;
+  --lx-radius: 0.25rem;
+  --lx-radius-md: 0.375rem;
+  --lx-radius-lg: 0.5rem;
+  --lx-radius-xl: 0.75rem;
+  --lx-radius-2xl: 1rem;
+  --lx-radius-3xl: 1.5rem;
+  --lx-radius-full: 9999px;
+  /* Spacing — one density knob; Tailwind's numeric spacing scale is
+     n * this unit (see tailwind.config.js `spacing`). */
+  --lx-space-unit: 0.25rem;
+  /* Typography */
+  --lx-font-sans: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --lx-font-mono: 'JetBrains Mono', 'Fira Code', ui-monospace, SFMono-Regular, monospace;
+  --lx-text-scale: 1;
+  /* Shadow */
+  --lx-shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.25);
+  --lx-shadow-md: 0 8px 24px -12px rgb(0 0 0 / 0.45);
+  --lx-shadow-lg: 0 30px 80px -20px rgb(0 0 0 / 0.6);
+  --lx-shadow-glow: 0 0 30px rgb(0 212 255 / 0.3);
+  --lx-glow: 0 0 30px rgb(0 212 255 / 0.3); /* alias of --lx-shadow-glow */
+  /* Blur (backdrop glass tiers, distinct from the dedicated --lx-glass-blur
+     used by the .lx-glass/.lx-card family below) */
+  --lx-blur-sm: 8px;
+  --lx-blur-md: 16px;
+  --lx-blur-lg: 24px;
+  /* Transition */
+  --lx-transition-fast: 150ms;
+  --lx-transition-base: 250ms;
+  --lx-transition-slow: 400ms;
+  --lx-ease: cubic-bezier(0.4, 0, 0.2, 1);
+  /* Gradient (accent bars / buttons) */
+  --lx-gradient-accent: linear-gradient(135deg, var(--lx-accent), var(--lx-accent-2), var(--lx-accent-3));
+  /* Border */
+  --lx-border-width: 1px;
   --lx-state-up: #22d3ee;
   --lx-state-down: #f87171;
   --lx-state-paused: #fbbf24;
@@ -71,7 +105,7 @@ body {
   margin: 0;
   background-color: var(--lx-bg);
   color: var(--lx-text);
-  font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  font-family: var(--lx-font-sans);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
@@ -198,7 +232,7 @@ html.lx-glass-all .lx-card > * {
 .lx-select,
 .lx-textarea {
   width: 100%;
-  padding: 8px 12px;
+  padding: calc(var(--lx-space-unit) * 2) calc(var(--lx-space-unit) * 3);
   font-size: 0.8125rem;
   font-family: inherit;
   color: var(--lx-text);
@@ -235,7 +269,7 @@ html.lx-glass-all .lx-card > * {
   font-size: 0.75rem;
   font-weight: 500;
   color: var(--lx-text-muted);
-  margin-bottom: 6px;
+  margin-bottom: calc(var(--lx-space-unit) * 1.5);
 }
 
 /* ── Buttons ── */
@@ -243,8 +277,8 @@ html.lx-glass-all .lx-card > * {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 7px;
-  padding: 8px 16px;
+  gap: calc(var(--lx-space-unit) * 1.75);
+  padding: calc(var(--lx-space-unit) * 2) calc(var(--lx-space-unit) * 4);
   font-size: 0.8125rem;
   font-weight: 600;
   font-family: inherit;
@@ -268,9 +302,9 @@ html.lx-glass-all .lx-card > * {
   box-shadow: 0 0 0 2px color-mix(in srgb, var(--lx-accent) 45%, transparent);
 }
 .lx-btn--sm {
-  padding: 5px 11px;
+  padding: calc(var(--lx-space-unit) * 1.25) calc(var(--lx-space-unit) * 2.75);
   font-size: 0.75rem;
-  gap: 5px;
+  gap: calc(var(--lx-space-unit) * 1.25);
 }
 .lx-btn--block {
   width: 100%;
@@ -285,8 +319,8 @@ html.lx-glass-all .lx-card > * {
 }
 .lx-btn--secondary {
   background: var(--lx-elevated-glass);
-  -webkit-backdrop-filter: blur(8px);
-  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(var(--lx-blur-sm));
+  backdrop-filter: blur(var(--lx-blur-sm));
   color: var(--lx-text);
   border-color: var(--lx-glass-border);
 }
@@ -316,7 +350,7 @@ html.lx-glass-all .lx-card > * {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  padding: 7px;
+  padding: calc(var(--lx-space-unit) * 1.75);
   border-radius: var(--lx-radius-sm);
   color: var(--lx-text-muted);
   background: transparent;
@@ -341,12 +375,12 @@ html.lx-glass-all .lx-card > * {
 .lx-badge {
   display: inline-flex;
   align-items: center;
-  gap: 5px;
+  gap: calc(var(--lx-space-unit) * 1.25);
   font-size: 0.6875rem;
   font-weight: 600;
   line-height: 1.2;
-  padding: 3px 9px;
-  border-radius: 999px;
+  padding: calc(var(--lx-space-unit) * 0.75) calc(var(--lx-space-unit) * 2.25);
+  border-radius: var(--lx-radius-full);
   border: 1px solid transparent;
   white-space: nowrap;
 }
@@ -392,8 +426,8 @@ html.lx-glass-all .lx-card > * {
 .lx-tab {
   display: inline-flex;
   align-items: center;
-  gap: 7px;
-  padding: 9px 16px;
+  gap: calc(var(--lx-space-unit) * 1.75);
+  padding: calc(var(--lx-space-unit) * 2.25) calc(var(--lx-space-unit) * 4);
   margin-bottom: -1px;
   font-size: 0.8125rem;
   font-weight: 500;
@@ -447,11 +481,11 @@ html.lx-glass-all .lx-card > * {
   background: var(--lx-surface-glass);
   -webkit-backdrop-filter: blur(var(--lx-glass-blur)) saturate(160%);
   backdrop-filter: blur(var(--lx-glass-blur)) saturate(160%);
-  padding: 10px 14px;
+  padding: calc(var(--lx-space-unit) * 2.5) calc(var(--lx-space-unit) * 3.5);
   border-bottom: 1px solid var(--lx-border-soft);
 }
 .lx-table tbody td {
-  padding: 11px 14px;
+  padding: calc(var(--lx-space-unit) * 2.75) calc(var(--lx-space-unit) * 3.5);
   border-bottom: 1px solid var(--lx-border-soft);
   color: var(--lx-text);
 }
@@ -471,8 +505,8 @@ html.lx-glass-all .lx-card > * {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 10px;
-  padding: 56px 20px;
+  gap: calc(var(--lx-space-unit) * 2.5);
+  padding: calc(var(--lx-space-unit) * 14) calc(var(--lx-space-unit) * 5);
   text-align: center;
   color: var(--lx-text-muted);
 }
@@ -496,7 +530,7 @@ html.lx-glass-all .lx-card > * {
 
 /* ── Mono helper ── */
 .lx-mono {
-  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-family: var(--lx-font-mono);
   font-feature-settings: 'liga' 0;
 }
 
@@ -524,10 +558,34 @@ html.lx-glass-all .lx-card > * {
   --lx-text-muted: #64748b;
   --lx-border: rgba(8, 145, 178, 0.3);
   --lx-border-soft: rgba(0, 0, 0, 0.09);
-  --lx-radius-sm: 6px;
-  --lx-radius-md: 12px;
-  --lx-radius-lg: 20px;
-  --lx-glow: 0 0 20px rgba(8, 145, 178, 0.12);
+  /* Theming v2 Phase 1 — same values as :root (radius/spacing/typography/
+     shadow/blur/transition/gradient/border are mode-invariant tokens). */
+  --lx-radius-sm: 0.125rem;
+  --lx-radius: 0.25rem;
+  --lx-radius-md: 0.375rem;
+  --lx-radius-lg: 0.5rem;
+  --lx-radius-xl: 0.75rem;
+  --lx-radius-2xl: 1rem;
+  --lx-radius-3xl: 1.5rem;
+  --lx-radius-full: 9999px;
+  --lx-space-unit: 0.25rem;
+  --lx-font-sans: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --lx-font-mono: 'JetBrains Mono', 'Fira Code', ui-monospace, SFMono-Regular, monospace;
+  --lx-text-scale: 1;
+  --lx-shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.25);
+  --lx-shadow-md: 0 8px 24px -12px rgb(0 0 0 / 0.45);
+  --lx-shadow-lg: 0 30px 80px -20px rgb(0 0 0 / 0.6);
+  --lx-shadow-glow: 0 0 30px rgb(0 212 255 / 0.3);
+  --lx-glow: 0 0 30px rgb(0 212 255 / 0.3); /* alias of --lx-shadow-glow */
+  --lx-blur-sm: 8px;
+  --lx-blur-md: 16px;
+  --lx-blur-lg: 24px;
+  --lx-transition-fast: 150ms;
+  --lx-transition-base: 250ms;
+  --lx-transition-slow: 400ms;
+  --lx-ease: cubic-bezier(0.4, 0, 0.2, 1);
+  --lx-gradient-accent: linear-gradient(135deg, var(--lx-accent), var(--lx-accent-2), var(--lx-accent-3));
+  --lx-border-width: 1px;
   --lx-state-up: #0891b2;
   --lx-state-down: #ef4444;
   --lx-state-paused: #f59e0b;

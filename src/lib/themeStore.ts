@@ -53,3 +53,12 @@ export function getSelectedThemeId(): string | null {
 export function setSelectedThemeId(themeId: string): void {
   safeSet(SELECTED_KEY, themeId)
 }
+
+/** Remove the React theme pin (unpins → ThemeProvider re-follows the active theme). */
+export function clearSelectedThemeId(): void {
+  try {
+    localStorage.removeItem(SELECTED_KEY)
+  } catch {
+    // private mode / quota — best-effort.
+  }
+}

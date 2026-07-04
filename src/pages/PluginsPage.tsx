@@ -144,7 +144,7 @@ function ConfirmDialog({
   const { t } = useTranslation('ui')
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
-      <div className="w-full max-w-sm mx-4 p-5 rounded-xl bg-[var(--lx-surface-glass)] backdrop-blur-[16px] backdrop-saturate-150 border border-[var(--lx-border-soft)] shadow-xl">
+      <div className="w-full max-w-sm mx-4 p-5 rounded-xl bg-[var(--lx-surface-glass)] backdrop-blur-[var(--lx-blur-md)] backdrop-saturate-150 border border-[var(--lx-border-soft)] shadow-xl">
         <h3 className="text-sm font-semibold text-[var(--lx-text)] mb-2">{title}</h3>
         <p className="text-sm text-[var(--lx-text-muted)] mb-5">{message}</p>
         <div className="flex justify-end gap-2">
@@ -196,7 +196,7 @@ function InstallDialog({ initialRepoUrl = '', onClose }: { initialRepoUrl?: stri
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
-      <div className="w-full max-w-md mx-4 p-6 rounded-xl bg-[var(--lx-surface-glass)] backdrop-blur-[16px] backdrop-saturate-150 border border-[var(--lx-border-soft)] shadow-xl">
+      <div className="w-full max-w-md mx-4 p-6 rounded-xl bg-[var(--lx-surface-glass)] backdrop-blur-[var(--lx-blur-md)] backdrop-saturate-150 border border-[var(--lx-border-soft)] shadow-xl">
         <div className="flex items-center justify-between mb-5">
           <h3 className="text-sm font-semibold text-[var(--lx-text)]">{t('plugins_page.install_title')}</h3>
           <button
@@ -314,7 +314,7 @@ function UpgradeDialog({ plugin, onClose }: { plugin: PluginOut; onClose: () => 
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
-      <div className="w-full max-w-sm mx-4 p-6 rounded-xl bg-[var(--lx-surface-glass)] backdrop-blur-[16px] backdrop-saturate-150 border border-[var(--lx-border-soft)] shadow-xl">
+      <div className="w-full max-w-sm mx-4 p-6 rounded-xl bg-[var(--lx-surface-glass)] backdrop-blur-[var(--lx-blur-md)] backdrop-saturate-150 border border-[var(--lx-border-soft)] shadow-xl">
         <div className="flex items-center justify-between mb-5">
           <div>
             <h3 className="text-sm font-semibold text-[var(--lx-text)]">
@@ -459,7 +459,7 @@ function HealthDialog({ plugin, onClose }: { plugin: PluginOut; onClose: () => v
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
-      <div className="w-full max-w-md mx-4 p-6 rounded-xl bg-[var(--lx-surface-glass)] backdrop-blur-[16px] backdrop-saturate-150 border border-[var(--lx-border-soft)] shadow-xl">
+      <div className="w-full max-w-md mx-4 p-6 rounded-xl bg-[var(--lx-surface-glass)] backdrop-blur-[var(--lx-blur-md)] backdrop-saturate-150 border border-[var(--lx-border-soft)] shadow-xl">
         <div className="flex items-center justify-between mb-5">
           <div className="min-w-0">
             <h3 className="text-sm font-semibold text-[var(--lx-text)] flex items-center gap-2">
@@ -647,7 +647,7 @@ function PluginCard({ plugin }: { plugin: PluginOut }) {
         <HealthDialog plugin={plugin} onClose={() => setShowHealth(false)} />
       )}
 
-      <div className="rounded-xl bg-[var(--lx-surface-glass)] backdrop-blur-[16px] backdrop-saturate-150 border border-[var(--lx-border-soft)] overflow-hidden transition-colors hover:border-[var(--lx-border)]">
+      <div className="rounded-xl bg-[var(--lx-surface-glass)] backdrop-blur-[var(--lx-blur-md)] backdrop-saturate-150 border border-[var(--lx-border-soft)] overflow-hidden transition-colors hover:border-[var(--lx-border)]">
         {/* Header */}
         <div className="p-4 flex gap-3">
           <div
@@ -975,7 +975,7 @@ function MarketplaceTab() {
               return (
                 <div
                   key={mp.repo_url}
-                  className="rounded-xl bg-[var(--lx-surface-glass)] backdrop-blur-[16px] backdrop-saturate-150 border border-[var(--lx-border-soft)] overflow-hidden transition-colors hover:border-[var(--lx-border)]"
+                  className="rounded-xl bg-[var(--lx-surface-glass)] backdrop-blur-[var(--lx-blur-md)] backdrop-saturate-150 border border-[var(--lx-border-soft)] overflow-hidden transition-colors hover:border-[var(--lx-border)]"
                 >
                   <div className="p-4 flex gap-3">
                     <div
@@ -1060,7 +1060,7 @@ function MarketplaceTab() {
           {t('plugins_page.custom_repos')}
         </h2>
 
-        <div className="rounded-xl bg-[var(--lx-surface-glass)] backdrop-blur-[16px] backdrop-saturate-150 border border-[var(--lx-border-soft)] overflow-hidden transition-colors hover:border-[var(--lx-border)]">
+        <div className="rounded-xl bg-[var(--lx-surface-glass)] backdrop-blur-[var(--lx-blur-md)] backdrop-saturate-150 border border-[var(--lx-border-soft)] overflow-hidden transition-colors hover:border-[var(--lx-border)]">
           {(customRepos ?? []).length > 0 && (
             <div className="divide-y divide-[var(--lx-border-soft)]">
               {(customRepos ?? []).map((repo) => (

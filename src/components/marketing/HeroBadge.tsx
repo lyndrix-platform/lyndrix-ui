@@ -15,7 +15,7 @@ export default function HeroBadge({ children, pulse = true }: HeroBadgeProps) {
         padding: '0.375rem 0.875rem',
         background: 'color-mix(in srgb, var(--lx-accent) 10%, transparent)',
         border: '1px solid color-mix(in srgb, var(--lx-accent) 25%, transparent)',
-        borderRadius: '999px',
+        borderRadius: 'var(--lx-radius-full)',
         fontSize: '0.8rem',
         fontWeight: 500,
         color: 'var(--lx-accent)',

@@ -34,7 +34,7 @@ export default function SectionTag({ children, variant = 'cyan' }: SectionTagPro
         padding: '0.3rem 0.875rem',
         background: c.bg,
         border: `1px solid ${c.border}`,
-        borderRadius: '999px',
+        borderRadius: 'var(--lx-radius-full)',
         fontSize: '0.8rem',
         fontWeight: 600,
         color: c.text,

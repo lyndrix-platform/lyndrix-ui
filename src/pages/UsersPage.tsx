@@ -257,7 +257,7 @@ function UserDetailPanel({
   return (
     <div className="fixed inset-0 z-40 flex">
       <div className="flex-1 bg-black/40" onClick={onClose} />
-      <div className="w-full max-w-md bg-[var(--lx-surface-glass)] backdrop-blur-[16px] backdrop-saturate-150 border-l border-[var(--lx-border-soft)] overflow-y-auto flex flex-col">
+      <div className="w-full max-w-md bg-[var(--lx-surface-glass)] backdrop-blur-[var(--lx-blur-md)] backdrop-saturate-150 border-l border-[var(--lx-border-soft)] overflow-y-auto flex flex-col">
         <div className="px-5 py-4 border-b border-[var(--lx-border-soft)] flex items-center justify-between">
           <div>
             <p className="text-sm font-medium text-[var(--lx-text)]">@{user.username}</p>
@@ -407,7 +407,7 @@ function CreateUserModal({ onClose }: { onClose: () => void }) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       <div className="absolute inset-0 bg-black/50" onClick={onClose} />
-      <div className="relative z-10 w-full max-w-sm bg-[var(--lx-surface-glass)] backdrop-blur-[16px] backdrop-saturate-150 rounded-lg border border-[var(--lx-border-soft)] p-6">
+      <div className="relative z-10 w-full max-w-sm bg-[var(--lx-surface-glass)] backdrop-blur-[var(--lx-blur-md)] backdrop-saturate-150 rounded-lg border border-[var(--lx-border-soft)] p-6">
         <div className="flex items-center justify-between mb-4">
           <h3 className="font-medium text-[var(--lx-text)]">{t('users_page.create_user_title')}</h3>
           <button onClick={onClose} className="text-[var(--lx-text-muted)] hover:text-[var(--lx-text)]">✕</button>
@@ -698,7 +698,7 @@ function UsersTab() {
           <div
             key={u.username}
             onClick={() => setSelectedUser(u)}
-            className="flex items-center justify-between px-4 py-3 rounded-md bg-[var(--lx-surface-glass)] backdrop-blur-[16px] backdrop-saturate-150 border border-[var(--lx-border-soft)] hover:border-[var(--lx-accent)]/30 cursor-pointer transition-colors"
+            className="flex items-center justify-between px-4 py-3 rounded-md bg-[var(--lx-surface-glass)] backdrop-blur-[var(--lx-blur-md)] backdrop-saturate-150 border border-[var(--lx-border-soft)] hover:border-[var(--lx-accent)]/30 cursor-pointer transition-colors"
           >
             <div className="flex items-center gap-3">
               <div className="w-7 h-7 rounded-full bg-[var(--lx-elevated-glass)] flex items-center justify-center text-xs font-medium text-[var(--lx-accent)]">

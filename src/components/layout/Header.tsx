@@ -11,7 +11,7 @@ export default function Header({ onToggleSidebar }: Props) {
   const { t } = useTranslation('ui')
 
   return (
-    <header className="hidden md:flex items-center justify-between shrink-0 relative z-40 border-b border-[var(--lx-glass-border)] bg-[var(--lx-surface-glass)] backdrop-blur-[18px] px-4 py-2.5 lx-safe-top lx-safe-x [--lx-safe-top-base:0.625rem] [--lx-safe-x-base:1rem]">
+    <header className="hidden md:flex items-center justify-between shrink-0 relative z-40 border-b border-[var(--lx-glass-border)] bg-[var(--lx-surface-glass)] backdrop-blur-[var(--lx-glass-blur)] px-4 py-2.5 lx-safe-top lx-safe-x [--lx-safe-top-base:0.625rem] [--lx-safe-x-base:1rem]">
       <button
         type="button"
         onClick={onToggleSidebar}

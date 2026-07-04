@@ -69,7 +69,7 @@ export default function AppShell({ children }: Props) {
       <aside
         className={[
           'fixed inset-y-0 left-0 z-30 w-56 shrink-0',
-          'bg-[var(--lx-surface-glass)] backdrop-blur-[18px] border-r border-[var(--lx-glass-border)]',
+          'bg-[var(--lx-surface-glass)] backdrop-blur-[var(--lx-glass-blur)] border-r border-[var(--lx-glass-border)]',
           'transition-transform duration-200 ease-in-out',
           sidebarOpen ? 'translate-x-0' : '-translate-x-full',
           'md:relative md:translate-x-0 md:transition-[width] md:duration-200',
@@ -82,7 +82,7 @@ export default function AppShell({ children }: Props) {
       {/* Main area */}
       <div className="flex flex-col flex-1 overflow-hidden">
         {/* Mobile topbar */}
-        <div className="md:hidden flex items-center gap-3 px-4 py-3 border-b border-[var(--lx-glass-border)] shrink-0 bg-[var(--lx-surface-glass)] backdrop-blur-[18px] lx-safe-top lx-safe-x [--lx-safe-top-base:0.75rem] [--lx-safe-x-base:1rem]">
+        <div className="md:hidden flex items-center gap-3 px-4 py-3 border-b border-[var(--lx-glass-border)] shrink-0 bg-[var(--lx-surface-glass)] backdrop-blur-[var(--lx-glass-blur)] lx-safe-top lx-safe-x [--lx-safe-top-base:0.75rem] [--lx-safe-x-base:1rem]">
           <button
             onClick={() => setSidebarOpen(true)}
             className="text-[var(--lx-text-muted)] hover:text-[var(--lx-text)] transition-colors"
