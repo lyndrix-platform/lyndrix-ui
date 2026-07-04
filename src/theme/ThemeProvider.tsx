@@ -15,6 +15,13 @@ import {
   resetBrowserOverrides,
   type BrowserOverrides,
 } from '../lib/browserOverrides'
+import {
+  useAccountLayer,
+  getAccountLayer,
+  preferencesClient,
+  type AccountThemeSelection,
+  type ThemeTarget,
+} from '../lib/preferences'
 import { ensureObjectURL } from '../lib/bgStore'
 
 // Two independent axes:
@@ -29,11 +36,33 @@ export type ThemeId = 'dark' | 'light'
 export const THEME_KEY = 'lyndrix_theme'
 
 const STYLE_EL_ID = 'lx-theme-vars'
+const ACCOUNT_EL_ID = 'lx-account-vars'
 const BROWSER_EL_ID = 'lx-browser-vars'
 const USER_BG_EL_ID = 'lx-user-bg'
 const BG_CACHE_EL_ID = 'lx-bg-cache'
 const DRAFT_EL_ID = 'lx-editor-draft'
 const DEFAULT_THEME = 'default'
+
+// Precedence is encoded as <head> source order: later blocks win over earlier.
+// theme/system → account (user, cross-device) → browser → background → editor draft.
+// Every injector re-asserts this order so a late async inject can never jump the
+// queue (e.g. a cached theme painting after the browser overrides on first load).
+const LAYER_ORDER = [
+  STYLE_EL_ID,
+  ACCOUNT_EL_ID,
+  BROWSER_EL_ID,
+  USER_BG_EL_ID,
+  BG_CACHE_EL_ID,
+  DRAFT_EL_ID,
+] as const
+
+/** Move every present layer <style> to the end of <head> in precedence order. */
+function enforceLayerOrder(): void {
+  for (const id of LAYER_ORDER) {
+    const el = document.getElementById(id)
+    if (el) document.head.appendChild(el)
+  }
+}
 
 /** Per-mode CSS-var delta for live editor previews (light/dark each optional). */
 export interface VarDelta {
@@ -47,7 +76,11 @@ function extractUrl(cssValue: string | undefined): string | null {
   return m ? m[1] : null
 }
 
-/** Create/replace a <style> by id and move it to the end of <head> (wins). */
+/**
+ * Create/replace a layer <style> by id, then re-assert the whole layer stack's
+ * source order. Used by every var layer (theme/account/browser/background) so
+ * precedence never depends on which async inject happened to land last.
+ */
 function setStyle(id: string, css: string): void {
   let el = document.getElementById(id) as HTMLStyleElement | null
   if (!el) {
@@ -56,6 +89,15 @@ function setStyle(id: string, css: string): void {
   }
   el.textContent = css
   document.head.appendChild(el)
+  enforceLayerOrder()
+}
+
+/** Build the `:root{…}` / light-scoped CSS for a per-mode `--lx-*` override set. */
+function overridesToCss(o: BrowserOverrides): string {
+  const parts: string[] = []
+  if (Object.keys(o.dark).length) parts.push(`:root{${toCss(o.dark)}}`)
+  if (Object.keys(o.light).length) parts.push(`:root[data-theme="light"]{${toCss(o.light)}}`)
+  return parts.join('\n')
 }
 
 interface ThemeCtx {
@@ -66,6 +108,16 @@ interface ThemeCtx {
   refreshTheme: () => void
   /** Remove the React theme pin and re-follow the global active theme. */
   unpinTheme: () => void
+  // Account (user, cross-device) theme selection per target, from /api/me/preferences.
+  accountSelection: AccountThemeSelection
+  /**
+   * Follow the account-scoped theme for a target. For 'react' this also drops the
+   * browser pin so the account selection wins and applies it live; 'nicegui' just
+   * persists the selection (React never consumes it live).
+   */
+  setAccountThemeSelection: (target: ThemeTarget, id: string) => void
+  /** Clear the account-scoped theme selection for a target (falls back to system). */
+  clearAccountThemeSelection: (target: ThemeTarget) => void
   // Per-browser --lx-* overrides on top of the selected theme (any var, per mode).
   browserOverrides: BrowserOverrides
   setBrowserOverrideVar: (mode: ThemeId, varName: string, value: string) => void
@@ -85,6 +137,9 @@ const Ctx = createContext<ThemeCtx>({
   setSelectedTheme: () => {},
   refreshTheme: () => {},
   unpinTheme: () => {},
+  accountSelection: { react: null, nicegui: null },
+  setAccountThemeSelection: () => {},
+  clearAccountThemeSelection: () => {},
   browserOverrides: { light: {}, dark: {} },
   setBrowserOverrideVar: () => {},
   clearBrowserOverrideVar: () => {},
@@ -100,36 +155,27 @@ function toCss(vars: Record<string, string>): string {
     .join(';')
 }
 
-/** Inject/replace the override <style> with the theme's dark + light blocks. */
+/** Inject/replace the theme <style> with the theme's dark + light blocks. */
 function injectThemeVars(vars: ThemeVars): void {
   const css = `:root{${toCss(vars.dark)}}\n:root[data-theme="light"]{${toCss(vars.light)}}`
-  let el = document.getElementById(STYLE_EL_ID) as HTMLStyleElement | null
-  if (!el) {
-    el = document.createElement('style')
-    el.id = STYLE_EL_ID
-    // Appended after index.css → overrides the bundled defaults by source order.
-    document.head.appendChild(el)
-  }
-  el.textContent = css
-  // Keep browser overrides last in <head> so they always win over the theme,
+  // setStyle re-asserts LAYER_ORDER so account/browser/etc. stay above the theme,
   // regardless of which injected first (cache-sync vs network-async).
-  const browserEl = document.getElementById(BROWSER_EL_ID)
-  if (browserEl) document.head.appendChild(browserEl)
+  setStyle(STYLE_EL_ID, css)
+}
+
+/**
+ * Inject/replace the account (user, cross-device) override <style>. Same per-mode
+ * `--lx-*` shape as browser overrides, but sits BELOW the browser layer: when a
+ * user has both an account override and a browser override for the same var, the
+ * browser wins by source order.
+ */
+function injectAccountVars(o: BrowserOverrides): void {
+  setStyle(ACCOUNT_EL_ID, overridesToCss(o))
 }
 
 /** Inject/replace the browser-override <style> (only the overridden vars). */
 function injectBrowserVars(o: BrowserOverrides): void {
-  const parts: string[] = []
-  if (Object.keys(o.dark).length) parts.push(`:root{${toCss(o.dark)}}`)
-  if (Object.keys(o.light).length) parts.push(`:root[data-theme="light"]{${toCss(o.light)}}`)
-  let el = document.getElementById(BROWSER_EL_ID) as HTMLStyleElement | null
-  if (!el) {
-    el = document.createElement('style')
-    el.id = BROWSER_EL_ID
-  }
-  el.textContent = parts.join('\n')
-  // Always (re)append → moves it to the end of <head>, ahead of the theme block.
-  document.head.appendChild(el)
+  setStyle(BROWSER_EL_ID, overridesToCss(o))
 }
 
 /**
@@ -175,11 +221,19 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const [themeId, setThemeId] = useState<ThemeId>(() =>
     localStorage.getItem(THEME_KEY) === 'light' ? 'light' : 'dark',
   )
-  const [selectedThemeId, setSelId] = useState<string>(
-    () => getSelectedThemeId() ?? DEFAULT_THEME,
-  )
+  // Initial React theme: browser pin (highest) → cached account selection → default.
+  // The account selection is read synchronously from the localStorage cache so a
+  // fresh reload paints the cross-device theme with no flash before the server GET.
+  const [selectedThemeId, setSelId] = useState<string>(() => {
+    const pin = getSelectedThemeId()
+    if (pin) return pin
+    return getAccountLayer().selection.react ?? DEFAULT_THEME
+  })
   // Per-browser --lx-* overrides, from the reactive browserOverrides store.
   const browserOverrides = useBrowserOverrides()
+  // Account (user, cross-device) layer, from the reactive preferences store.
+  const accountLayer = useAccountLayer()
+  const loggedIn = !!getToken()
   // Per-user background images (server source of truth → syncs across devices).
   const [userBg, setUserBg] = useState<{ light?: string | null; dark?: string | null }>({})
   // Bumped whenever fresh theme css-vars are injected, so the bg-image cache
@@ -204,9 +258,23 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     document.documentElement.dataset.theme = themeId
   }, [themeId])
 
-  // Browser-override layer — declared AFTER the theme effect so on mount the
-  // browser <style> is appended after the theme <style> (and injectThemeVars
-  // re-asserts the ordering on every theme change).
+  // Account-override layer — sits between theme (below) and browser (above).
+  // Applies only while authenticated; on logout the preferences store is cleared
+  // to the empty layer, which removes these vars (system/browser scopes remain).
+  useEffect(() => {
+    injectAccountVars(loggedIn ? accountLayer.tokenOverrides : { light: {}, dark: {} })
+  }, [accountLayer, loggedIn])
+
+  // Revalidate the account preferences against the server on mount (covers a
+  // logged-in reload); the fetch updates the reactive store + localStorage cache.
+  useEffect(() => {
+    if (!getToken()) return
+    void preferencesClient.getPreferences()
+  }, [])
+
+  // Browser-override layer — declared AFTER the account effect so on mount the
+  // browser <style> is appended after it (and enforceLayerOrder re-asserts the
+  // ordering on every change regardless).
   useEffect(() => {
     injectBrowserVars(browserOverrides)
   }, [browserOverrides])
@@ -279,12 +347,20 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     })
   }, [])
 
-  // First run (no explicit selection yet): follow the global active theme.
-  // Not persisted — only an explicit user choice pins the React theme.
+  // Theme-selection precedence when no explicit browser pin exists:
+  //   browser pin (localStorage) → account selection (cross-device) → system active.
+  // The account selection is followed but NOT persisted as a browser pin (only an
+  // explicit "This browser" choice writes lyndrix_react_theme). Re-runs whenever the
+  // account selection changes (e.g. server revalidation lands on a fresh device).
   useEffect(() => {
-    if (getSelectedThemeId()) return
+    if (getSelectedThemeId()) return // browser pin wins — leave it.
+    const acct = accountLayer.selection.react
+    if (acct) {
+      setSelId(acct)
+      return
+    }
     followActiveTheme()
-  }, [followActiveTheme])
+  }, [accountLayer.selection.react, followActiveTheme])
 
   function setTheme(id: ThemeId) {
     setThemeId(id)
@@ -304,6 +380,22 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     clearSelectedThemeId()
     followActiveTheme()
   }, [followActiveTheme])
+
+  // Follow the account-scoped theme for a target. 'react' also drops the browser
+  // pin so the account selection wins and applies it live; 'nicegui' only persists
+  // the selection server-side (React never paints the NiceGUI theme).
+  const setAccountThemeSelection = useCallback((target: ThemeTarget, id: string) => {
+    void preferencesClient.setThemeSelection(target, id)
+    if (target === 'react') {
+      clearSelectedThemeId() // drop browser pin so account wins
+      setSelId(id) // follow now (not persisted as a browser pin)
+    }
+  }, [])
+
+  // Clear the account-scoped selection for a target → falls back to system default.
+  const clearAccountThemeSelection = useCallback((target: ThemeTarget) => {
+    void preferencesClient.deletePath(`theme.selection.${target}`)
+  }, [])
 
   // Browser-override mutators delegate to the reactive store; the store notifies
   // useBrowserOverrides(), which re-renders the provider and re-injects the vars.
@@ -333,6 +425,9 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
         setSelectedTheme,
         refreshTheme,
         unpinTheme,
+        accountSelection: accountLayer.selection,
+        setAccountThemeSelection,
+        clearAccountThemeSelection,
         browserOverrides,
         setBrowserOverrideVar,
         clearBrowserOverrideVar: clearBrowserOverride,

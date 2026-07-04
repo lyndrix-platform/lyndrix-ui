@@ -12,6 +12,11 @@ import {
 } from '../../../../lib/browserOverrides'
 import { useGlassConfig, resetGlassConfig, GLASS_DEFAULTS, type GlassConfig } from '../../../../lib/glassConfig'
 import { getUiScale, setUiScale, UI_SCALE_DEFAULT } from '../../../../lib/uiScale'
+import {
+  useAccountLayer,
+  countAccountOverrides,
+  preferencesClient,
+} from '../../../../lib/preferences'
 import { Card, SectionTitle } from '../../shared'
 
 /** True when the glass config differs from the shipped defaults on any key. */
@@ -53,6 +58,9 @@ export default function OverridesCard() {
   const [, setSearchParams] = useSearchParams()
   const overrides = useBrowserOverrides()
   const glass = useGlassConfig()
+  // Account (cross-device) token overrides — reactive; server-scoped, not local.
+  const accountLayer = useAccountLayer()
+  const accountCount = countAccountOverrides(accountLayer)
 
   // Deep-link into the editor's Colours group (browser overrides are mostly
   // colours/tokens); AppearanceSection portals the editor on this param.
@@ -72,7 +80,7 @@ export default function OverridesCard() {
   const scaleCustom = scale !== UI_SCALE_DEFAULT
   const glassCustom = glassCustomised(glass)
 
-  const anything = hasAnyOverride() || glassCustom || scaleCustom
+  const anything = hasAnyOverride() || glassCustom || scaleCustom || accountCount > 0
 
   function resetFacet(pred: (v: string) => boolean) {
     ;(['light', 'dark'] as const).forEach((mode) => {
@@ -137,6 +145,17 @@ export default function OverridesCard() {
                 setUiScale(UI_SCALE_DEFAULT)
                 bump()
               }}
+            />
+          )}
+          {/* Account-scoped (cross-device) token overrides — reset removes the whole
+              theme.token_overrides subtree via /api/me/preferences. */}
+          {accountCount > 0 && (
+            <FacetChip
+              label={t('appearance.facet_account', {
+                defaultValue: 'My account: {{n}} (synced)',
+                n: accountCount,
+              })}
+              onReset={() => void preferencesClient.deletePath('theme.token_overrides')}
             />
           )}
         </div>

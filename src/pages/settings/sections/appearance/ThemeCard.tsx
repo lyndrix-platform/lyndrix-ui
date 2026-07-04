@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { ChevronDown, Lock, Monitor, Palette, Trash2, Upload } from 'lucide-react'
+import { ChevronDown, Cloud, Monitor, Palette, Trash2, Upload } from 'lucide-react'
 import { apiFetch, getToken, clearToken, ApiError } from '../../../../lib/api'
 import { getSelectedThemeId, getThemeVars } from '../../../../lib/themeStore'
 import { useTheme } from '../../../../theme/ThemeProvider'
@@ -40,7 +40,15 @@ function themeSwatch(id: string): string {
  */
 export default function ThemeCard() {
   const { t } = useTranslation('ui')
-  const { selectedThemeId, setSelectedTheme, unpinTheme, refreshTheme } = useTheme()
+  const {
+    selectedThemeId,
+    setSelectedTheme,
+    unpinTheme,
+    refreshTheme,
+    accountSelection,
+    setAccountThemeSelection,
+    clearAccountThemeSelection,
+  } = useTheme()
   const qc = useQueryClient()
   const [, setSearchParams] = useSearchParams()
 
@@ -109,13 +117,36 @@ export default function ThemeCard() {
     toast.error(e instanceof Error ? e.message : t('common.error'))
   }
 
-  // ── React-row (browser scope) actions ───────────────────────────────────────
+  // ── React-row scope actions ─────────────────────────────────────────────────
+  // Source resolution for the React UI (matches ThemeProvider's precedence):
+  //   browser pin  →  account selection (cross-device)  →  system default.
+  const source: 'browser' | 'account' | 'system' = isPinned
+    ? 'browser'
+    : accountSelection.react
+      ? 'account'
+      : 'system'
+
   function pinReactTheme(id: string) {
     setSelectedTheme(id)
     setIsPinned(true)
   }
   function unpinReactTheme() {
     unpinTheme()
+    setIsPinned(false)
+  }
+  // "System default": drop the browser pin AND the account selection so the row
+  // falls all the way back to the server active theme.
+  function useSystemDefault() {
+    unpinReactTheme()
+    clearAccountThemeSelection('react')
+    clearAccountThemeSelection('nicegui')
+  }
+  // "My account": persist the current theme as the account selection (React is
+  // consumed live; NiceGUI is mirrored so a cross-device NiceGUI session picks up
+  // the same theme) and drop the browser pin so the account selection wins.
+  function useAccount() {
+    setAccountThemeSelection('react', selectedThemeId)
+    setAccountThemeSelection('nicegui', selectedThemeId)
     setIsPinned(false)
   }
 
@@ -138,15 +169,21 @@ export default function ThemeCard() {
     setPending({ id, target: 'nicegui' })
   }
 
-  const effectiveSource = isPinned
-    ? t('appearance.src_pinned', {
-        defaultValue: '{{id}} — pinned in this browser',
-        id: selectedThemeId,
-      })
-    : t('appearance.src_following', {
-        defaultValue: '{{id}} — following server default',
-        id: selectedThemeId,
-      })
+  const effectiveSource =
+    source === 'browser'
+      ? t('appearance.src_pinned', {
+          defaultValue: '{{id}} — pinned in this browser',
+          id: selectedThemeId,
+        })
+      : source === 'account'
+        ? t('appearance.src_account', {
+            defaultValue: '{{id}} — following my account (syncs across devices)',
+            id: selectedThemeId,
+          })
+        : t('appearance.src_following', {
+            defaultValue: '{{id}} — following server default',
+            id: selectedThemeId,
+          })
 
   return (
     <Card>
@@ -246,22 +283,23 @@ export default function ThemeCard() {
                 </option>
               ))}
             </select>
-            {/* Scope pills */}
+            {/* Scope pills — precedence: This browser > My account > System default */}
             <div className="flex flex-wrap gap-2 mt-1">
-              <ScopePill active={!isPinned} onClick={unpinReactTheme}>
+              <ScopePill active={source === 'system'} onClick={useSystemDefault}>
                 {t('appearance.scope_system', { defaultValue: 'System default' })}
               </ScopePill>
               <ScopePill
-                active={false}
+                active={source === 'account'}
                 disabled={!ACCOUNT_SCOPE_ENABLED}
-                title={t('appearance.scope_account_locked', {
-                  defaultValue: 'Requires Theming v2 Phase 2',
+                onClick={ACCOUNT_SCOPE_ENABLED ? useAccount : undefined}
+                title={t('appearance.scope_account_hint', {
+                  defaultValue: 'Follow this theme on all your devices',
                 })}
               >
-                <Lock size={11} />
+                <Cloud size={12} />
                 {t('appearance.scope_account', { defaultValue: 'My account' })}
               </ScopePill>
-              <ScopePill active={isPinned} onClick={() => pinReactTheme(selectedThemeId)}>
+              <ScopePill active={source === 'browser'} onClick={() => pinReactTheme(selectedThemeId)}>
                 <span className="w-1.5 h-1.5 rounded-full bg-current" />
                 {t('appearance.scope_browser', { defaultValue: 'This browser' })}
               </ScopePill>

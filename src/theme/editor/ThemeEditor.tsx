@@ -20,7 +20,7 @@ import {
   Sun,
   X,
   ChevronDown,
-  Lock,
+  Cloud,
   Plus,
   Save,
   Monitor,
@@ -30,7 +30,7 @@ import {
 import { apiFetch, ApiError } from '../../lib/api'
 import { setBrowserOverrideVars } from '../../lib/browserOverrides'
 import { getThemeVars, setThemeVars, type ThemeVars } from '../../lib/themeStore'
-import { ACCOUNT_SCOPE_ENABLED } from '../../lib/preferences'
+import { ACCOUNT_SCOPE_ENABLED, preferencesClient } from '../../lib/preferences'
 import { toast } from '../../lib/toast'
 import type { ThemeOut } from '../../lib/types'
 import { useTheme } from '../ThemeProvider'
@@ -302,6 +302,32 @@ export default function ThemeEditor({ initialBase, initialGroup, onClose }: Them
     dispatch({ type: 'RESET_ALL' })
     toast.success(t('editor.applied_browser', { defaultValue: 'Applied to this browser.' }))
     closeNow()
+  }
+
+  // "Apply to my account": persist the draft delta into the account (cross-device)
+  // token overrides via /api/me/preferences (minimal per-mode partials — the server
+  // deep-merges). The account layer repaints it below any browser overrides, then
+  // we drop the draft. Painted on every logged-in device, no flash after caching.
+  async function applyToAccount() {
+    setSaveMenuOpen(false)
+    const delta = tokensToVarDelta(draft.edits)
+    if (!Object.keys(delta.light).length && !Object.keys(delta.dark).length) return
+    try {
+      if (Object.keys(delta.light).length) {
+        await preferencesClient.setTokenOverrides('light', delta.light)
+      }
+      if (Object.keys(delta.dark).length) {
+        await preferencesClient.setTokenOverrides('dark', delta.dark)
+      }
+      dispatch({ type: 'RESET_ALL' })
+      toast.success(
+        t('editor.applied_account', { defaultValue: 'Applied to my account (all devices).' }),
+      )
+      closeNow()
+    } catch (e) {
+      if (e instanceof ApiError && e.status === 401) return // session handler took over
+      toast.error(e instanceof Error ? e.message : t('common.error', { defaultValue: 'Error' }))
+    }
   }
 
   // ── Save as theme pack (POST /api/themes) ─────────────────────────────────────
@@ -719,17 +745,20 @@ export default function ThemeEditor({ initialBase, initialGroup, onClose }: Them
                       })}
                     </button>
                   )}
-                  {/* Phase-2 seam: account-scoped save (disabled) */}
-                  <button
-                    className="w-full flex items-center gap-2 px-3 py-2 rounded-md text-sm text-[var(--lx-text-subtle)] opacity-60 cursor-not-allowed text-left"
-                    disabled={!ACCOUNT_SCOPE_ENABLED}
-                    title={t('editor.save.account_locked', {
-                      defaultValue: 'Requires Theming v2 Phase 2',
-                    })}
-                  >
-                    <Lock size={14} className="shrink-0" />
-                    {t('editor.save.account', { defaultValue: 'Apply to my account' })}
-                  </button>
+                  {/* Account-scoped apply — cross-device via /api/me/preferences */}
+                  {ACCOUNT_SCOPE_ENABLED && (
+                    <button
+                      className="w-full flex items-center gap-2 px-3 py-2 rounded-md text-sm text-[var(--lx-text)] hover:bg-[var(--lx-elevated)] text-left transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+                      disabled={dirty === 0}
+                      title={t('editor.save.account_hint', {
+                        defaultValue: 'Apply these edits on all your devices',
+                      })}
+                      onClick={() => void applyToAccount()}
+                    >
+                      <Cloud size={14} className="shrink-0 text-[var(--lx-accent)]" />
+                      {t('editor.save.account', { defaultValue: 'Apply to my account' })}
+                    </button>
+                  )}
                 </div>
               </>
             )}
