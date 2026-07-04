@@ -3,8 +3,91 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { Copy, Check, Trash2, MonitorSmartphone, LogOut } from 'lucide-react'
 import { apiFetch, getToken } from '../../../lib/api'
+import { preferencesClient } from '../../../lib/preferences'
 import type { ApiKeyOut, UserOut } from '../../../lib/types'
 import { Card, Field, SectionTitle, SaveButton, StatusMsg, inputCls } from '../shared'
+
+interface SubscribableEndpoint {
+  plugin_id: string
+  plugin_name: string
+  endpoint_name: string
+  description: string
+  key: string
+}
+
+/** Personal notification mutes — a display preference stored in the account
+ *  preferences doc (notifications.muted_endpoints), NOT a security boundary.
+ *  Only endpoints the caller may actually see are offered. */
+function MutedNotificationsCard() {
+  const { t } = useTranslation('ui')
+  const qc = useQueryClient()
+
+  const { data: subs } = useQuery({
+    queryKey: ['notif-subscribable'],
+    queryFn: () =>
+      apiFetch<{ endpoints: SubscribableEndpoint[] }>('/api/notifications/subscribable').then(
+        (r) => r.endpoints,
+      ),
+    staleTime: 60_000,
+  })
+  const { data: prefs } = useQuery({
+    queryKey: ['me-preferences'],
+    queryFn: () => preferencesClient.getPreferences(true),
+  })
+  const muted = new Set<string>(
+    (((prefs as Record<string, any>)?.preferences?.notifications?.muted_endpoints ??
+      (prefs as Record<string, any>)?.notifications?.muted_endpoints) as string[] | undefined) ?? [],
+  )
+
+  const saveMut = useMutation({
+    mutationFn: (next: string[]) =>
+      preferencesClient.setPath('notifications.muted_endpoints', next),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['me-preferences'] })
+      void qc.invalidateQueries({ queryKey: ['notifications'] })
+    },
+  })
+
+  function toggle(key: string) {
+    const next = new Set(muted)
+    if (next.has(key)) next.delete(key)
+    else next.add(key)
+    saveMut.mutate([...next].sort())
+  }
+
+  if (!subs || subs.length === 0) return null
+
+  return (
+    <Card>
+      <SectionTitle>{t('profile_section.mutes_title')}</SectionTitle>
+      <p className="text-xs text-[var(--lx-text-muted)] mb-3">{t('profile_section.mutes_hint')}</p>
+      <div className="flex flex-col gap-1.5">
+        {subs.map((s) => (
+          <label
+            key={s.key}
+            className="flex items-center gap-2.5 px-3 py-2 rounded-md bg-[var(--lx-elevated)] border border-[var(--lx-border-soft)] cursor-pointer"
+          >
+            <input
+              type="checkbox"
+              checked={muted.has(s.key)}
+              disabled={saveMut.isPending}
+              onChange={() => toggle(s.key)}
+              className="accent-[var(--lx-accent)] shrink-0"
+            />
+            <div className="min-w-0">
+              <span className="text-xs text-[var(--lx-text)] lx-mono">
+                {s.plugin_name} / {s.endpoint_name}
+              </span>
+              {s.description && (
+                <p className="text-[10px] text-[var(--lx-text-muted)] truncate">{s.description}</p>
+              )}
+            </div>
+          </label>
+        ))}
+      </div>
+    </Card>
+  )
+}
 
 /** Session tokens are UserApiKey rows minted at login; they are recognisable
  *  by their 'web-session' label prefix (both the legacy `web-session-<ts>` and
@@ -217,6 +300,9 @@ export default function ProfileSection(_: {
         {pwStatus && <StatusMsg ok={pwStatus.ok} msg={pwStatus.msg} />}
         <SaveButton onClick={() => pwMut.mutate()} loading={pwMut.isPending} />
       </Card>
+
+      {/* ── Muted notifications ── */}
+      <MutedNotificationsCard />
 
       {/* ── Active Sessions ── */}
       <Card>

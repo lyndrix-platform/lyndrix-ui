@@ -31,6 +31,9 @@ export interface PluginOut {
   react_routes: PluginRoute[]
   settings_schema: PluginSettingField[]
   settings_ui_route: string | null
+  latest_version?: string | null
+  update_available?: boolean
+  log_source?: string
 }
 
 export interface HealthResponse {

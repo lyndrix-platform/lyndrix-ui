@@ -187,6 +187,9 @@ export default function App() {
       // A plugin install/removal may add/remove locale namespaces and bumps the
       // catalog version server-side — cheap `?v=` revalidation (304 if unchanged).
       void bootstrapI18n()
+    } else if (topic === 'plugin:update_available') {
+      // Background checker found a newer tag — refresh so the badge appears.
+      void queryClient.invalidateQueries({ queryKey: ['plugins'] })
     } else if (topic === 'ui:needs_refresh') {
       void bootstrapI18n()
       // A theme upload/activation re-emits this — re-fetch the selected theme's vars.
