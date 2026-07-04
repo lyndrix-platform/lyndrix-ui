@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useReducer, useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
+import type { TFunction } from 'i18next'
 import {
   Palette,
   Square,
@@ -23,6 +24,8 @@ import {
   Plus,
   Save,
   Monitor,
+  Eye,
+  LayoutGrid,
 } from 'lucide-react'
 import { apiFetch, ApiError } from '../../lib/api'
 import { setBrowserOverrideVars } from '../../lib/browserOverrides'
@@ -42,7 +45,7 @@ import {
   type ThemeTokens,
 } from './draft'
 import { buildThemeZip, uploadThemePack, fetchAssetBytes, type PackAsset } from './packZip'
-import EditorPreview from './EditorPreview'
+import { GroupPreview, FullPreview, PreviewCanvas } from './previews'
 import ColorsGroup from './groups/ColorsGroup'
 import ShapeGroup from './groups/ShapeGroup'
 import DensityGroup from './groups/DensityGroup'
@@ -80,6 +83,45 @@ function themeIds(themes: ThemeOut[] | undefined): string[] {
   return (themes ?? []).map((t) => (typeof t === 'string' ? t : t.id))
 }
 
+/** Segmented [Focus | All] control that switches the preview scope. Shared by
+ *  the desktop side panel and the mobile inline preview. */
+function PreviewToggle({
+  full,
+  onChange,
+  t,
+}: {
+  full: boolean
+  onChange: (v: boolean) => void
+  t: TFunction
+}) {
+  const opts: { key: boolean; Icon: typeof Eye; labelKey: string; label: string }[] = [
+    { key: false, Icon: Eye, labelKey: 'editor.preview.focus', label: 'This section' },
+    { key: true, Icon: LayoutGrid, labelKey: 'editor.preview.full', label: 'Everything' },
+  ]
+  return (
+    <div className="inline-flex rounded-lg border border-[var(--lx-glass-border)] p-0.5">
+      {opts.map((o) => {
+        const on = o.key === full
+        return (
+          <button
+            key={String(o.key)}
+            onClick={() => onChange(o.key)}
+            className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-[11px] font-medium transition-colors"
+            style={{
+              background: on ? 'color-mix(in srgb, var(--lx-accent) 14%, transparent)' : 'transparent',
+              color: on ? 'var(--lx-accent)' : 'var(--lx-text-muted)',
+            }}
+            aria-pressed={on}
+          >
+            <o.Icon size={12} />
+            {t(o.labelKey, { defaultValue: o.label })}
+          </button>
+        )
+      })}
+    </div>
+  )
+}
+
 export interface ThemeEditorProps {
   /** Theme id to load as the editing base (defaults to the pinned React theme). */
   initialBase?: string
@@ -102,6 +144,9 @@ export default function ThemeEditor({ initialBase, initialGroup, onClose }: Them
   const qc = useQueryClient()
   const [draft, dispatch] = useReducer(draftReducer, undefined, initialDraft)
   const [activeGroup, setActiveGroup] = useState<GroupId>(initialGroup ?? 'colors')
+  // Preview scope shared by the desktop side panel and the mobile inline preview:
+  // `false` = contextual (just the active group), `true` = the full canvas.
+  const [previewFull, setPreviewFull] = useState(false)
   const [baseId, setBaseId] = useState(initialBase ?? selectedThemeId ?? 'default')
   const [loading, setLoading] = useState(false)
   const [confirmingClose, setConfirmingClose] = useState(false)
@@ -439,57 +484,59 @@ export default function ThemeEditor({ initialBase, initialGroup, onClose }: Them
         {/* Gradient accent bar — echoes the shell's section accents */}
         <div className="h-1 shrink-0" style={{ background: 'var(--lx-gradient-accent)' }} />
 
-        {/* Header */}
-        <header className="flex items-center gap-3 px-4 py-3 border-b border-[var(--lx-glass-border)] shrink-0">
+        {/* Header — wraps to two rows on narrow phones so nothing is pushed
+            offscreen (title+base on row 1, mode toggle+close cluster on row 2). */}
+        <header className="flex flex-wrap items-center gap-x-3 gap-y-2 px-3 sm:px-4 py-2.5 border-b border-[var(--lx-glass-border)] shrink-0">
         <Palette size={18} className="text-[var(--lx-accent)] shrink-0" />
-        <h2 className="text-sm font-semibold text-[var(--lx-text)] mr-2">
+        <h2 className="text-sm font-semibold text-[var(--lx-text)] whitespace-nowrap">
           {t('editor.title', { defaultValue: 'Theme Editor' })}
         </h2>
 
-        <label className="flex items-center gap-1.5 text-xs text-[var(--lx-text-muted)]">
-          {t('editor.base', { defaultValue: 'Base' })}
-          <select
-            className="lx-input text-xs !py-1 !w-auto"
-            value={baseId}
-            onChange={(e) => setBaseId(e.target.value)}
-            disabled={loading}
-          >
-            {ids.length === 0 && <option value={baseId}>{baseId}</option>}
-            {ids.map((id) => (
-              <option key={id} value={id}>
-                {id}
-              </option>
-            ))}
-          </select>
-        </label>
+        <div className="ml-auto flex items-center gap-2 sm:gap-3 flex-wrap justify-end">
+          <label className="flex items-center gap-1.5 text-xs text-[var(--lx-text-muted)]">
+            <span className="hidden sm:inline">{t('editor.base', { defaultValue: 'Base' })}</span>
+            <select
+              className="lx-input text-xs !py-1 !w-auto"
+              value={baseId}
+              onChange={(e) => setBaseId(e.target.value)}
+              disabled={loading}
+            >
+              {ids.length === 0 && <option value={baseId}>{baseId}</option>}
+              {ids.map((id) => (
+                <option key={id} value={id}>
+                  {id}
+                </option>
+              ))}
+            </select>
+          </label>
 
-        {/* Mode toggle — flips the real app + which colour palette is edited */}
-        <div className="flex items-center gap-1 ml-1">
-          {(['dark', 'light'] as const).map((m) => {
-            const Icon = m === 'dark' ? Moon : Sun
-            const on = themeId === m
-            return (
-              <button
-                key={m}
-                onClick={() => setTheme(m)}
-                className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg border text-xs font-medium transition-colors"
-                style={{
-                  borderColor: on ? 'var(--lx-accent)' : 'var(--lx-glass-border)',
-                  background: on ? 'color-mix(in srgb, var(--lx-accent) 12%, transparent)' : 'transparent',
-                  color: on ? 'var(--lx-accent)' : 'var(--lx-text-muted)',
-                }}
-              >
-                <Icon size={13} />
-                {t(`appearance.${m}`, { defaultValue: m })}
-              </button>
-            )
-          })}
-        </div>
+          {/* Mode toggle — flips the real app + which colour palette is edited */}
+          <div className="flex items-center gap-1">
+            {(['dark', 'light'] as const).map((m) => {
+              const Icon = m === 'dark' ? Moon : Sun
+              const on = themeId === m
+              return (
+                <button
+                  key={m}
+                  onClick={() => setTheme(m)}
+                  className="inline-flex items-center gap-1 px-2 sm:px-2.5 py-1.5 rounded-lg border text-xs font-medium transition-colors"
+                  style={{
+                    borderColor: on ? 'var(--lx-accent)' : 'var(--lx-glass-border)',
+                    background: on ? 'color-mix(in srgb, var(--lx-accent) 12%, transparent)' : 'transparent',
+                    color: on ? 'var(--lx-accent)' : 'var(--lx-text-muted)',
+                  }}
+                  aria-pressed={on}
+                >
+                  <Icon size={13} />
+                  <span className="hidden sm:inline">{t(`appearance.${m}`, { defaultValue: m })}</span>
+                </button>
+              )
+            })}
+          </div>
 
-        <div className="ml-auto flex items-center gap-2">
           <button
             onClick={requestClose}
-            className="lx-icon-btn"
+            className="lx-icon-btn shrink-0"
             title={t('editor.close', { defaultValue: 'Close' })}
           >
             <X size={18} />
@@ -527,26 +574,36 @@ export default function ThemeEditor({ initialBase, initialGroup, onClose }: Them
           })}
         </nav>
 
-        {/* Mobile group chips */}
-        <div className="md:hidden flex gap-2 overflow-x-auto p-2 border-b border-[var(--lx-glass-border)]">
-          {GROUPS.map((g) => (
-            <button
-              key={g.id}
-              onClick={() => setActiveGroup(g.id)}
-              className={[
-                'shrink-0 px-3 py-1.5 rounded-lg border text-xs font-medium transition-colors',
-                g.id === activeGroup
-                  ? 'border-[var(--lx-accent)] bg-[var(--lx-accent)]/10 text-[var(--lx-accent)]'
-                  : 'border-[var(--lx-glass-border)] text-[var(--lx-text-muted)]',
-              ].join(' ')}
-            >
-              {t(g.labelKey, { defaultValue: g.label })}
-            </button>
-          ))}
+        {/* Mobile group chips — icons + dirty-count badges, horizontally scrollable */}
+        <div className="md:hidden flex gap-2 overflow-x-auto px-3 py-2.5 border-b border-[var(--lx-glass-border)] [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
+          {GROUPS.map((g) => {
+            const on = g.id === activeGroup
+            const count = railCounts[g.id]
+            return (
+              <button
+                key={g.id}
+                onClick={() => setActiveGroup(g.id)}
+                className={[
+                  'shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-xs font-medium transition-colors',
+                  on
+                    ? 'border-[var(--lx-accent)] bg-[var(--lx-accent)]/10 text-[var(--lx-accent)]'
+                    : 'border-[var(--lx-glass-border)] text-[var(--lx-text-muted)]',
+                ].join(' ')}
+              >
+                <g.Icon size={13} className="shrink-0" />
+                <span className="whitespace-nowrap">{t(g.labelKey, { defaultValue: g.label })}</span>
+                {count ? (
+                  <span className="text-[10px] font-semibold text-[var(--lx-accent)] tabular-nums">
+                    {count}
+                  </span>
+                ) : null}
+              </button>
+            )
+          })}
         </div>
 
         {/* Active group controls */}
-        <section className="overflow-y-auto p-5 min-w-0">
+        <section className="overflow-y-auto p-4 sm:p-5 min-w-0">
           <h3 className="text-sm font-semibold text-[var(--lx-text)] mb-4 flex items-center gap-2">
             <active.Icon size={16} className="text-[var(--lx-accent)]" />
             {t(active.labelKey, { defaultValue: active.label })}
@@ -559,19 +616,45 @@ export default function ThemeEditor({ initialBase, initialGroup, onClose }: Them
             carryOverAssets={carryOverAssets}
             onCarryOverChange={setCarryOverAssets}
           />
+
+          {/* Inline contextual preview (mobile + tablet) — the side panel is
+              offscreen below lg, so surface a live preview right under the
+              controls. Toggles between the active group's slice and the full
+              canvas. */}
+          <div className="lg:hidden mt-6 pt-4 border-t border-[var(--lx-glass-border)]">
+            <div className="flex items-center justify-between gap-2 mb-3">
+              <p className="text-[10px] font-semibold uppercase tracking-wide text-[var(--lx-text-muted)] inline-flex items-center gap-1.5">
+                <Eye size={12} />
+                {t('editor.preview.label', { defaultValue: 'Preview' })}
+              </p>
+              <PreviewToggle full={previewFull} onChange={setPreviewFull} t={t} />
+            </div>
+            <PreviewCanvas>
+              {previewFull ? <FullPreview /> : <GroupPreview group={activeGroup} />}
+            </PreviewCanvas>
+          </div>
         </section>
 
-        {/* Sticky preview (desktop) / stacked (below controls on md) */}
-        <aside className="hidden lg:block border-l border-[var(--lx-glass-border)] overflow-y-auto p-4">
-          <p className="text-[10px] font-semibold uppercase tracking-wide text-[var(--lx-text-muted)] mb-3">
-            {t('editor.preview.label', { defaultValue: 'Preview' })}
-          </p>
-          <EditorPreview />
+        {/* Sticky preview (desktop ≥lg) — Focus (active group) / Full toggle. */}
+        <aside className="hidden lg:flex flex-col border-l border-[var(--lx-glass-border)] min-h-0">
+          <div className="flex items-center justify-between gap-2 px-4 py-3 border-b border-[var(--lx-glass-border)] shrink-0">
+            <p className="text-[10px] font-semibold uppercase tracking-wide text-[var(--lx-text-muted)] inline-flex items-center gap-1.5">
+              <Eye size={12} />
+              {t('editor.preview.label', { defaultValue: 'Preview' })}
+            </p>
+            <PreviewToggle full={previewFull} onChange={setPreviewFull} t={t} />
+          </div>
+          <div className="overflow-y-auto p-4">
+            <PreviewCanvas>
+              {previewFull ? <FullPreview /> : <GroupPreview group={activeGroup} />}
+            </PreviewCanvas>
+          </div>
         </aside>
       </div>
 
-      {/* Footer */}
-      <footer className="flex flex-wrap items-center gap-2 px-4 py-3 border-t border-[var(--lx-glass-border)] shrink-0">
+      {/* Footer — on phones the action cluster drops to its own full-width row so
+          Apply / Save never get clipped or overlap the change counter. */}
+      <footer className="flex flex-wrap items-center gap-x-3 gap-y-2 px-3 sm:px-4 py-3 border-t border-[var(--lx-glass-border)] shrink-0">
         <button
           className="lx-btn lx-btn--ghost lx-btn--sm"
           disabled={dirty === 0}
@@ -579,21 +662,21 @@ export default function ThemeEditor({ initialBase, initialGroup, onClose }: Them
         >
           {t('editor.reset_draft', { defaultValue: 'Reset draft' })}
         </button>
-        <span className="text-xs text-[var(--lx-text-muted)]">
+        <span className="text-xs text-[var(--lx-text-muted)] tabular-nums">
           {t('editor.n_changes', { defaultValue: '{{n}} changes', n: dirty })}
         </span>
-        <div className="ml-auto flex items-center gap-2">
+        <div className="ml-auto flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full sm:w-auto justify-end">
           <button
-            className="lx-btn lx-btn--primary lx-btn--sm"
+            className="lx-btn lx-btn--primary lx-btn--sm w-full sm:w-auto"
             disabled={dirty === 0}
             onClick={applyToBrowser}
           >
             {t('editor.apply_browser', { defaultValue: 'Apply to this browser' })}
           </button>
           {/* Save-as-theme pack export */}
-          <div className="relative">
+          <div className="relative w-full sm:w-auto">
             <button
-              className={`lx-btn lx-btn--secondary lx-btn--sm ${!canSave ? 'opacity-60 cursor-not-allowed' : ''}`}
+              className={`lx-btn lx-btn--secondary lx-btn--sm w-full sm:w-auto ${!canSave ? 'opacity-60 cursor-not-allowed' : ''}`}
               disabled={!canSave || saving}
               title={
                 baseComponents === null

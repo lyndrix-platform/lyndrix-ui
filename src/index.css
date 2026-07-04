@@ -106,6 +106,7 @@
   --lx-glass-saturate: 160%;
   /* Theme-stable near-black foreground on bright accent/success surfaces */
   --lx-on-accent-text: #0a0e1a;
+  --lx-on-accent-text-light: #ffffff;
   /* Status-rail / accent-stripe thickness */
   --lx-rail-width: 3px;
   /* Badge tint opacities (drive the token-based badge modifiers) */
@@ -861,6 +862,7 @@ html.lx-glass-all .lx-card > * {
   --lx-blur-xs: 10px;
   --lx-glass-saturate: 160%;
   --lx-on-accent-text: #0a0e1a;
+  --lx-on-accent-text-light: #ffffff;
   --lx-rail-width: 3px;
   --lx-badge-bg-opacity: 0.15;
   --lx-badge-border-opacity: 0.30;
