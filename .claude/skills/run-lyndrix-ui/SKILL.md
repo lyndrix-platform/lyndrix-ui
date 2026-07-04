@@ -81,14 +81,35 @@ node .claude/skills/run-lyndrix-ui/driver.mjs /plugins /tmp/gear.png 'button[tit
 Then **look at the PNG** (Read the file). The deep-link command lands on
 "Docker Manager — Einstellungen" with the Docker Hosts list + add-host form.
 
-### Verified routes (against core 0.3.1)
+### Drive as a non-admin (permission-gated views — Identity 2.0)
+
+The driver logs in as `admin` (full access) by default. Since 1.0 the shell is
+**permission-gated**: sidebar items, routes and dashboard sections are filtered
+by the caller's effective permissions (`GET /api/me/access`). To screenshot the
+*restricted* experience, log in as a non-admin via `LOGIN_USER` + `LOGIN_PASS`:
+
+```bash
+# INT_VIEWER user → dashboard shows ONLY Apps + Tools (no Core/Services section),
+# and SYSTEM nav shows only Einstellungen (no Benutzer / Plugin-Verwaltung).
+LOGIN_USER=testviewer LOGIN_PASS=viewer-test-12345 \
+  node .claude/skills/run-lyndrix-ui/driver.mjs /dashboard /tmp/viewer.png
+```
+
+A non-admin hard-navigating to a page they lack (`/users`, `/plugins`) is
+bounced to `/dashboard` by `RequirePermission` — expected, not a bug. Create a
+test viewer first if none exists (admin token, `POST /api/users` with
+`"groups":["INT_VIEWER"]`).
+
+### Verified routes (against core 1.0.0)
 
 | Route | What renders |
 |---|---|
 | `/dashboard` | Welcome header + top-right Core/Vault status dot, Platform stat tiles, then the sectioned launchpad: **Core** · **Apps** · **Tools** · **Dienste** (only non-empty sections render) |
 | `/settings` | Tabbed settings (lx-tabs bar): Allgemein · Darstellung · Auth-Anbieter · Plugins · Profil · System Info · Benachrichtigungen |
-| `/settings?section=notifications` | Notification endpoint bindings (active toggle + provider) + per-provider config cards |
-| `/users` | Benutzerverwaltung with **Benutzer** / **Gruppen & Rechte** tabs; user rows show role chips |
+| `/settings?section=notifications` | Routing v2: a **Provider** card (expandable config per adapter) + **Endpoint-Routing** list — each row has an active toggle, **multi-select provider chips** (fan-out) and a **visibility** (required-permission) select |
+| `/settings?section=profile` | Profile form + **Aktive Sitzungen** (session-token list, "this session" badge, revoke-others), **Muted notifications**, and API keys |
+| `/login` | Credentials form; an **SSO button** ("Mit … anmelden") appears per redirect provider when OIDC is configured (`GET /api/auth/providers`) |
+| `/users` | Benutzerverwaltung (admin only) with **Benutzer** / **Gruppen & Rechte** tabs; the groups tab edits permissions as a **draft with an explicit Save**, grouped per plugin, plus a read-only roles panel |
 | `/apps/lyndrix-plugin-docker/docker` | Docker Manager main view — header has **Aktualisieren** + **Settings** buttons, host list |
 | `/apps/lyndrix-plugin-docker/docker/settings` | Docker Manager settings — Docker Hosts list + "Host hinzufügen" form |
 
@@ -132,6 +153,18 @@ log in as `admin`. Useless headless — for any automated check use the driver.
 - **Login response key is `token`, not `access_token`.** `POST /api/auth/login`
   returns `{"token":"lyk_...","username":...,"roles":[...]}`. The bearer token is
   the opaque `lyk_...` string (a UserApiKey), not a JWT.
+- **The UI gates on `GET /api/me/access`, not on `roles` (Identity 2.0).** What a
+  user may see/do comes from that endpoint's `permissions` + `plugins` map
+  (server-derived effective access), consumed by `src/lib/access.ts`
+  (`useAccess`/`can`/`pluginVisible`/`routeAllowed`). `admin` is a plain
+  `INT_ADMIN` group member — it holds no magic (the `superadmin` flag is a
+  break-glass opt-in, off by default), so gating is real for admin too; use a
+  viewer login (above) to see restrictions. To debug what a token can do:
+  `curl -s -H "Authorization: Bearer $TOKEN" http://localhost:8081/api/me/access`.
+- **The committed driver only reads `LYNDRIX_ADMIN_PASSWORD`.** For any other
+  user you MUST pass `LOGIN_PASS` (there's no env file for non-admin passwords).
+  `LOGIN_USER=admin` still auto-reads the file; a bad `LOGIN_PASS` fails with
+  `login failed`.
 - **Cold deep-links to plugin pages now work** (since the B1 fix). `App.tsx` has
   an `/apps/*` route that shows a loader while the `/api/plugins` query is pending,
   then the real `/apps/<safe-id>/...` route renders. Previously a cold hard-nav

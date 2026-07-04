@@ -47,8 +47,19 @@ function adminPassword() {
   return line.split('=')[1].trim()
 }
 
-function login(pass) {
-  const body = JSON.stringify({ username: 'admin', password: pass })
+// Which user to log in as. Default: admin (full access). Set LOGIN_USER +
+// LOGIN_PASS to drive the Identity-2.0 permission-gated views (e.g. an
+// INT_VIEWER user sees only Apps/Tools, no Core/Users/Plugins). LOGIN_PASS is
+// required for a non-admin user (there is no env file to read it from).
+function credentials() {
+  const user = process.env.LOGIN_USER || 'admin'
+  if (user === 'admin') return { user, pass: adminPassword() }
+  if (!process.env.LOGIN_PASS) throw new Error('LOGIN_PASS is required when LOGIN_USER != admin')
+  return { user, pass: process.env.LOGIN_PASS }
+}
+
+function login({ user, pass }) {
+  const body = JSON.stringify({ username: user, password: pass })
   const out = sh(`curl -s -X POST ${CORE}/api/auth/login -H 'Content-Type: application/json' -d ${JSON.stringify(body)}`)
   const token = JSON.parse(out).token
   if (!token || !token.startsWith('lyk_')) throw new Error('login failed: ' + out)
@@ -71,7 +82,7 @@ async function waitForDebugger(tries = 40) {
 }
 
 const main = async () => {
-  const token = login(adminPassword())
+  const token = login(credentials())
   console.error('login ok')
 
   const chrome = spawn('chromium', [
