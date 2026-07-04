@@ -45,8 +45,54 @@ export default function EditorPreview() {
         <span className="lx-badge lx-badge--up"><span className="lx-dot" />up</span>
         <span className="lx-badge lx-badge--down"><span className="lx-dot" />down</span>
         <span className="lx-badge lx-badge--paused"><span className="lx-dot" />paused</span>
+        <span className="lx-badge lx-badge--unknown"><span className="lx-dot" />unknown</span>
+        <span className="lx-badge lx-badge--success"><span className="lx-dot" />success</span>
         <span className="lx-badge lx-badge--accent"><span className="lx-dot" />accent</span>
         <span className="lx-badge lx-badge--muted"><span className="lx-dot" />muted</span>
+      </div>
+
+      {/* Icon-size ramp — squares sized by the --lx-icon-* scale */}
+      <div className="flex items-end gap-3">
+        {(['--lx-icon-xs', '--lx-icon-sm', '--lx-icon-md', '--lx-icon-lg'] as const).map((v) => (
+          <span
+            key={v}
+            className="rounded-md shrink-0"
+            style={{ width: `var(${v})`, height: `var(${v})`, background: 'var(--lx-accent)' }}
+            aria-label={v}
+          />
+        ))}
+      </div>
+
+      {/* Categorical chart palette (--lx-chart-1..8) */}
+      <div>
+        <p className="text-[10px] uppercase tracking-wide mb-1" style={{ color: 'var(--lx-text-muted)' }}>
+          {t('editor.preview.charts', { defaultValue: 'Chart palette' })}
+        </p>
+        <div className="flex h-6 w-full overflow-hidden rounded-md border border-[var(--lx-border-soft)]">
+          {Array.from({ length: 8 }, (_, i) => (
+            <span key={i} className="flex-1" style={{ background: `var(--lx-chart-${i + 1})` }} />
+          ))}
+        </div>
+      </div>
+
+      {/* Semantic gradient family */}
+      <div className="grid grid-cols-2 gap-2">
+        {(['success', 'warning', 'info', 'danger'] as const).map((g) => (
+          <div
+            key={g}
+            className="h-6 rounded-md"
+            style={{ background: `var(--lx-gradient-${g})` }}
+            aria-label={g}
+          />
+        ))}
+      </div>
+
+      {/* Terminal / console panel */}
+      <div className="lx-terminal text-[11px]">
+        <div>
+          <span className="lx-terminal-accent">lyndrix@core</span>:~$ boot
+        </div>
+        <div>vault:opened → db:connected → iam:ready</div>
       </div>
 
       {/* Card + glass tile over the themed backdrop */}

@@ -4,7 +4,7 @@ import { effectiveScalar, isScalarEdited } from '../draft'
 import type { GroupProps } from './common'
 
 const SHADOW_KEYS = ['sm', 'md', 'lg', 'glow']
-const BLUR_KEYS = ['sm', 'md', 'lg']
+const BLUR_KEYS = ['xs', 'sm', 'md', 'lg']
 
 function parsePx(v: string): number {
   return parseFloat(v) || 0

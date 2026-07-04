@@ -11,6 +11,10 @@ import {
   Blend,
   Sparkles,
   Image as ImageIcon,
+  BarChart3,
+  Terminal,
+  Ruler,
+  SlidersHorizontal,
   Moon,
   Sun,
   X,
@@ -22,7 +26,7 @@ import {
 } from 'lucide-react'
 import { apiFetch, ApiError } from '../../lib/api'
 import { setBrowserOverrideVars } from '../../lib/browserOverrides'
-import { setThemeVars, type ThemeVars } from '../../lib/themeStore'
+import { getThemeVars, setThemeVars, type ThemeVars } from '../../lib/themeStore'
 import { ACCOUNT_SCOPE_ENABLED } from '../../lib/preferences'
 import { toast } from '../../lib/toast'
 import type { ThemeOut } from '../../lib/types'
@@ -33,6 +37,7 @@ import {
   initialDraft,
   dirtyCount,
   dirtyCountByGroup,
+  cssVarsDirtyByRail,
   mergeTokens,
   type ThemeTokens,
 } from './draft'
@@ -45,8 +50,12 @@ import TypographyGroup from './groups/TypographyGroup'
 import DepthGroup from './groups/DepthGroup'
 import MotionGroup from './groups/MotionGroup'
 import GradientGroup from './groups/GradientGroup'
+import DataChartsGroup from './groups/DataChartsGroup'
+import TerminalGroup from './groups/TerminalGroup'
+import SizingGroup from './groups/SizingGroup'
 import EffectsGroup from './groups/EffectsGroup'
 import BackgroundGroup from './groups/BackgroundGroup'
+import RawVariablesGroup from './groups/RawVariablesGroup'
 import type { GroupId, GroupProps } from './groups/common'
 
 type GroupComponent = (p: GroupProps) => React.ReactElement
@@ -59,8 +68,12 @@ const GROUPS: { id: GroupId; label: string; labelKey: string; Icon: typeof Palet
   { id: 'depth', label: 'Depth', labelKey: 'editor.group.depth', Icon: Layers, Component: DepthGroup },
   { id: 'motion', label: 'Motion', labelKey: 'editor.group.motion', Icon: Activity, Component: MotionGroup },
   { id: 'gradient', label: 'Gradient', labelKey: 'editor.group.gradient', Icon: Blend, Component: GradientGroup },
+  { id: 'charts', label: 'Data / Charts', labelKey: 'editor.group.charts', Icon: BarChart3, Component: DataChartsGroup },
+  { id: 'terminal', label: 'Terminal', labelKey: 'editor.group.terminal', Icon: Terminal, Component: TerminalGroup },
+  { id: 'sizing', label: 'Sizing', labelKey: 'editor.group.sizing', Icon: Ruler, Component: SizingGroup },
   { id: 'effects', label: 'Effects', labelKey: 'editor.group.effects', Icon: Sparkles, Component: EffectsGroup },
   { id: 'background', label: 'Background', labelKey: 'editor.group.background', Icon: ImageIcon, Component: BackgroundGroup },
+  { id: 'raw', label: 'Advanced — raw variables', labelKey: 'editor.group.raw', Icon: SlidersHorizontal, Component: RawVariablesGroup },
 ]
 
 function themeIds(themes: ThemeOut[] | undefined): string[] {
@@ -100,6 +113,12 @@ export default function ThemeEditor({ initialBase, initialGroup, onClose }: Them
   // Whether the base pack's background images are copied into a saved pack
   // (BackgroundGroup checkbox). Default on, per the plan.
   const [carryOverAssets, setCarryOverAssets] = useState(true)
+  // The base theme's server-RESOLVED --lx-* map (per mode) — authoritative seed
+  // for controls that edit engine-hardcoded/composed vars via css_variables
+  // (charts, terminal, states, raw panel). Seeded from cache, refreshed on load.
+  const [baseCssVars, setBaseCssVars] = useState<ThemeVars | null>(
+    () => getThemeVars(baseId ?? 'default'),
+  )
 
   // ── Save-as-theme flow state ──────────────────────────────────────────────────
   const [saveMenuOpen, setSaveMenuOpen] = useState(false)
@@ -121,15 +140,26 @@ export default function ThemeEditor({ initialBase, initialGroup, onClose }: Them
   // Map the per-token-category counts onto the rail's groups (a rail group can
   // span several categories, e.g. Shape = radius + border, Depth = shadow + blur).
   const byCategory = dirtyCountByGroup(draft.edits)
+  // Raw css_variables edits are bucketed onto whichever semantic group owns them
+  // (charts/terminal/colors/effects) with the remainder falling to the raw panel.
+  const cssRail = cssVarsDirtyByRail(draft.edits)
+  // border.rail belongs to Sizing; border.width to Shape — split the shared count.
+  const railWidthEdits = draft.edits.border.width != null ? 1 : 0
+  const railRailEdits = draft.edits.border.rail != null ? 1 : 0
   const railCounts: Partial<Record<GroupId, number>> = {
-    colors: byCategory.colors,
-    shape: (byCategory.radius ?? 0) + (byCategory.border ?? 0) || undefined,
+    colors: (byCategory.colors ?? 0) + (cssRail.colors ?? 0) || undefined,
+    shape: (byCategory.radius ?? 0) + railWidthEdits || undefined,
     density: byCategory.spacing,
     typography: byCategory.typography,
     depth: (byCategory.shadow ?? 0) + (byCategory.blur ?? 0) || undefined,
     motion: byCategory.transition,
     gradient: byCategory.gradient,
+    charts: cssRail.charts,
+    terminal: cssRail.terminal,
+    sizing: (byCategory.icon ?? 0) + (byCategory.zindex ?? 0) + railRailEdits || undefined,
+    effects: (byCategory.effect ?? 0) + (cssRail.effects ?? 0) || undefined,
     background: byCategory.background_images,
+    raw: cssRail.raw,
   }
 
   const { data: themes } = useQuery({
@@ -143,6 +173,17 @@ export default function ThemeEditor({ initialBase, initialGroup, onClose }: Them
   // live app preview keeps using the cached css-vars ThemeProvider already paints.
   const loadBase = useCallback(async (id: string) => {
     setLoading(true)
+    // Seed the resolved-vars fallback from cache immediately (no flash), then
+    // revalidate against core below so semantic css_variables controls show the
+    // real current colours for this base.
+    setBaseCssVars(getThemeVars(id))
+    void apiFetch<{ css_variables: ThemeVars }>(`/api/themes/${encodeURIComponent(id)}/css-vars`)
+      .then((body) => {
+        if (body?.css_variables) setBaseCssVars(body.css_variables)
+      })
+      .catch(() => {
+        /* best-effort — controls fall back to DEFAULT_CSS_VARS */
+      })
     try {
       const data = await apiFetch<{
         tokens: Partial<ThemeTokens>
@@ -514,6 +555,7 @@ export default function ThemeEditor({ initialBase, initialGroup, onClose }: Them
             draft={draft}
             dispatch={dispatch}
             mode={themeId}
+            baseCssVars={baseCssVars}
             carryOverAssets={carryOverAssets}
             onCarryOverChange={setCarryOverAssets}
           />

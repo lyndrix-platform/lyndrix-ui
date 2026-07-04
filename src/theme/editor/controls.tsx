@@ -182,6 +182,56 @@ export function TextField({
   )
 }
 
+// ── NumberField (plain numeric input, e.g. z-index — no visual preview) ─────────
+
+export function NumberField({
+  label,
+  value,
+  min,
+  max,
+  step,
+  desc,
+  edited,
+  onChange,
+  onReset,
+}: {
+  label: string
+  value: number
+  min?: number
+  max?: number
+  step?: number
+  desc?: string
+  edited?: boolean
+  onChange: (v: number) => void
+  onReset?: () => void
+}) {
+  return (
+    <div className="flex flex-col gap-1">
+      <div className="flex items-center gap-2">
+        <label className="text-xs font-medium text-[var(--lx-text-muted)]">{label}</label>
+        {edited && onReset && (
+          <button
+            onClick={onReset}
+            className="text-[10px] text-[var(--lx-text-muted)] hover:text-[var(--lx-accent)]"
+          >
+            reset
+          </button>
+        )}
+      </div>
+      <input
+        type="number"
+        value={value}
+        min={min}
+        max={max}
+        step={step ?? 1}
+        onChange={(e) => onChange(parseFloat(e.target.value))}
+        className="lx-input lx-mono text-xs !py-1.5"
+      />
+      {desc && <p className="text-[10px] text-[var(--lx-text-muted)]">{desc}</p>}
+    </div>
+  )
+}
+
 // ── SelectField ─────────────────────────────────────────────────────────────────
 
 export function SelectField({

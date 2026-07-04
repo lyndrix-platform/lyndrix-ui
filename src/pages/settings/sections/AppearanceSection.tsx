@@ -15,8 +15,12 @@ const GROUP_IDS = new Set<GroupId>([
   'depth',
   'motion',
   'gradient',
+  'charts',
+  'terminal',
+  'sizing',
   'effects',
   'background',
+  'raw',
 ])
 
 /**

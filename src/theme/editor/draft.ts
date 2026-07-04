@@ -33,6 +33,13 @@ export interface ThemeTokens {
   zindex: Record<string, string>
   effect: Record<string, string>
   background_images: { light: string; dark: string }
+  // Escape-hatch: raw per-mode `--lx-*` overrides (mirrors tokens.json
+  // `css_variables[mode]`). This is the ONLY way to personalise engine-HARDCODED
+  // vars that have no semantic token category (chart-*, terminal-*,
+  // state-success/-marked, on-accent-text, scrim) and engine-COMPOSED literals
+  // (border, border-soft, surface-glass). The engine applies these last, so they
+  // win over every derived value.
+  css_variables: { light: Record<string, string>; dark: Record<string, string> }
 }
 
 /** The flat, non-colour, mode-independent token categories. */
@@ -45,6 +52,9 @@ export type ScalarGroup =
   | 'transition'
   | 'gradient'
   | 'border'
+  | 'icon'
+  | 'zindex'
+  | 'effect'
 
 export const SCALAR_GROUPS: ScalarGroup[] = [
   'radius',
@@ -55,6 +65,9 @@ export const SCALAR_GROUPS: ScalarGroup[] = [
   'transition',
   'gradient',
   'border',
+  'icon',
+  'zindex',
+  'effect',
 ]
 
 /** Sparse edits: same shape as ThemeTokens but every leaf optional. */
@@ -68,7 +81,12 @@ export interface EditorEdits {
   transition: Record<string, string>
   gradient: Record<string, string>
   border: Record<string, string>
+  icon: Record<string, string>
+  zindex: Record<string, string>
+  effect: Record<string, string>
   background_images: Partial<{ light: string; dark: string }>
+  /** Raw `--lx-*` overrides, per mode (feeds tokens.json css_variables). */
+  cssVars: { light: Record<string, string>; dark: Record<string, string> }
 }
 
 export interface EditorDraft {
@@ -88,7 +106,11 @@ export function emptyEdits(): EditorEdits {
     transition: {},
     gradient: {},
     border: {},
+    icon: {},
+    zindex: {},
+    effect: {},
     background_images: {},
+    cssVars: { light: {}, dark: {} },
   }
 }
 
@@ -103,9 +125,11 @@ export type DraftAction =
   | { type: 'SET_TOKEN'; group: 'colors'; key: string; mode: Mode; value: string }
   | { type: 'SET_TOKEN'; group: ScalarGroup; key: string; value: string }
   | { type: 'SET_TOKEN'; group: 'background_images'; mode: Mode; value: string }
+  | { type: 'SET_CSS_VAR'; varName: string; mode: Mode; value: string }
   | { type: 'RESET_TOKEN'; group: 'colors'; key: string; mode: Mode }
   | { type: 'RESET_TOKEN'; group: ScalarGroup; key: string }
-  | { type: 'RESET_GROUP'; group: 'colors' | ScalarGroup | 'background_images' }
+  | { type: 'RESET_CSS_VAR'; varName: string; mode: Mode }
+  | { type: 'RESET_GROUP'; group: 'colors' | ScalarGroup | 'background_images' | 'cssVars' }
   | { type: 'RESET_ALL' }
 
 export function draftReducer(state: EditorDraft, action: DraftAction): EditorDraft {
@@ -123,6 +147,24 @@ export function draftReducer(state: EditorDraft, action: DraftAction): EditorDra
       } else {
         edits[action.group] = { ...edits[action.group], [action.key]: action.value }
       }
+      return { ...state, edits }
+    }
+
+    case 'SET_CSS_VAR': {
+      const edits = { ...state.edits }
+      const prev = edits.cssVars[action.mode]
+      edits.cssVars = {
+        ...edits.cssVars,
+        [action.mode]: { ...prev, [action.varName]: action.value },
+      }
+      return { ...state, edits }
+    }
+
+    case 'RESET_CSS_VAR': {
+      const edits = { ...state.edits }
+      const next = { ...edits.cssVars[action.mode] }
+      delete next[action.varName]
+      edits.cssVars = { ...edits.cssVars, [action.mode]: next }
       return { ...state, edits }
     }
 
@@ -147,6 +189,7 @@ export function draftReducer(state: EditorDraft, action: DraftAction): EditorDra
       const edits = { ...state.edits }
       if (action.group === 'colors') edits.colors = {}
       else if (action.group === 'background_images') edits.background_images = {}
+      else if (action.group === 'cssVars') edits.cssVars = { light: {}, dark: {} }
       else edits[action.group] = {}
       return { ...state, edits }
     }
@@ -179,6 +222,19 @@ export function effectiveBg(draft: EditorDraft, mode: Mode): string {
   return draft.base.background_images[mode] ?? ''
 }
 
+/**
+ * Effective raw `--lx-*` override for a mode, or undefined when neither the
+ * draft nor the base pack pins it. Callers OR this with the base RESOLVED
+ * css-vars (server-authoritative) and finally a hard default, so a control can
+ * always seed itself with the real current value even for engine-hardcoded vars
+ * the pack never overrode.
+ */
+export function effectiveCssVar(draft: EditorDraft, varName: string, mode: Mode): string | undefined {
+  const edit = draft.edits.cssVars[mode]?.[varName]
+  if (edit != null) return edit
+  return draft.base.css_variables?.[mode]?.[varName]
+}
+
 /** True when this exact leaf has been edited (drives per-key reset affordances). */
 export function isColorEdited(draft: EditorDraft, key: string, mode: Mode): boolean {
   return draft.edits.colors[key]?.[mode] != null
@@ -186,8 +242,16 @@ export function isColorEdited(draft: EditorDraft, key: string, mode: Mode): bool
 export function isScalarEdited(draft: EditorDraft, group: ScalarGroup, key: string): boolean {
   return draft.edits[group][key] != null
 }
+export function isCssVarEdited(draft: EditorDraft, varName: string, mode: Mode): boolean {
+  return draft.edits.cssVars[mode]?.[varName] != null
+}
 
 // ── Dirty accounting ─────────────────────────────────────────────────────────────
+
+/** Count of edited raw `--lx-*` overrides (per mode leaf). */
+export function cssVarsDirty(edits: EditorEdits): number {
+  return Object.keys(edits.cssVars.light).length + Object.keys(edits.cssVars.dark).length
+}
 
 /** Total edited leaves across all groups (colours count per mode). */
 export function dirtyCount(edits: EditorEdits): number {
@@ -195,6 +259,7 @@ export function dirtyCount(edits: EditorEdits): number {
   for (const pair of Object.values(edits.colors)) n += Object.keys(pair).length
   for (const g of SCALAR_GROUPS) n += Object.keys(edits[g]).length
   n += Object.keys(edits.background_images).length
+  n += cssVarsDirty(edits)
   return n
 }
 
@@ -210,6 +275,32 @@ export function dirtyCountByGroup(edits: EditorEdits): Record<string, number> {
   }
   const bg = Object.keys(edits.background_images).length
   if (bg) out.background_images = bg
+  const css = cssVarsDirty(edits)
+  if (css) out.cssVars = css
+  return out
+}
+
+/**
+ * Bucket edited raw `--lx-*` overrides onto the rail groups that own them, so a
+ * semantic control (charts, terminal, states, scrim) surfaces its change count
+ * on its own rail entry and the rest falls to the Advanced/raw panel. Counts
+ * both modes. Keyed by rail group id.
+ */
+export function cssVarsDirtyByRail(edits: EditorEdits): Record<string, number> {
+  const out: Record<string, number> = {}
+  const bump = (bucket: string) => {
+    out[bucket] = (out[bucket] ?? 0) + 1
+  }
+  for (const mode of ['light', 'dark'] as const) {
+    for (const name of Object.keys(edits.cssVars[mode])) {
+      if (name.startsWith('--lx-chart-')) bump('charts')
+      else if (name.startsWith('--lx-terminal')) bump('terminal')
+      else if (name === '--lx-state-success' || name === '--lx-state-marked' || name === '--lx-on-accent-text')
+        bump('colors')
+      else if (name === '--lx-scrim') bump('effects')
+      else bump('raw')
+    }
+  }
   return out
 }
 
@@ -222,5 +313,13 @@ export function mergeTokens(base: ThemeTokens, edits: EditorEdits): ThemeTokens 
   }
   for (const g of SCALAR_GROUPS) out[g] = { ...out[g], ...edits[g] }
   out.background_images = { ...out.background_images, ...edits.background_images }
+  // Raw `--lx-*` overrides → css_variables[mode], base ⊕ edits per mode. This is
+  // the escape-hatch persistence for engine-hardcoded/composed vars (the engine
+  // applies css_variables last, so they win).
+  const baseCss = base.css_variables ?? { light: {}, dark: {} }
+  out.css_variables = {
+    light: { ...baseCss.light, ...edits.cssVars.light },
+    dark: { ...baseCss.dark, ...edits.cssVars.dark },
+  }
   return out
 }

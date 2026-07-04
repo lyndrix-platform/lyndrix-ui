@@ -1,16 +1,22 @@
 import { useTranslation } from 'react-i18next'
-import { SliderField, PresetRow } from '../controls'
+import { SliderField, TextField, PresetRow, GroupSubhead } from '../controls'
 import GlassSurface from '../../../components/GlassSurface'
+import { effectiveScalar, isScalarEdited } from '../draft'
+import { cssVarTools } from './cssVars'
+import type { GroupProps } from './common'
 import {
   useGlassConfig,
   setGlassConfig,
   resetGlassConfig,
   type GlassMode,
 } from '../../../lib/glassConfig'
-// Effects = the liquid-glass config, relocated verbatim from the old
-// appearance/GlassEffectCard.tsx. Glass is a BROWSER-ONLY effect facet — the
-// engine has no glass token category, so these values are NEVER part of the
-// draft or a saved theme pack. They persist to localStorage via glassConfig.ts.
+// Effects has two halves:
+//  1. THEME effect tokens (saved with the pack): the `effect` token category
+//     (--lx-glass-saturate, --lx-badge-bg/border-opacity) + the css_variables
+//     scrim. These re-skin every viewer of the theme.
+//  2. The liquid-glass config (BROWSER-ONLY) — the engine has no glass token
+//     category, so these values are NEVER part of the draft/pack; they persist
+//     to localStorage via glassConfig.ts.
 
 function Switch({ checked, onChange }: { checked: boolean; onChange: (v: boolean) => void }) {
   return (
@@ -37,15 +43,86 @@ const GLASS_MODES: { id: GlassMode; label: string }[] = [
   { id: 'shader', label: 'Shader (Experimental)' },
 ]
 
-// Effects is browser-only and does not touch the token draft, so it ignores the
-// GroupProps every other group receives (a zero-arg component is assignable to
-// the shared group component type).
-export default function EffectsGroup() {
+export default function EffectsGroup({ draft, dispatch, mode, baseCssVars }: GroupProps) {
   const { t } = useTranslation('ui')
   const cfg = useGlassConfig()
+  const css = cssVarTools(draft, dispatch, mode, baseCssVars)
+
+  const saturate = parseFloat(effectiveScalar(draft, 'effect', 'glass_saturate')) || 0
+  const badgeBg = parseFloat(effectiveScalar(draft, 'effect', 'badge_bg_opacity')) || 0
+  const badgeBorder = parseFloat(effectiveScalar(draft, 'effect', 'badge_border_opacity')) || 0
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-6">
+      {/* ── Theme effect tokens (saved with the pack) ─────────────────────── */}
+      <div className="flex flex-col gap-4">
+        <GroupSubhead>{t('editor.effects.theme', { defaultValue: 'Theme effect tokens' })}</GroupSubhead>
+
+        <SliderField
+          label={t('editor.effects.glass_saturate', { defaultValue: 'Glass saturation' })}
+          desc={t('editor.effects.glass_saturate_desc', {
+            defaultValue: 'Backdrop-filter saturate() behind frosted surfaces (theme-wide).',
+          })}
+          value={saturate}
+          min={100}
+          max={220}
+          step={5}
+          display={`${saturate}%`}
+          edited={isScalarEdited(draft, 'effect', 'glass_saturate')}
+          onChange={(v) => dispatch({ type: 'SET_TOKEN', group: 'effect', key: 'glass_saturate', value: `${v}%` })}
+          onReset={() => dispatch({ type: 'RESET_TOKEN', group: 'effect', key: 'glass_saturate' })}
+        />
+
+        {/* Badge tint opacities — live preview via .lx-badge--* fills. */}
+        <div className="flex flex-wrap gap-2">
+          <span className="lx-badge lx-badge--unknown"><span className="lx-dot" />unknown</span>
+          <span className="lx-badge lx-badge--success"><span className="lx-dot" />success</span>
+        </div>
+        <SliderField
+          label={t('editor.effects.badge_bg', { defaultValue: 'Badge fill opacity' })}
+          value={badgeBg}
+          min={0}
+          max={0.6}
+          step={0.01}
+          display={badgeBg.toFixed(2)}
+          edited={isScalarEdited(draft, 'effect', 'badge_bg_opacity')}
+          onChange={(v) => dispatch({ type: 'SET_TOKEN', group: 'effect', key: 'badge_bg_opacity', value: String(v) })}
+          onReset={() => dispatch({ type: 'RESET_TOKEN', group: 'effect', key: 'badge_bg_opacity' })}
+        />
+        <SliderField
+          label={t('editor.effects.badge_border', { defaultValue: 'Badge border opacity' })}
+          value={badgeBorder}
+          min={0}
+          max={0.8}
+          step={0.01}
+          display={badgeBorder.toFixed(2)}
+          edited={isScalarEdited(draft, 'effect', 'badge_border_opacity')}
+          onChange={(v) => dispatch({ type: 'SET_TOKEN', group: 'effect', key: 'badge_border_opacity', value: String(v) })}
+          onReset={() => dispatch({ type: 'RESET_TOKEN', group: 'effect', key: 'badge_border_opacity' })}
+        />
+
+        <TextField
+          label={t('editor.effects.scrim', { defaultValue: 'Modal scrim' })}
+          desc={t('editor.effects.scrim_desc', {
+            defaultValue: 'Overlay behind modals. Saved as a css_variables override.',
+          })}
+          mono
+          value={css.value('--lx-scrim')}
+          edited={css.edited('--lx-scrim')}
+          onChange={(v) => css.set('--lx-scrim', v)}
+          onReset={() => css.reset('--lx-scrim')}
+        />
+        {/* Scrim preview swatch */}
+        <div
+          className="h-8 rounded-lg border border-[var(--lx-border-soft)]"
+          style={{ background: css.value('--lx-scrim') }}
+          aria-label={t('editor.effects.scrim', { defaultValue: 'Modal scrim' })}
+        />
+      </div>
+
+      {/* ── Liquid-glass config (browser only) ───────────────────────────── */}
+      <div className="border-t border-[var(--lx-border-soft)] pt-4 flex flex-col gap-4">
+      <GroupSubhead>{t('editor.effects.glass', { defaultValue: 'Liquid glass' })}</GroupSubhead>
       <p className="text-[11px] text-[var(--lx-accent)]">
         {t('editor.effects.scope_note', {
           defaultValue: 'This browser only — not saved to a theme pack.',
@@ -198,6 +275,7 @@ export default function EffectsGroup() {
           </div>
         </div>
       )}
+      </div>
     </div>
   )
 }

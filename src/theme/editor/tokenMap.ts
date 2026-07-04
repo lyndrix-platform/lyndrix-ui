@@ -115,6 +115,50 @@ export const DEFAULT_TOKENS: ThemeTokens = {
     light: 'background-light.webp',
     dark: 'background-dark.webp',
   },
+  css_variables: { light: {}, dark: {} },
+}
+
+// ── Engine-HARDCODED var defaults (NOT token-derived) ───────────────────────────
+// The engine emits these as fixed literals (per mode where it differs) — there is
+// NO tokens.json category for them, so the ONLY personalisation path is
+// css_variables[mode]. These values mirror engine.resolve_css_variables EXACTLY
+// and seed the semantic controls (charts/terminal/states/scrim/on-accent) + the
+// raw panel when the base pack doesn't already resolve them.
+export const DEFAULT_CSS_VARS: { light: Record<string, string>; dark: Record<string, string> } = {
+  dark: {
+    '--lx-state-success': '#10b981',
+    '--lx-state-marked': '#6366f1',
+    '--lx-on-accent-text': '#0a0e1a',
+    '--lx-scrim': 'rgb(0 0 0 / 0.55)',
+    '--lx-terminal-bg': '#050807',
+    '--lx-terminal-fg': '#4ade80',
+    '--lx-terminal-accent': '#22d3ee',
+    '--lx-chart-1': '#8b5cf6',
+    '--lx-chart-2': '#0ea5e9',
+    '--lx-chart-3': '#10b981',
+    '--lx-chart-4': '#f59e0b',
+    '--lx-chart-5': '#f43f5e',
+    '--lx-chart-6': '#6366f1',
+    '--lx-chart-7': '#06b6d4',
+    '--lx-chart-8': '#14b8a6',
+  },
+  light: {
+    '--lx-state-success': '#059669',
+    '--lx-state-marked': '#4f46e5',
+    '--lx-on-accent-text': '#0a0e1a',
+    '--lx-scrim': 'rgb(0 0 0 / 0.55)',
+    '--lx-terminal-bg': '#050807',
+    '--lx-terminal-fg': '#4ade80',
+    '--lx-terminal-accent': '#22d3ee',
+    '--lx-chart-1': '#7c3aed',
+    '--lx-chart-2': '#0284c7',
+    '--lx-chart-3': '#059669',
+    '--lx-chart-4': '#d97706',
+    '--lx-chart-5': '#e11d48',
+    '--lx-chart-6': '#4f46e5',
+    '--lx-chart-7': '#0891b2',
+    '--lx-chart-8': '#0d9488',
+  },
 }
 
 /** Deep-clone the default tokens (so callers can mutate/backfill safely). */
@@ -144,6 +188,14 @@ export function backfillTokens(loaded: Partial<ThemeTokens> | null | undefined):
   }
   if (loaded.background_images) {
     out.background_images = { ...out.background_images, ...loaded.background_images }
+  }
+  // Preserve any raw css_variables overrides the pack ships, so they round-trip
+  // through the editor (and seed the raw panel / semantic controls).
+  if (loaded.css_variables) {
+    out.css_variables = {
+      light: { ...out.css_variables.light, ...(loaded.css_variables.light ?? {}) },
+      dark: { ...out.css_variables.dark, ...(loaded.css_variables.dark ?? {}) },
+    }
   }
   return out
 }
@@ -225,10 +277,26 @@ export const BORDER_VARS: Record<string, string> = {
   width: '--lx-border-width',
   rail: '--lx-rail-width',
 }
+export const ICON_VARS: Record<string, string> = {
+  xs: '--lx-icon-xs',
+  sm: '--lx-icon-sm',
+  md: '--lx-icon-md',
+  lg: '--lx-icon-lg',
+}
+export const ZINDEX_VARS: Record<string, string> = {
+  dropdown: '--lx-z-dropdown',
+  modal: '--lx-z-modal',
+  toast: '--lx-z-toast',
+}
+export const EFFECT_VARS: Record<string, string> = {
+  glass_saturate: '--lx-glass-saturate',
+  badge_bg_opacity: '--lx-badge-bg-opacity',
+  badge_border_opacity: '--lx-badge-border-opacity',
+}
 
 /** (edits key, var map) pairs for the flat non-colour categories. */
 const SCALAR_CATEGORIES: ReadonlyArray<
-  [keyof Omit<EditorEdits, 'colors' | 'background_images'>, Record<string, string>]
+  [keyof Omit<EditorEdits, 'colors' | 'background_images' | 'cssVars'>, Record<string, string>]
 > = [
   ['radius', RADIUS_VARS],
   ['spacing', SPACING_VARS],
@@ -238,6 +306,9 @@ const SCALAR_CATEGORIES: ReadonlyArray<
   ['transition', TRANSITION_VARS],
   ['gradient', GRADIENT_VARS],
   ['border', BORDER_VARS],
+  ['icon', ICON_VARS],
+  ['zindex', ZINDEX_VARS],
+  ['effect', EFFECT_VARS],
 ]
 
 export interface VarDelta {
@@ -285,6 +356,12 @@ export function tokensToVarDelta(edits: EditorEdits): VarDelta {
       }
     }
   }
+
+  // Raw `--lx-*` overrides — already keyed by the real var name, per mode. These
+  // cover the engine-hardcoded/composed vars (chart-*, terminal-*, state-success,
+  // scrim, border, …) that have no semantic token category.
+  for (const [v, val] of Object.entries(edits.cssVars.light)) light[v] = val
+  for (const [v, val] of Object.entries(edits.cssVars.dark)) dark[v] = val
 
   return { light, dark }
 }
