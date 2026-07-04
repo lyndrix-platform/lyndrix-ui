@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { ArrowRight, ExternalLink } from 'lucide-react'
 import { getPluginIcon } from '../../lib/icons'
+import { useAccess, can, pluginVisible } from '../../lib/access'
 import { useGlassConfig } from '../../lib/glassConfig'
 import GlassSurface from '../GlassSurface'
 import type { PluginOut } from '../../lib/types'
@@ -143,13 +144,22 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 export default function PluginLaunchpad({ plugins }: Props) {
   const { t } = useTranslation('ui')
 
-  const core = plugins.filter((p) => p.type === 'CORE')
-  const pluginItems = plugins.filter((p) => p.type === 'PLUGIN')
+  // Identity 2.0: viewers see only the Apps & Tools they are granted; the
+  // Core and Services sections are gated behind the admin-sections feature.
+  const { data: access } = useAccess()
+  const showAdminSections = can(access, 'feature:dashboard.admin_sections')
+
+  const core = showAdminSections ? plugins.filter((p) => p.type === 'CORE') : []
+  const pluginItems = plugins.filter(
+    (p) => p.type === 'PLUGIN' && pluginVisible(access, p.id),
+  )
 
   // Three buckets by UI capability — only rendered when non-empty.
   const apps = pluginItems.filter((p) => hasReactUI(p)) // native React UI
   const tools = pluginItems.filter((p) => !hasReactUI(p) && !!p.ui_route) // external/legacy UI
-  const services = pluginItems.filter((p) => !hasReactUI(p) && !p.ui_route) // headless
+  const services = showAdminSections
+    ? pluginItems.filter((p) => !hasReactUI(p) && !p.ui_route) // headless
+    : []
 
   function appHref(p: PluginOut): string {
     const safeId = p.id.replace(/\./g, '-')

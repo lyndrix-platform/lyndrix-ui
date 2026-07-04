@@ -546,21 +546,39 @@ function GroupsTab() {
     },
   })
 
+  // Draft model (Identity 2.0): permission chips edit a LOCAL draft; nothing
+  // is persisted until the explicit Save — matching the user-edit form's
+  // pattern instead of firing one PATCH per click.
+  const [draftPerms, setDraftPerms] = useState<string[] | null>(null)
+  const effectivePerms = draftPerms ?? selected?.permissions ?? []
+  const dirty =
+    !!selected &&
+    !!draftPerms &&
+    (draftPerms.length !== selected.permissions.length ||
+      draftPerms.some((p) => !selected.permissions.includes(p)))
+
+  function selectGroup(g: GroupOut) {
+    setSelected(g)
+    setDraftPerms(null) // discard any unsaved draft from the previous group
+  }
+
   const patchGroupMut = useMutation({
     mutationFn: ({ id, permissions }: { id: number; permissions: string[] }) =>
       apiFetch(`/api/permissions/groups/${id}`, {
         method: 'PATCH',
         body: JSON.stringify({ permissions }),
       }),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['groups'] }),
+    onSuccess: (_data, vars) => {
+      setSelected((prev) => (prev ? { ...prev, permissions: vars.permissions } : prev))
+      setDraftPerms(null)
+      qc.invalidateQueries({ queryKey: ['groups'] })
+      qc.invalidateQueries({ queryKey: ['me-access'] })
+    },
   })
 
-  function togglePermission(group: GroupOut, perm: string) {
-    const perms = group.permissions.includes(perm)
-      ? group.permissions.filter((p) => p !== perm)
-      : [...group.permissions, perm]
-    patchGroupMut.mutate({ id: group.id, permissions: perms })
-    setSelected((prev) => prev ? { ...prev, permissions: perms } : prev)
+  function togglePermission(perm: string) {
+    const base = draftPerms ?? selected?.permissions ?? []
+    setDraftPerms(base.includes(perm) ? base.filter((p) => p !== perm) : [...base, perm])
   }
 
   const permQuery = permSearch.trim().toLowerCase()
@@ -573,7 +591,10 @@ function GroupsTab() {
         (p.category || '').toLowerCase().includes(permQuery),
     )
     .reduce<Record<string, PermissionDefOut[]>>((acc, p) => {
-      ;(acc[p.category || t('users_page.groups_label')] ||= []).push(p)
+      // Per-plugin grouping first (Identity 2.0 catalog carries plugin_id);
+      // core/builtin ids keep their category buckets.
+      const key = p.plugin_id || p.category || t('users_page.groups_label')
+      ;(acc[key] ||= []).push(p)
       return acc
     }, {})
 
@@ -606,7 +627,7 @@ function GroupsTab() {
           {(groups ?? []).map((g) => (
             <button
               key={g.id}
-              onClick={() => setSelected(g)}
+              onClick={() => selectGroup(g)}
               className={`px-3 py-2 rounded-md text-sm text-left transition-colors border ${
                 selected?.id === g.id
                   ? 'border-[var(--lx-accent)] bg-[var(--lx-accent)]/5 text-[var(--lx-accent)]'
@@ -617,6 +638,8 @@ function GroupsTab() {
             </button>
           ))}
         </div>
+
+        <RolesPanel />
       </div>
 
       {/* Group detail */}
@@ -634,11 +657,11 @@ function GroupsTab() {
                   <p className="lx-eyebrow mb-2">{category}</p>
                   <div className="flex flex-wrap gap-2">
                     {perms.map((perm) => {
-                      const active = selected.permissions.includes(perm.id)
+                      const active = effectivePerms.includes(perm.id)
                       return (
                         <button
                           key={perm.id}
-                          onClick={() => togglePermission(selected, perm.id)}
+                          onClick={() => togglePermission(perm.id)}
                           title={perm.description || perm.id}
                           className={`px-2 py-1 text-xs rounded border transition-colors ${
                             active
@@ -657,6 +680,26 @@ function GroupsTab() {
                 <p className="text-xs text-[var(--lx-text-muted)]">{t('users_page.no_perms_found')}</p>
               )}
             </div>
+            {/* Draft is only persisted on explicit save. */}
+            <div className="flex items-center gap-3 mt-4">
+              <button
+                onClick={() =>
+                  draftPerms && patchGroupMut.mutate({ id: selected.id, permissions: draftPerms })
+                }
+                disabled={!dirty || patchGroupMut.isPending}
+                className="lx-btn lx-btn--primary lx-btn--sm disabled:opacity-40"
+              >
+                {patchGroupMut.isPending ? t('common.saving') : t('common.save')}
+              </button>
+              {dirty && (
+                <button
+                  onClick={() => setDraftPerms(null)}
+                  className="text-xs text-[var(--lx-text-muted)] hover:text-[var(--lx-text)]"
+                >
+                  {t('users_page.discard_changes')}
+                </button>
+              )}
+            </div>
             <GroupMembersSection group={selected} />
           </Card>
         ) : (
@@ -664,6 +707,51 @@ function GroupsTab() {
             {t('users_page.select_group')}
           </div>
         )}
+      </div>
+    </div>
+  )
+}
+
+// ── Roles panel (read-only reference — roles are manifest metadata) ──────────
+
+interface RoleDefOut {
+  id: string
+  label: string
+  plugin_id: string
+  permissions: string[]
+  auto_map_groups: string[]
+  description: string
+}
+
+function RolesPanel() {
+  const { t } = useTranslation('ui')
+  const { data: roles } = useQuery({
+    queryKey: ['permission-roles'],
+    queryFn: () =>
+      apiFetch<{ roles: RoleDefOut[] }>('/api/permissions/roles').then((r) => r.roles),
+    staleTime: 60_000,
+  })
+  if (!roles || roles.length === 0) return null
+  return (
+    <div className="mt-4">
+      <span className="lx-eyebrow">{t('users_page.roles_label')}</span>
+      <p className="text-[10px] text-[var(--lx-text-muted)] mb-2 leading-tight">
+        {t('users_page.roles_hint')}
+      </p>
+      <div className="flex flex-col gap-1">
+        {roles.map((r) => (
+          <div
+            key={r.id}
+            title={`${r.permissions.join(', ')}`}
+            className="px-3 py-2 rounded-md border border-[var(--lx-border-soft)] bg-[var(--lx-elevated-glass)]"
+          >
+            <div className="text-xs text-[var(--lx-text)]">{r.label}</div>
+            <div className="text-[10px] text-[var(--lx-text-muted)] truncate">
+              {r.plugin_id}
+              {r.auto_map_groups.length > 0 && ` → ${r.auto_map_groups.join(', ')}`}
+            </div>
+          </div>
+        ))}
       </div>
     </div>
   )
