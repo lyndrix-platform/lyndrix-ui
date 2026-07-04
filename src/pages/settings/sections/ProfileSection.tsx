@@ -1,10 +1,21 @@
 import { useEffect, useRef, useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
-import { Copy, Check, Trash2 } from 'lucide-react'
-import { apiFetch } from '../../../lib/api'
+import { Copy, Check, Trash2, MonitorSmartphone, LogOut } from 'lucide-react'
+import { apiFetch, getToken } from '../../../lib/api'
 import type { ApiKeyOut, UserOut } from '../../../lib/types'
 import { Card, Field, SectionTitle, SaveButton, StatusMsg, inputCls } from '../shared'
+
+/** Session tokens are UserApiKey rows minted at login; they are recognisable
+ *  by their 'web-session' label prefix (both the legacy `web-session-<ts>` and
+ *  the current `web-session · Browser on OS · <ts>` format). */
+const isSessionKey = (k: ApiKeyOut) => k.label.startsWith('web-session')
+
+const fmtDate = (iso: string | null) => {
+  if (!iso) return null
+  const d = new Date(iso.endsWith('Z') || iso.includes('+') ? iso : `${iso}Z`)
+  return Number.isNaN(d.getTime()) ? iso : d.toLocaleString()
+}
 
 interface MeResponse extends UserOut {
   method: string
@@ -114,6 +125,26 @@ export default function ProfileSection(_: {
     onSuccess: () => qc.invalidateQueries({ queryKey: ['profile-api-keys', me?.username] }),
   })
 
+  // ── Sessions ──────────────────────────────────────────────────────────────
+  // Web logins mint UserApiKey rows; split them off the real API keys and
+  // identify the CURRENT session by matching the stored token against the
+  // key's visible prefix.
+  const token = getToken()
+  const sessions = (keys ?? []).filter(isSessionKey)
+  const apiKeys = (keys ?? []).filter((k) => !isSessionKey(k))
+  const isCurrent = (k: ApiKeyOut) => !!token && !!k.prefix && token.startsWith(k.prefix)
+
+  const revokeOthersMut = useMutation({
+    mutationFn: async () => {
+      const others = sessions.filter((s) => !isCurrent(s))
+      for (const s of others) {
+        await apiFetch(`/api/users/${me!.username}/api-keys/${s.id}`, { method: 'DELETE' })
+      }
+      return others.length
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['profile-api-keys', me?.username] }),
+  })
+
   function copyToken() {
     if (!createdToken) return
     navigator.clipboard.writeText(createdToken).then(() => {
@@ -187,6 +218,63 @@ export default function ProfileSection(_: {
         <SaveButton onClick={() => pwMut.mutate()} loading={pwMut.isPending} />
       </Card>
 
+      {/* ── Active Sessions ── */}
+      <Card>
+        <SectionTitle>{t('profile_section.sessions_title')}</SectionTitle>
+        <div className="flex flex-col gap-2 mb-3">
+          {sessions.length === 0 && (
+            <p className="text-xs text-[var(--lx-text-muted)]">
+              {t('profile_section.no_sessions')}
+            </p>
+          )}
+          {sessions.map((s) => (
+            <div
+              key={s.id}
+              className="flex items-center justify-between px-3 py-2 rounded-md bg-[var(--lx-elevated)] border border-[var(--lx-border-soft)] text-sm"
+            >
+              <div className="flex items-center gap-2 min-w-0">
+                <MonitorSmartphone size={15} className="shrink-0 text-[var(--lx-text-muted)]" />
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2">
+                    <span className="text-[var(--lx-text)] font-medium truncate">
+                      {s.label.replace(/^web-session(\s*·\s*|-)?/, '') || t('profile_section.session_generic')}
+                    </span>
+                    {isCurrent(s) && (
+                      <span className="shrink-0 px-1.5 py-0.5 rounded text-[10px] font-medium bg-[var(--lx-state-up)]/15 text-[var(--lx-state-up)]">
+                        {t('profile_section.session_current')}
+                      </span>
+                    )}
+                  </div>
+                  <div className="text-[11px] text-[var(--lx-text-muted)]">
+                    {fmtDate(s.created_at)}
+                    {s.last_used_at && ` · ${t('profile_section.session_last_used')} ${fmtDate(s.last_used_at)}`}
+                  </div>
+                </div>
+              </div>
+              {!isCurrent(s) && (
+                <button
+                  onClick={() => revokeKeyMut.mutate(s.id)}
+                  className="p-1 shrink-0 text-[var(--lx-text-muted)] hover:text-[var(--lx-state-down)]"
+                  title={t('profile_section.session_revoke')}
+                >
+                  <Trash2 size={13} />
+                </button>
+              )}
+            </div>
+          ))}
+        </div>
+        {sessions.some((s) => !isCurrent(s)) && (
+          <button
+            onClick={() => revokeOthersMut.mutate()}
+            disabled={revokeOthersMut.isPending}
+            className="lx-btn lx-btn--secondary lx-btn--sm inline-flex items-center gap-1.5"
+          >
+            <LogOut size={13} />
+            {t('profile_section.sessions_revoke_others')}
+          </button>
+        )}
+      </Card>
+
       {/* ── API Keys ── */}
       <Card>
         <SectionTitle>{t('profile_section.keys_title')}</SectionTitle>
@@ -217,10 +305,10 @@ export default function ProfileSection(_: {
         )}
 
         <div className="flex flex-col gap-2 mb-4">
-          {(keys ?? []).length === 0 && (
+          {apiKeys.length === 0 && (
             <p className="text-xs text-[var(--lx-text-muted)]">{t('profile_section.no_keys')}</p>
           )}
-          {(keys ?? []).map((k) => (
+          {apiKeys.map((k) => (
             <div
               key={k.id}
               className="flex items-center justify-between px-3 py-2 rounded-md bg-[var(--lx-elevated)] border border-[var(--lx-border-soft)] text-sm"
