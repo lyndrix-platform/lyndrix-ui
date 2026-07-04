@@ -2,7 +2,8 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
-import { RefreshCw, ArrowUpCircle, Trash2, Check, Package, Settings, Activity } from 'lucide-react'
+import { RefreshCw, ArrowUpCircle, Trash2, Check, Package, Settings, Activity, ScrollText } from 'lucide-react'
+import LogModal from '../components/LogModal'
 import { apiFetch } from '../lib/api'
 import { toast } from '../lib/toast'
 import { getPluginIcon } from '../lib/icons'
@@ -556,6 +557,7 @@ function PluginCard({ plugin }: { plugin: PluginOut }) {
   const [showError, setShowError] = useState(false)
   const [showSettings, setShowSettings] = useState(false)
   const [showHealth, setShowHealth] = useState(false)
+  const [showLogs, setShowLogs] = useState(false)
   const hasSettings = (plugin.settings_schema?.length ?? 0) > 0 || !!plugin.settings_ui_route
 
   function openSettings() {
@@ -647,6 +649,14 @@ function PluginCard({ plugin }: { plugin: PluginOut }) {
         <HealthDialog plugin={plugin} onClose={() => setShowHealth(false)} />
       )}
 
+      {showLogs && plugin.log_source && (
+        <LogModal
+          source={plugin.log_source}
+          title={plugin.name}
+          onClose={() => setShowLogs(false)}
+        />
+      )}
+
       <div className="rounded-xl bg-[var(--lx-surface-glass)] backdrop-blur-[var(--lx-blur-md)] backdrop-saturate-150 border border-[var(--lx-border-soft)] overflow-hidden transition-colors hover:border-[var(--lx-border)]">
         {/* Header */}
         <div className="p-4 flex gap-3">
@@ -664,6 +674,14 @@ function PluginCard({ plugin }: { plugin: PluginOut }) {
               <span className="text-xs text-[var(--lx-text-muted)] font-mono shrink-0">
                 v{plugin.version}
               </span>
+              {plugin.update_available && plugin.latest_version && (
+                <span
+                  className="shrink-0 px-1.5 py-0.5 rounded text-[10px] font-medium bg-[var(--lx-accent)]/15 text-[var(--lx-accent)]"
+                  title={t('plugins_page.update_available_tip', { version: plugin.latest_version })}
+                >
+                  {t('plugins_page.update_available', { version: plugin.latest_version })}
+                </span>
+              )}
             </div>
             <p className="text-[11px] text-[var(--lx-text-muted)] mt-0.5 truncate font-mono">
               {plugin.id}
@@ -715,6 +733,15 @@ function PluginCard({ plugin }: { plugin: PluginOut }) {
           </div>
         </div>
 
+        {/* Logs — available for EVERY module type (core rows included) */}
+        {!isPlugin && plugin.log_source && (
+          <div className="flex items-center justify-end px-4 py-2 border-t border-[var(--lx-border-soft)] bg-[var(--lx-elevated-glass)]/40">
+            <IconBtn onClick={() => setShowLogs(true)} title={t('plugins_page.logs_btn')}>
+              <ScrollText size={14} />
+            </IconBtn>
+          </div>
+        )}
+
         {/* Action bar — only for user-managed plugins */}
         {isPlugin && (
           <div className="flex items-center justify-between px-4 py-2.5 border-t border-[var(--lx-border-soft)] bg-[var(--lx-elevated-glass)]/40">
@@ -733,6 +760,12 @@ function PluginCard({ plugin }: { plugin: PluginOut }) {
             </div>
 
             <div className="flex items-center gap-0.5">
+              {plugin.log_source && (
+                <IconBtn onClick={() => setShowLogs(true)} title={t('plugins_page.logs_btn')}>
+                  <ScrollText size={14} />
+                </IconBtn>
+              )}
+
               {plugin.is_active && (
                 <IconBtn
                   onClick={() => setShowHealth(true)}
