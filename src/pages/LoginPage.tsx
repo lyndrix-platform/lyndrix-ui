@@ -1,7 +1,23 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useQuery } from '@tanstack/react-query'
+import { KeyRound } from 'lucide-react'
 import { login } from '../lib/auth'
+import { apiFetch } from '../lib/api'
 import LyndrixLogo from '../components/LyndrixLogo'
+
+interface AuthProviderInfo {
+  id: string
+  kind: 'credentials' | 'redirect'
+  label: string
+}
+
+/** Kick off the SSO flow: the core validates our origin against its CORS
+ *  allowlist, binds PKCE+state to this flow and redirects to the IdP. */
+function startSso(next = '/dashboard') {
+  const cb = `${window.location.origin}/auth/callback`
+  window.location.href = `/api/auth/oidc/start?redirect_uri=${encodeURIComponent(cb)}&next=${encodeURIComponent(next)}`
+}
 
 const gradientText: React.CSSProperties = {
   background: 'linear-gradient(135deg, var(--lx-accent), var(--lx-accent-2))',
@@ -27,6 +43,18 @@ export default function LoginPage() {
   const [password, setPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
+
+  // Which providers are configured (unauthenticated discovery). The
+  // credentials form serves local + LDAP alike (the core runs the full
+  // provider chain); each redirect provider gets its own SSO button.
+  const { data: providerData } = useQuery({
+    queryKey: ['auth-providers'],
+    queryFn: () =>
+      apiFetch<{ providers: AuthProviderInfo[] }>('/api/auth/providers', { skipAuth: true }),
+    staleTime: 60_000,
+    retry: 1,
+  })
+  const ssoProviders = (providerData?.providers ?? []).filter((p) => p.kind === 'redirect')
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -116,6 +144,29 @@ export default function LoginPage() {
             {loading ? 'Anmelden…' : 'Anmelden'}
           </button>
         </form>
+
+        {ssoProviders.length > 0 && (
+          <div className="mt-5">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="h-px flex-1 bg-[var(--lx-border-soft)]" />
+              <span className="text-[11px] uppercase tracking-wide text-[var(--lx-text-muted)]">oder</span>
+              <div className="h-px flex-1 bg-[var(--lx-border-soft)]" />
+            </div>
+            <div className="flex flex-col gap-2">
+              {ssoProviders.map((p) => (
+                <button
+                  key={p.id}
+                  type="button"
+                  onClick={() => startSso()}
+                  className="lx-btn lx-btn--secondary lx-btn--block inline-flex items-center justify-center gap-2"
+                >
+                  <KeyRound size={15} />
+                  {`Mit ${p.label} anmelden`}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   )

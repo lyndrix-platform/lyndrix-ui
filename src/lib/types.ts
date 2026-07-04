@@ -82,6 +82,7 @@ export interface PermissionDefOut {
   category: string
   description: string
   icon: string
+  plugin_id?: string | null
 }
 
 export interface ThemeOut {

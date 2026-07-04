@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { Cpu, LayoutDashboard, Puzzle, Settings, Users } from 'lucide-react'
 import { apiFetch } from '../../lib/api'
+import { useAccess, can, pluginVisible } from '../../lib/access'
 import { getPluginIcon } from '../../lib/icons'
 import { useAppTitle } from '../../lib/useAppTitle'
 import LyndrixLogo from '../LyndrixLogo'
@@ -267,9 +268,18 @@ export default function Sidebar({
     refetchInterval: 30_000,
   })
 
+  // Identity 2.0: server-derived access view gates what we render — plugins
+  // the caller may not see and admin nav items are hidden (the API enforces
+  // regardless; this is display hygiene).
+  const { data: access } = useAccess()
+
   const allModules = plugins ?? []
   const pluginList = allModules.filter(
-    (p) => p.type === 'PLUGIN' && p.react_ui && p.react_routes.length > 0,
+    (p) =>
+      p.type === 'PLUGIN' &&
+      p.react_ui &&
+      p.react_routes.length > 0 &&
+      pluginVisible(access, p.id),
   )
 
   // Health summary: Core = core modules up/total, Plugins = plugins up/total.
@@ -330,8 +340,12 @@ export default function Sidebar({
         <div className="pt-3">
           <SectionLabel collapsed={collapsed}>{t('sidebar.section_system')}</SectionLabel>
           <NavItem to="/settings" icon={Settings} label={t('nav.settings')} collapsed={collapsed} />
-          <NavItem to="/users" icon={Users} label={t('nav.users')} collapsed={collapsed} />
-          <NavItem to="/plugins" icon={Puzzle} label={t('nav.plugins')} collapsed={collapsed} />
+          {can(access, 'feature:users.view') && (
+            <NavItem to="/users" icon={Users} label={t('nav.users')} collapsed={collapsed} />
+          )}
+          {can(access, 'feature:plugins.manage') && (
+            <NavItem to="/plugins" icon={Puzzle} label={t('nav.plugins')} collapsed={collapsed} />
+          )}
         </div>
       </div>
 

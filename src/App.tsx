@@ -3,6 +3,7 @@ import { Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { isLoggedIn } from './lib/auth'
+import { useAccess, can, routeAllowed } from './lib/access'
 import { apiFetch } from './lib/api'
 import { useSSE, useSSEStatus } from './lib/useSSE'
 import { toast } from './lib/toast'
@@ -15,6 +16,7 @@ import AppShell from './components/layout/AppShell'
 import ErrorBoundary from './components/ErrorBoundary'
 import LiquidGlassDefs from './components/LiquidGlassDefs'
 import LoginPage from './pages/LoginPage'
+import AuthCallbackPage from './pages/AuthCallbackPage'
 import DashboardPage from './pages/DashboardPage'
 import PluginsPage from './pages/PluginsPage'
 import SettingsPage from './pages/SettingsPage'
@@ -81,6 +83,39 @@ function RootRedirect() {
 
 function RequireAuth({ children }: { children: React.ReactNode }) {
   if (!isLoggedIn()) return <Navigate to="/login" replace />
+  return <>{children}</>
+}
+
+/** Server-derived permission gate (Identity 2.0). Renders nothing while the
+ *  access view loads (avoids a redirect flash), bounces to /dashboard when
+ *  the caller lacks the permission. Enforcement stays backend-side — this
+ *  only prevents rendering pages the API would 403 anyway. */
+function RequirePermission({
+  perm,
+  children,
+}: {
+  perm: string
+  children: React.ReactNode
+}) {
+  const { data: access, isLoading } = useAccess()
+  if (isLoading) return null
+  if (!can(access, perm)) return <Navigate to="/dashboard" replace />
+  return <>{children}</>
+}
+
+/** Route gate for dynamic plugin routes (umbrella or per-route grant). */
+function RequirePluginRoute({
+  pluginId,
+  path,
+  children,
+}: {
+  pluginId: string
+  path: string
+  children: React.ReactNode
+}) {
+  const { data: access, isLoading } = useAccess()
+  if (isLoading) return null
+  if (!routeAllowed(access, pluginId, path)) return <Navigate to="/dashboard" replace />
   return <>{children}</>
 }
 
@@ -173,12 +208,15 @@ export default function App() {
 
       {/* Auth */}
       <Route path="/login" element={<LoginPage />} />
+      <Route path="/auth/callback" element={<AuthCallbackPage />} />
 
       {/* Authenticated shell pages */}
       <Route path="/dashboard" element={<AuthShell><DashboardPage /></AuthShell>} />
-      <Route path="/plugins" element={<AuthShell><PluginsPage /></AuthShell>} />
+      <Route path="/plugins" element={<AuthShell><RequirePermission perm="feature:plugins.manage"><PluginsPage /></RequirePermission></AuthShell>} />
+      {/* /settings stays reachable for every user (profile, appearance) —
+          admin-only sections fail closed at the API. */}
       <Route path="/settings" element={<AuthShell><SettingsPage /></AuthShell>} />
-      <Route path="/users" element={<AuthShell><UsersPage /></AuthShell>} />
+      <Route path="/users" element={<AuthShell><RequirePermission perm="feature:users.view"><UsersPage /></RequirePermission></AuthShell>} />
       <Route path="/iac/jobs/:jobId/logs" element={<AuthShell><JobLogPage /></AuthShell>} />
 
       {/* Dynamic plugin React UI routes */}
@@ -196,8 +234,10 @@ export default function App() {
               path={routePath}
               element={
                 <AuthShell>
-                  {/* key on invalidation forces unmount/re-fetch on plugin:state_changed */}
-                  <PluginRoute key={invalidation} pluginId={plugin.id} version={cacheKey} />
+                  <RequirePluginRoute pluginId={plugin.id} path={route.path}>
+                    {/* key on invalidation forces unmount/re-fetch on plugin:state_changed */}
+                    <PluginRoute key={invalidation} pluginId={plugin.id} version={cacheKey} />
+                  </RequirePluginRoute>
                 </AuthShell>
               }
             />
