@@ -26,6 +26,12 @@ export interface ThemeTokens {
   transition: Record<string, string>
   gradient: Record<string, string>
   border: Record<string, string>
+  // Theming v2 T0 categories. No dedicated editor group yet (T0d, deferred), but
+  // carried in the model so a saved pack round-trips them instead of dropping
+  // them (backfillTokens preserves them; mergeTokens keeps them via base clone).
+  icon: Record<string, string>
+  zindex: Record<string, string>
+  effect: Record<string, string>
   background_images: { light: string; dark: string }
 }
 

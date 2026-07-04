@@ -63,6 +63,23 @@ export default {
           'text-muted': 'var(--lx-text-muted)',
           border: 'var(--lx-border)',
           'border-soft': 'var(--lx-border-soft)',
+          // T0 — semantic state extensions + on-accent foreground.
+          'state-up': 'var(--lx-state-up)',
+          'state-down': 'var(--lx-state-down)',
+          'state-paused': 'var(--lx-state-paused)',
+          'state-unknown': 'var(--lx-state-unknown)',
+          'state-success': 'var(--lx-state-success)',
+          'state-marked': 'var(--lx-state-marked)',
+          'on-accent': 'var(--lx-on-accent-text)',
+          // T0 — categorical 8-hue palette (qualitative data).
+          'chart-1': 'var(--lx-chart-1)',
+          'chart-2': 'var(--lx-chart-2)',
+          'chart-3': 'var(--lx-chart-3)',
+          'chart-4': 'var(--lx-chart-4)',
+          'chart-5': 'var(--lx-chart-5)',
+          'chart-6': 'var(--lx-chart-6)',
+          'chart-7': 'var(--lx-chart-7)',
+          'chart-8': 'var(--lx-chart-8)',
         },
       },
       // Aligned to Tailwind's own default radius scale (the contract's values
@@ -79,7 +96,13 @@ export default {
         full: 'var(--lx-radius-full)',
       },
       spacing: themedSpacing(),
-      fontSize: themedFontSize(),
+      // Base scale rides --lx-text-scale; the 2xs/3xs micro steps ride the
+      // dedicated --lx-text-2xs/3xs tokens (which already fold in the scale).
+      fontSize: {
+        ...themedFontSize(),
+        '2xs': ['var(--lx-text-2xs)', { lineHeight: '1rem' }],
+        '3xs': ['var(--lx-text-3xs)', { lineHeight: '0.875rem' }],
+      },
       boxShadow: {
         sm: 'var(--lx-shadow-sm)',
         DEFAULT: 'var(--lx-shadow-md)',
@@ -87,11 +110,13 @@ export default {
         glow: 'var(--lx-shadow-glow)',
       },
       backdropBlur: {
+        xs: 'var(--lx-blur-xs)',
         sm: 'var(--lx-blur-sm)',
         md: 'var(--lx-blur-md)',
         lg: 'var(--lx-blur-lg)',
       },
       blur: {
+        xs: 'var(--lx-blur-xs)',
         sm: 'var(--lx-blur-sm)',
         md: 'var(--lx-blur-md)',
         lg: 'var(--lx-blur-lg)',
@@ -103,6 +128,11 @@ export default {
       },
       transitionTimingFunction: {
         DEFAULT: 'var(--lx-ease)',
+      },
+      zIndex: {
+        dropdown: 'var(--lx-z-dropdown)',
+        modal: 'var(--lx-z-modal)',
+        toast: 'var(--lx-z-toast)',
       },
     },
   },

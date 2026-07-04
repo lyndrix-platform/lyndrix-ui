@@ -63,6 +63,54 @@
   --lx-log-bg: #0a0e1a;
   --lx-log-fg: #f0f6ff;
   --lx-log-accent: #22d3ee;
+  /* Theming v2 T0 — semantic state extensions + categorical 8-hue palette.
+     Mirrors lyndrix-core's ThemeEngine dark output; the server payload
+     overrides these at runtime, they are the offline/first-paint fallback. */
+  --lx-state-success: #10b981;
+  --lx-state-marked: #6366f1;
+  --lx-chart-1: #8b5cf6;
+  --lx-chart-2: #0ea5e9;
+  --lx-chart-3: #10b981;
+  --lx-chart-4: #f59e0b;
+  --lx-chart-5: #f43f5e;
+  --lx-chart-6: #6366f1;
+  --lx-chart-7: #06b6d4;
+  --lx-chart-8: #14b8a6;
+  /* Gradient family (the header-stripe motif; built off the state/accent/chart
+     tokens so it re-skins with the theme) */
+  --lx-gradient-success: linear-gradient(90deg, var(--lx-state-success), var(--lx-chart-8));
+  --lx-gradient-warning: linear-gradient(90deg, var(--lx-warning), var(--lx-chart-4));
+  --lx-gradient-info: linear-gradient(90deg, var(--lx-accent-2), var(--lx-accent));
+  --lx-gradient-danger: linear-gradient(90deg, var(--lx-state-down), var(--lx-chart-5));
+  /* Terminal/console variant (green-on-black; distinct from theme-tracking
+     --lx-log-*, a raw console is always dark) */
+  --lx-terminal-bg: #050807;
+  --lx-terminal-fg: #4ade80;
+  --lx-terminal-accent: #22d3ee;
+  /* Icon-size scale (material-icons font-size / svg box) */
+  --lx-icon-xs: 14px;
+  --lx-icon-sm: 16px;
+  --lx-icon-md: 18px;
+  --lx-icon-lg: 32px;
+  /* Z-index scale + overlay scrim */
+  --lx-z-dropdown: 1000;
+  --lx-z-modal: 1100;
+  --lx-z-toast: 1200;
+  --lx-scrim: rgb(0 0 0 / 0.55);
+  /* Micro-typography (scaled by --lx-text-scale like the Tailwind fontSize scale) */
+  --lx-text-2xs: calc(0.6875rem * var(--lx-text-scale));
+  --lx-text-3xs: calc(0.625rem * var(--lx-text-scale));
+  /* Small backdrop blur (below -sm) */
+  --lx-blur-xs: 10px;
+  /* Promoted glass saturate magic number (consumed by .lx-glass/.lx-card/…) */
+  --lx-glass-saturate: 160%;
+  /* Theme-stable near-black foreground on bright accent/success surfaces */
+  --lx-on-accent-text: #0a0e1a;
+  /* Status-rail / accent-stripe thickness */
+  --lx-rail-width: 3px;
+  /* Badge tint opacities (drive the token-based badge modifiers) */
+  --lx-badge-bg-opacity: 0.15;
+  --lx-badge-border-opacity: 0.30;
   /* Liquid glass */
   --lx-glass-blur: 18px;
   --lx-glass-border: rgba(255, 255, 255, 0.12);
@@ -142,15 +190,15 @@ body::before {
    unsupported (older Android WebView). */
 .lx-glass {
   background: var(--lx-surface-glass);
-  -webkit-backdrop-filter: blur(var(--lx-glass-blur)) saturate(160%);
-  backdrop-filter: blur(var(--lx-glass-blur)) saturate(160%);
+  -webkit-backdrop-filter: blur(var(--lx-glass-blur)) saturate(var(--lx-glass-saturate));
+  backdrop-filter: blur(var(--lx-glass-blur)) saturate(var(--lx-glass-saturate));
   border: 1px solid var(--lx-glass-border);
   box-shadow: var(--lx-glass-shadow);
 }
 .lx-card {
   background: var(--lx-surface-glass);
-  -webkit-backdrop-filter: blur(var(--lx-glass-blur)) saturate(160%);
-  backdrop-filter: blur(var(--lx-glass-blur)) saturate(160%);
+  -webkit-backdrop-filter: blur(var(--lx-glass-blur)) saturate(var(--lx-glass-saturate));
+  backdrop-filter: blur(var(--lx-glass-blur)) saturate(var(--lx-glass-saturate));
   border: 1px solid var(--lx-glass-border);
   border-radius: var(--lx-radius-md);
   box-shadow: var(--lx-glass-shadow);
@@ -159,8 +207,8 @@ body::before {
    near-opaque surface and stronger shadow so they read solid over bright tiles. */
 .lx-popover {
   background: var(--lx-popover-glass);
-  -webkit-backdrop-filter: blur(var(--lx-glass-blur)) saturate(160%);
-  backdrop-filter: blur(var(--lx-glass-blur)) saturate(160%);
+  -webkit-backdrop-filter: blur(var(--lx-glass-blur)) saturate(var(--lx-glass-saturate));
+  backdrop-filter: blur(var(--lx-glass-blur)) saturate(var(--lx-glass-saturate));
   border: 1px solid var(--lx-glass-border);
   border-radius: var(--lx-radius-md);
   box-shadow: var(--lx-popover-shadow);
@@ -406,6 +454,18 @@ html.lx-glass-all .lx-card > * {
   background: color-mix(in srgb, var(--lx-state-paused) 13%, transparent);
   border-color: color-mix(in srgb, var(--lx-state-paused) 28%, transparent);
 }
+/* T0 additions — token-opacity-driven state modifiers (new; nothing consumed
+   them before, so the differing 15/30 tint is not a regression). */
+.lx-badge--unknown {
+  color: var(--lx-state-unknown);
+  background: color-mix(in srgb, var(--lx-state-unknown) calc(var(--lx-badge-bg-opacity) * 100%), transparent);
+  border-color: color-mix(in srgb, var(--lx-state-unknown) calc(var(--lx-badge-border-opacity) * 100%), transparent);
+}
+.lx-badge--success {
+  color: var(--lx-state-success);
+  background: color-mix(in srgb, var(--lx-state-success) calc(var(--lx-badge-bg-opacity) * 100%), transparent);
+  border-color: color-mix(in srgb, var(--lx-state-success) calc(var(--lx-badge-border-opacity) * 100%), transparent);
+}
 .lx-badge--accent {
   color: var(--lx-accent);
   background: color-mix(in srgb, var(--lx-accent) 13%, transparent);
@@ -479,8 +539,8 @@ html.lx-glass-all .lx-card > * {
   text-transform: uppercase;
   color: var(--lx-text-muted);
   background: var(--lx-surface-glass);
-  -webkit-backdrop-filter: blur(var(--lx-glass-blur)) saturate(160%);
-  backdrop-filter: blur(var(--lx-glass-blur)) saturate(160%);
+  -webkit-backdrop-filter: blur(var(--lx-glass-blur)) saturate(var(--lx-glass-saturate));
+  backdrop-filter: blur(var(--lx-glass-blur)) saturate(var(--lx-glass-saturate));
   padding: calc(var(--lx-space-unit) * 2.5) calc(var(--lx-space-unit) * 3.5);
   border-bottom: 1px solid var(--lx-border-soft);
 }
@@ -532,6 +592,177 @@ html.lx-glass-all .lx-card > * {
 .lx-mono {
   font-family: var(--lx-font-mono);
   font-feature-settings: 'liga' 0;
+}
+
+/* ──────────────────────────────────────────────────────────────────────────
+   Shared component classes (Theming v2 T0b). Defined identically here (React)
+   and in lyndrix-core/app/ui/theme.py's injected <style> (NiceGUI) so BOTH
+   stacks consume the same class names off the same --lx-* tokens — this is what
+   stops the two GUIs drifting. Keep the two copies in sync.
+   ────────────────────────────────────────────────────────────────────────── */
+
+/* Log / console panels */
+.lx-log-panel {
+  background: var(--lx-log-bg);
+  color: var(--lx-log-fg);
+  font-family: var(--lx-font-mono);
+  font-size: var(--lx-text-2xs);
+  line-height: 1.5;
+  border: 1px solid var(--lx-border-soft);
+  border-radius: var(--lx-radius-md);
+  padding: calc(var(--lx-space-unit) * 3);
+  overflow: auto;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+.lx-log-panel .lx-log-accent {
+  color: var(--lx-log-accent);
+}
+.lx-terminal {
+  background: var(--lx-terminal-bg);
+  color: var(--lx-terminal-fg);
+  font-family: var(--lx-font-mono);
+  font-size: var(--lx-text-2xs);
+  line-height: 1.5;
+  border: 1px solid color-mix(in srgb, var(--lx-terminal-fg) 22%, transparent);
+  border-radius: var(--lx-radius-md);
+  padding: calc(var(--lx-space-unit) * 3);
+  overflow: auto;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+.lx-terminal .lx-terminal-accent {
+  color: var(--lx-terminal-accent);
+}
+
+/* Accent card — top gradient stripe via ::before (variant-keyed) */
+.lx-card-accent {
+  position: relative;
+}
+.lx-card-accent::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: var(--lx-rail-width);
+  border-radius: var(--lx-radius-md) var(--lx-radius-md) 0 0;
+  background: var(--lx-gradient-accent);
+}
+.lx-card-accent--success::before {
+  background: var(--lx-gradient-success);
+}
+.lx-card-accent--warning::before {
+  background: var(--lx-gradient-warning);
+}
+.lx-card-accent--info::before {
+  background: var(--lx-gradient-info);
+}
+.lx-card-accent--danger::before {
+  background: var(--lx-gradient-danger);
+}
+
+/* Modal scrim + glass modal */
+.lx-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: var(--lx-z-modal);
+  background: var(--lx-scrim);
+  -webkit-backdrop-filter: blur(var(--lx-blur-xs));
+  backdrop-filter: blur(var(--lx-blur-xs));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.lx-modal {
+  background: var(--lx-surface-glass);
+  -webkit-backdrop-filter: blur(var(--lx-blur-md)) saturate(var(--lx-glass-saturate));
+  backdrop-filter: blur(var(--lx-blur-md)) saturate(var(--lx-glass-saturate));
+  border: 1px solid var(--lx-border-soft);
+  border-radius: var(--lx-radius-lg);
+  box-shadow: var(--lx-shadow-lg);
+}
+
+/* Status rail — thin state-keyed accent bar */
+.lx-status-rail {
+  width: var(--lx-rail-width);
+  align-self: stretch;
+  flex-shrink: 0;
+  border-radius: var(--lx-radius-full);
+  background: var(--lx-state-unknown);
+}
+.lx-status-rail--up {
+  background: var(--lx-state-up);
+}
+.lx-status-rail--down {
+  background: var(--lx-state-down);
+}
+.lx-status-rail--paused {
+  background: var(--lx-state-paused);
+}
+.lx-status-rail--success {
+  background: var(--lx-state-success);
+}
+
+/* Row hover — exposes the .lx-table hover tint as a standalone utility */
+.lx-row-hover {
+  transition: background var(--lx-transition-fast) var(--lx-ease);
+}
+.lx-row-hover:hover {
+  background: color-mix(in srgb, var(--lx-elevated) 55%, transparent);
+}
+
+/* Wizard stepper */
+.lx-stepper {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--lx-space-unit) * 2);
+}
+.lx-stepper__step {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--lx-icon-lg);
+  height: var(--lx-icon-lg);
+  border-radius: var(--lx-radius-full);
+  font-size: var(--lx-text-2xs);
+  font-weight: 600;
+  color: var(--lx-text-muted);
+  background: var(--lx-elevated);
+  border: 1px solid var(--lx-border-soft);
+}
+.lx-stepper__step--active {
+  color: var(--lx-on-accent-text);
+  background: var(--lx-accent);
+  border-color: var(--lx-accent);
+}
+.lx-stepper__step--done {
+  color: var(--lx-on-accent-text);
+  background: var(--lx-state-success);
+  border-color: var(--lx-state-success);
+}
+.lx-stepper__bar {
+  flex: 1;
+  height: var(--lx-border-width);
+  background: var(--lx-border-soft);
+}
+
+/* Entity card (service tiles) + iframe embed frame */
+.lx-entity-card {
+  background: var(--lx-surface-glass);
+  border: 1px solid var(--lx-border-soft);
+  border-radius: var(--lx-radius-lg);
+  padding: calc(var(--lx-space-unit) * 4);
+  transition: border-color var(--lx-transition-fast) var(--lx-ease);
+}
+.lx-entity-card:hover {
+  border-color: var(--lx-border);
+}
+.lx-iframe-frame {
+  border: var(--lx-border-width) solid var(--lx-border-soft);
+  border-radius: var(--lx-radius-md);
+  background: var(--lx-surface);
+  overflow: hidden;
 }
 
 @keyframes lx-badge-pulse {
@@ -594,6 +825,45 @@ html.lx-glass-all .lx-card > * {
   --lx-log-bg: #0a0e1a;
   --lx-log-fg: #f0f6ff;
   --lx-log-accent: #22d3ee;
+  /* Theming v2 T0 — state extensions + chart palette (light-mode values,
+     deepened for contrast on light surfaces). */
+  --lx-state-success: #059669;
+  --lx-state-marked: #4f46e5;
+  --lx-chart-1: #7c3aed;
+  --lx-chart-2: #0284c7;
+  --lx-chart-3: #059669;
+  --lx-chart-4: #d97706;
+  --lx-chart-5: #e11d48;
+  --lx-chart-6: #4f46e5;
+  --lx-chart-7: #0891b2;
+  --lx-chart-8: #0d9488;
+  /* Gradient family (same var-referencing strings as :root — they resolve to
+     the light-mode state/accent/chart colours automatically). */
+  --lx-gradient-success: linear-gradient(90deg, var(--lx-state-success), var(--lx-chart-8));
+  --lx-gradient-warning: linear-gradient(90deg, var(--lx-warning), var(--lx-chart-4));
+  --lx-gradient-info: linear-gradient(90deg, var(--lx-accent-2), var(--lx-accent));
+  --lx-gradient-danger: linear-gradient(90deg, var(--lx-state-down), var(--lx-chart-5));
+  /* Terminal stays green-on-black in both modes (raw console). */
+  --lx-terminal-bg: #050807;
+  --lx-terminal-fg: #4ade80;
+  --lx-terminal-accent: #22d3ee;
+  /* Mode-invariant scalar tokens — identical to :root. */
+  --lx-icon-xs: 14px;
+  --lx-icon-sm: 16px;
+  --lx-icon-md: 18px;
+  --lx-icon-lg: 32px;
+  --lx-z-dropdown: 1000;
+  --lx-z-modal: 1100;
+  --lx-z-toast: 1200;
+  --lx-scrim: rgb(0 0 0 / 0.55);
+  --lx-text-2xs: calc(0.6875rem * var(--lx-text-scale));
+  --lx-text-3xs: calc(0.625rem * var(--lx-text-scale));
+  --lx-blur-xs: 10px;
+  --lx-glass-saturate: 160%;
+  --lx-on-accent-text: #0a0e1a;
+  --lx-rail-width: 3px;
+  --lx-badge-bg-opacity: 0.15;
+  --lx-badge-border-opacity: 0.30;
   /* Liquid glass (light) */
   --lx-glass-blur: 18px;
   --lx-glass-border: rgba(255, 255, 255, 0.6);

@@ -63,6 +63,8 @@ export const DEFAULT_TOKENS: ThemeTokens = {
     font_mono:
       "'Lyndrix System Mono', 'JetBrainsMonoNL Nerd Font Mono', 'JetBrainsMono Nerd Font Mono', 'JetBrains Mono', 'Fira Code', 'Cascadia Code', Consolas, monospace",
     text_scale: '1',
+    text_2xs: 'calc(0.6875rem * var(--lx-text-scale))',
+    text_3xs: 'calc(0.625rem * var(--lx-text-scale))',
   },
   shadow: {
     sm: '0 1px 2px 0 rgb(0 0 0 / 0.25)',
@@ -71,6 +73,7 @@ export const DEFAULT_TOKENS: ThemeTokens = {
     glow: '0 0 30px rgb(0 212 255 / 0.3)',
   },
   blur: {
+    xs: '10px',
     sm: '8px',
     md: '16px',
     lg: '24px',
@@ -83,9 +86,30 @@ export const DEFAULT_TOKENS: ThemeTokens = {
   },
   gradient: {
     accent: 'linear-gradient(135deg, var(--lx-accent), var(--lx-accent-2), var(--lx-accent-3))',
+    success: 'linear-gradient(90deg, var(--lx-state-success), var(--lx-chart-8))',
+    warning: 'linear-gradient(90deg, var(--lx-warning), var(--lx-chart-4))',
+    info: 'linear-gradient(90deg, var(--lx-accent-2), var(--lx-accent))',
+    danger: 'linear-gradient(90deg, var(--lx-state-down), var(--lx-chart-5))',
   },
   border: {
     width: '1px',
+    rail: '3px',
+  },
+  icon: {
+    xs: '14px',
+    sm: '16px',
+    md: '18px',
+    lg: '32px',
+  },
+  zindex: {
+    dropdown: '1000',
+    modal: '1100',
+    toast: '1200',
+  },
+  effect: {
+    glass_saturate: '160%',
+    badge_bg_opacity: '0.15',
+    badge_border_opacity: '0.30',
   },
   background_images: {
     light: 'background-light.webp',
@@ -114,7 +138,7 @@ export function backfillTokens(loaded: Partial<ThemeTokens> | null | undefined):
       out.colors[k] = { ...(out.colors[k] ?? { light: '#000000', dark: '#000000' }), ...v }
     }
   }
-  for (const g of ['radius', 'spacing', 'typography', 'shadow', 'blur', 'transition', 'gradient', 'border'] as const) {
+  for (const g of ['radius', 'spacing', 'typography', 'shadow', 'blur', 'transition', 'gradient', 'border', 'icon', 'zindex', 'effect'] as const) {
     const src = loaded[g]
     if (src) out[g] = { ...out[g], ...src }
   }
@@ -169,6 +193,8 @@ export const TYPOGRAPHY_VARS: Record<string, string> = {
   font_sans: '--lx-font-sans',
   font_mono: '--lx-font-mono',
   text_scale: '--lx-text-scale',
+  text_2xs: '--lx-text-2xs',
+  text_3xs: '--lx-text-3xs',
 }
 export const SHADOW_VARS: Record<string, string> = {
   sm: '--lx-shadow-sm',
@@ -177,6 +203,7 @@ export const SHADOW_VARS: Record<string, string> = {
   glow: '--lx-shadow-glow',
 }
 export const BLUR_VARS: Record<string, string> = {
+  xs: '--lx-blur-xs',
   sm: '--lx-blur-sm',
   md: '--lx-blur-md',
   lg: '--lx-blur-lg',
@@ -187,8 +214,17 @@ export const TRANSITION_VARS: Record<string, string> = {
   slow: '--lx-transition-slow',
   ease: '--lx-ease',
 }
-export const GRADIENT_VARS: Record<string, string> = { accent: '--lx-gradient-accent' }
-export const BORDER_VARS: Record<string, string> = { width: '--lx-border-width' }
+export const GRADIENT_VARS: Record<string, string> = {
+  accent: '--lx-gradient-accent',
+  success: '--lx-gradient-success',
+  warning: '--lx-gradient-warning',
+  info: '--lx-gradient-info',
+  danger: '--lx-gradient-danger',
+}
+export const BORDER_VARS: Record<string, string> = {
+  width: '--lx-border-width',
+  rail: '--lx-rail-width',
+}
 
 /** (edits key, var map) pairs for the flat non-colour categories. */
 const SCALAR_CATEGORIES: ReadonlyArray<
