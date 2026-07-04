@@ -1,7 +1,7 @@
 {
   "name": "lyndrix-ui",
   "private": true,
-  "version": "0.8.0",
+  "version": "0.9.0",
   "type": "module",
   "module": "./dist/index.es.js",
   "types": "./dist/types/index.d.ts",
@@ -20,6 +20,7 @@
     "@tanstack/react-query": "^5.101.0",
     "@tanstack/react-query-devtools": "^5.101.0",
     "autoprefixer": "^10.5.0",
+    "fflate": "^0.8.3",
     "i18next": "^26.3.3",
     "lucide-react": "^1.21.0",
     "material-icons": "^1.13.14",

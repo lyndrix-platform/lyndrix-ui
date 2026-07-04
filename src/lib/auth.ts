@@ -1,4 +1,5 @@
 import { apiFetch, setToken, clearToken } from './api'
+import { clearAccountPrefs, preferencesClient } from './preferences'
 
 export interface LoginResponse {
   token: string
@@ -25,6 +26,9 @@ export async function login(username: string, password: string): Promise<LoginRe
     skipAuth: true,
   })
   setToken(data.token)
+  // Pull the account-scoped preferences for this user right away so the account
+  // theme layer + cross-device selection apply without waiting for a reload.
+  void preferencesClient.getPreferences(true)
   return data
 }
 
@@ -33,6 +37,8 @@ export async function logout(): Promise<void> {
     await apiFetch('/api/auth/logout', { method: 'POST' })
   } finally {
     clearToken()
+    // Stop applying the account layer and drop its browser cache for this user.
+    clearAccountPrefs()
   }
 }
 

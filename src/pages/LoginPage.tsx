@@ -71,7 +71,7 @@ export default function LoginPage() {
 
       {/* Login card */}
       <div
-        className="relative z-10 w-full max-w-sm p-8 rounded-lg border border-[var(--lx-border-soft)] backdrop-blur-[16px]"
+        className="relative z-10 w-full max-w-sm p-8 rounded-lg border border-[var(--lx-border-soft)] backdrop-blur-[var(--lx-blur-md)]"
         style={{ background: 'var(--lx-surface-glass)' }}
       >
         <div className="flex items-center gap-3 mb-3">

@@ -17,8 +17,8 @@ export function SettingsTileGrid({
           onClick={() => onSelect(s.id)}
           className="lx-card lx-card-hover p-5 sm:p-6 flex flex-col items-center justify-center gap-3 text-center min-h-[120px] sm:min-h-[150px]"
         >
-          <span className="grid place-items-center w-14 h-14 rounded-xl bg-[var(--lx-elevated)] text-[var(--lx-accent)]">
-            <s.Icon size={26} />
+          <span className="grid place-items-center text-[var(--lx-accent)]">
+            <s.Icon size={44} strokeWidth={1.75} />
           </span>
           <span className="text-sm font-medium text-[var(--lx-text)]">{t(s.labelKey)}</span>
         </button>

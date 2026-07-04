@@ -12,13 +12,13 @@ export default function FeatureCard({ icon, title, description }: FeatureCardPro
       style={{
         background: 'var(--lx-surface-glass)',
         border: '1px solid var(--lx-border-soft)',
-        borderRadius: '20px',
+        borderRadius: 'var(--lx-radius-3xl)',
         padding: '2rem',
         display: 'flex',
         flexDirection: 'column',
         gap: '1rem',
-        backdropFilter: 'blur(8px)',
-        WebkitBackdropFilter: 'blur(8px)',
+        backdropFilter: 'blur(var(--lx-blur-sm))',
+        WebkitBackdropFilter: 'blur(var(--lx-blur-sm))',
       }}
     >
       {icon != null && (
@@ -30,7 +30,7 @@ export default function FeatureCard({ icon, title, description }: FeatureCardPro
             alignItems: 'center',
             justifyContent: 'center',
             background: 'color-mix(in srgb, var(--lx-accent) 10%, transparent)',
-            borderRadius: '12px',
+            borderRadius: 'var(--lx-radius-xl)',
             color: 'var(--lx-accent)',
             flexShrink: 0,
           }}
