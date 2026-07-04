@@ -1,21 +1,15 @@
+// Notification routing (Routing v2). Two cards:
+//   1. Providers — every registered gateway adapter with its generic
+//      ProviderConfigField form (always visible, no bucket selection).
+//   2. Endpoint routing — one row per declared endpoint: active toggle,
+//      MULTI-SELECT provider chips (fan-out; replaces the old 1:1 dnd bucket
+//      model) and a visibility (required-permission) select.
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
-import {
-  DndContext,
-  DragOverlay,
-  PointerSensor,
-  TouchSensor,
-  KeyboardSensor,
-  useSensor,
-  useSensors,
-  useDraggable,
-  useDroppable,
-  type DragEndEvent,
-  type DragStartEvent,
-} from '@dnd-kit/core'
-import { Lock, GripVertical, ChevronDown, Inbox } from 'lucide-react'
+import { Lock, ChevronDown } from 'lucide-react'
 import { apiFetch } from '../../../lib/api'
+import type { PermissionDefOut } from '../../../lib/types'
 import { Card, SectionTitle, StatusMsg, EnvBadge, EnvHint, inputCls } from '../shared'
 
 interface NotifEndpoint {
@@ -24,9 +18,11 @@ interface NotifEndpoint {
   endpoint_name: string
   description: string
   active: boolean
-  provider: string | null
+  providers: string[]
+  required_permission: string | null
   active_is_env_locked: boolean
   provider_is_env_locked: boolean
+  permission_is_env_locked: boolean
 }
 
 interface NotifProvider {
@@ -46,15 +42,7 @@ interface ProviderConfigField {
   configured: boolean
 }
 
-interface Bucket {
-  id: string
-  name: string
-  provider: NotifProvider | null
-}
-
-const DEFAULT_BUCKET = '__default__'
 const epId = (ep: NotifEndpoint) => `${ep.plugin_id}/${ep.endpoint_name}`
-const bucketOf = (provider: string | null) => provider ?? DEFAULT_BUCKET
 
 function ProviderConfigPanel({ provider }: { provider: NotifProvider }) {
   const { t } = useTranslation('ui')
@@ -147,145 +135,133 @@ function ProviderConfigPanel({ provider }: { provider: NotifProvider }) {
   )
 }
 
-function EndpointChip({
-  ep,
-  buckets,
-  onMove,
-  onToggle,
-}: {
-  ep: NotifEndpoint
-  buckets: Bucket[]
-  onMove: (ep: NotifEndpoint, provider: string | null) => void
-  onToggle: (ep: NotifEndpoint, active: boolean) => void
-}) {
+function ProviderCard({ provider }: { provider: NotifProvider }) {
   const { t } = useTranslation('ui')
-  const locked = ep.provider_is_env_locked
-  const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
-    id: epId(ep),
-    disabled: locked,
-  })
-
+  const [open, setOpen] = useState(false)
   return (
-    <div
-      ref={setNodeRef}
-      className={`flex items-center gap-2 px-2.5 py-2 rounded-lg border border-[var(--lx-border-soft)] bg-[var(--lx-surface)] ${
-        isDragging ? 'opacity-40' : ''
-      }`}
-    >
-      {locked ? (
-        <Lock size={14} className="text-[var(--lx-warning)] shrink-0" />
-      ) : (
-        <button
-          {...listeners}
-          {...attributes}
-          aria-label={t('notif_section.drag_aria')}
-          className="cursor-grab touch-none text-[var(--lx-text-muted)] hover:text-[var(--lx-text)] shrink-0"
-        >
-          <GripVertical size={14} />
-        </button>
-      )}
-
-      <div className="min-w-0 flex-1">
-        <span className="block text-sm text-[var(--lx-text)] truncate">{ep.endpoint_name}</span>
-        <span className="text-[10px] text-[var(--lx-text-muted)] font-mono">{ep.plugin_name}</span>
-      </div>
-
-      <label className="flex items-center gap-1 text-[10px] text-[var(--lx-text-muted)] shrink-0">
-        <input
-          type="checkbox"
-          className="w-3.5 h-3.5 accent-[var(--lx-accent)]"
-          checked={ep.active}
-          disabled={ep.active_is_env_locked}
-          onChange={(e) => onToggle(ep, e.target.checked)}
-        />
-        {t('notif_section.active_label')}
-        {ep.active_is_env_locked && <Lock size={10} className="text-[var(--lx-warning)]" />}
-      </label>
-
-      <select
-        className={`${inputCls} !py-1 !text-[11px] shrink-0`}
-        style={{ width: 116 }}
-        title={t('notif_section.assign_label')}
-        value={bucketOf(ep.provider)}
-        disabled={locked}
-        onChange={(e) => onMove(ep, e.target.value === DEFAULT_BUCKET ? null : e.target.value)}
+    <div className="rounded-md border border-[var(--lx-border-soft)] bg-[var(--lx-elevated)] px-3 py-2">
+      <button
+        onClick={() => setOpen((v) => !v)}
+        className="w-full flex items-center justify-between text-left"
       >
-        {buckets.map((b) => (
-          <option key={b.id} value={b.id}>
-            {b.name}
-          </option>
-        ))}
-      </select>
+        <div>
+          <span className="text-sm text-[var(--lx-text)]">{provider.display_name}</span>
+          <span className="ml-2 text-[10px] text-[var(--lx-text-muted)] lx-mono">
+            {provider.provider_id}
+          </span>
+        </div>
+        <ChevronDown
+          size={14}
+          className={`text-[var(--lx-text-muted)] transition-transform ${open ? 'rotate-180' : ''}`}
+        />
+      </button>
+      {open && <ProviderConfigPanel provider={provider} />}
     </div>
   )
 }
 
-function BucketCard({
-  bucket,
-  endpoints,
-  buckets,
-  onMove,
-  onToggle,
+function EndpointRow({
+  ep,
+  providers,
+  permissions,
 }: {
-  bucket: Bucket
-  endpoints: NotifEndpoint[]
-  buckets: Bucket[]
-  onMove: (ep: NotifEndpoint, provider: string | null) => void
-  onToggle: (ep: NotifEndpoint, active: boolean) => void
+  ep: NotifEndpoint
+  providers: NotifProvider[]
+  permissions: PermissionDefOut[]
 }) {
   const { t } = useTranslation('ui')
-  const { setNodeRef, isOver } = useDroppable({ id: bucket.id })
-  const [showConfig, setShowConfig] = useState(false)
+  const qc = useQueryClient()
+
+  const patch = useMutation({
+    mutationFn: (body: Record<string, unknown>) =>
+      apiFetch(`/api/notifications/endpoints/${ep.plugin_id}/${ep.endpoint_name}`, {
+        method: 'PATCH',
+        body: JSON.stringify(body),
+      }),
+    onSuccess: () => void qc.invalidateQueries({ queryKey: ['notif-endpoints'] }),
+  })
+
+  function toggleProvider(pid: string) {
+    const next = ep.providers.includes(pid)
+      ? ep.providers.filter((p) => p !== pid)
+      : [...ep.providers, pid]
+    patch.mutate({ providers: next })
+  }
+
+  // Sentinels: '__none__' -> explicit no-restriction (""), '__default__' -> reset (null).
+  const permValue = ep.required_permission ?? '__none__'
 
   return (
-    <div
-      ref={setNodeRef}
-      className={`lx-card p-4 flex flex-col gap-3 transition-colors ${
-        isOver ? 'border-[var(--lx-accent)] ring-1 ring-[var(--lx-accent)]' : ''
-      }`}
-    >
-      <div className="flex items-center gap-2">
-        <span className="lx-section-title">{bucket.name}</span>
-        {bucket.provider ? (
-          <span className="text-[10px] text-[var(--lx-text-muted)] font-mono">
-            {bucket.provider.provider_id}
+    <div className="px-3 py-2.5 rounded-md bg-[var(--lx-surface)] border border-[var(--lx-border-soft)]">
+      <div className="flex items-center justify-between gap-3 flex-wrap">
+        <div className="min-w-0">
+          <span className="text-xs font-semibold text-[var(--lx-text)] lx-mono">
+            {ep.endpoint_name}
           </span>
-        ) : (
-          <span className="text-[10px] text-[var(--lx-text-muted)]">
-            {t('notif_section.global_default')}
-          </span>
-        )}
-        <span className="ml-auto text-[10px] text-[var(--lx-text-muted)]">
-          {t('notif_section.endpoints', { count: endpoints.length })}
-        </span>
+          {ep.description && (
+            <p className="text-[10px] text-[var(--lx-text-muted)] truncate">{ep.description}</p>
+          )}
+        </div>
+        <label className="flex items-center gap-1.5 text-[11px] text-[var(--lx-text-muted)] shrink-0">
+          <input
+            type="checkbox"
+            checked={ep.active}
+            disabled={ep.active_is_env_locked || patch.isPending}
+            onChange={(e) => patch.mutate({ active: e.target.checked })}
+            className="accent-[var(--lx-accent)]"
+          />
+          {t('notif_section.active')}
+          {ep.active_is_env_locked && <Lock size={11} />}
+        </label>
       </div>
 
-      {bucket.provider && (
-        <div>
-          <button
-            onClick={() => setShowConfig((v) => !v)}
-            className="flex items-center gap-1 text-[11px] text-[var(--lx-text-muted)] hover:text-[var(--lx-text)]"
-          >
-            <ChevronDown
-              size={12}
-              className={showConfig ? 'rotate-180 transition-transform' : 'transition-transform'}
-            />
-            {t('notif_section.config_toggle')}
-          </button>
-          {showConfig && <ProviderConfigPanel provider={bucket.provider} />}
-        </div>
-      )}
+      {/* Provider fan-out chips */}
+      <div className="flex items-center gap-1.5 flex-wrap mt-2">
+        <span className="text-[10px] text-[var(--lx-text-muted)]">
+          {t('notif_section.providers_label')}
+        </span>
+        {providers.map((p) => {
+          const on = ep.providers.includes(p.provider_id)
+          return (
+            <button
+              key={p.provider_id}
+              disabled={ep.provider_is_env_locked || patch.isPending}
+              onClick={() => toggleProvider(p.provider_id)}
+              className={`px-2 py-0.5 text-[11px] rounded border transition-colors disabled:opacity-50 ${
+                on
+                  ? 'border-[var(--lx-accent)] bg-[var(--lx-accent)]/10 text-[var(--lx-accent)]'
+                  : 'border-[var(--lx-border-soft)] bg-[var(--lx-elevated-glass)] text-[var(--lx-text-muted)]'
+              }`}
+            >
+              {p.display_name}
+            </button>
+          )
+        })}
+        {ep.provider_is_env_locked && <Lock size={11} className="text-[var(--lx-text-muted)]" />}
+      </div>
 
-      <div className="flex flex-col gap-2 min-h-[52px]">
-        {endpoints.length === 0 ? (
-          <div className="flex items-center justify-center gap-2 h-[52px] rounded-lg border border-dashed border-[var(--lx-border-soft)] text-[11px] text-[var(--lx-text-muted)]">
-            <Inbox size={14} /> {t('notif_section.drop_hint')}
-          </div>
-        ) : (
-          endpoints.map((ep) => (
-            <EndpointChip key={epId(ep)} ep={ep} buckets={buckets} onMove={onMove} onToggle={onToggle} />
-          ))
-        )}
+      {/* Visibility (audience) gate */}
+      <div className="flex items-center gap-2 mt-2">
+        <span className="text-[10px] text-[var(--lx-text-muted)] shrink-0">
+          {t('notif_section.visibility_label')}
+        </span>
+        <select
+          value={permValue}
+          disabled={ep.permission_is_env_locked || patch.isPending}
+          onChange={(e) => {
+            const v = e.target.value
+            patch.mutate({ required_permission: v === '__none__' ? '' : v })
+          }}
+          className={`${inputCls} !w-auto max-w-72 text-[11px] !py-1`}
+        >
+          <option value="__none__">{t('notif_section.visibility_all')}</option>
+          {permissions.map((p) => (
+            <option key={p.id} value={p.id}>
+              {p.label || p.id}
+            </option>
+          ))}
+        </select>
+        {ep.permission_is_env_locked && <Lock size={11} className="text-[var(--lx-text-muted)]" />}
       </div>
     </div>
   )
@@ -296,141 +272,80 @@ export default function NotificationsSection(_: {
   envLocked: string[]
 }) {
   const { t } = useTranslation('ui')
-  const qc = useQueryClient()
-  const [status, setStatus] = useState<{ ok: boolean; msg: string } | null>(null)
-  const [dragId, setDragId] = useState<string | null>(null)
 
-  const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
-    useSensor(TouchSensor, { activationConstraint: { delay: 180, tolerance: 6 } }),
-    useSensor(KeyboardSensor),
-  )
-
-  const endpointsQ = useQuery({
+  const { data: epData } = useQuery({
     queryKey: ['notif-endpoints'],
     queryFn: () => apiFetch<{ endpoints: NotifEndpoint[] }>('/api/notifications/endpoints'),
   })
-  const providersQ = useQuery({
+  const { data: provData } = useQuery({
     queryKey: ['notif-providers'],
     queryFn: () =>
       apiFetch<{ providers: NotifProvider[]; global_default: string | null }>(
         '/api/notifications/providers',
       ),
   })
-
-  const providers = providersQ.data?.providers ?? []
-  const endpoints = endpointsQ.data?.endpoints ?? []
-
-  const move = useMutation({
-    mutationFn: ({ ep, provider }: { ep: NotifEndpoint; provider: string | null }) =>
-      apiFetch(`/api/notifications/endpoints/${ep.plugin_id}/${ep.endpoint_name}`, {
-        method: 'PATCH',
-        body: JSON.stringify({ provider }),
-      }),
-    onMutate: async ({ ep, provider }) => {
-      await qc.cancelQueries({ queryKey: ['notif-endpoints'] })
-      const prev = qc.getQueryData<{ endpoints: NotifEndpoint[] }>(['notif-endpoints'])
-      qc.setQueryData<{ endpoints: NotifEndpoint[] }>(['notif-endpoints'], (old) =>
-        old
-          ? { ...old, endpoints: old.endpoints.map((e) => (epId(e) === epId(ep) ? { ...e, provider } : e)) }
-          : old,
-      )
-      return { prev }
-    },
-    onError: (e, _v, ctx) => {
-      if (ctx?.prev) qc.setQueryData(['notif-endpoints'], ctx.prev)
-      setStatus({
-        ok: false,
-        msg: e instanceof Error ? e.message : t('notif_section.assign_failed'),
-      })
-    },
-    onSettled: () => void qc.invalidateQueries({ queryKey: ['notif-endpoints'] }),
+  const { data: catalog } = useQuery({
+    queryKey: ['permissions-catalog'],
+    queryFn: () =>
+      apiFetch<{ permissions: PermissionDefOut[] }>('/api/permissions/catalog').then(
+        (r) => r.permissions,
+      ),
+    staleTime: 60_000,
   })
 
-  const toggle = useMutation({
-    mutationFn: ({ ep, active }: { ep: NotifEndpoint; active: boolean }) =>
-      apiFetch(`/api/notifications/endpoints/${ep.plugin_id}/${ep.endpoint_name}`, {
-        method: 'PATCH',
-        body: JSON.stringify({ active }),
-      }),
-    onSuccess: () => void qc.invalidateQueries({ queryKey: ['notif-endpoints'] }),
-    onError: (e) =>
-      setStatus({ ok: false, msg: e instanceof Error ? e.message : t('common.error') }),
-  })
+  const providers = provData?.providers ?? []
+  const endpoints = epData?.endpoints ?? []
+  const permissions = catalog ?? []
 
-  const onMove = (ep: NotifEndpoint, provider: string | null) => {
-    if ((ep.provider ?? null) === provider) return
-    move.mutate({ ep, provider })
-  }
-  const onToggle = (ep: NotifEndpoint, active: boolean) => toggle.mutate({ ep, active })
-
-  function onDragStart(e: DragStartEvent) {
-    setDragId(String(e.active.id))
-  }
-  function onDragEnd(e: DragEndEvent) {
-    setDragId(null)
-    const { active, over } = e
-    if (!over) return
-    const ep = endpoints.find((x) => epId(x) === active.id)
-    if (!ep || ep.provider_is_env_locked) return
-    const target = over.id === DEFAULT_BUCKET ? null : String(over.id)
-    onMove(ep, target)
-  }
-
-  if (endpointsQ.isLoading || providersQ.isLoading) {
-    return <p className="text-sm text-[var(--lx-text-muted)]">{t('common.loading')}</p>
-  }
-  if (endpointsQ.isError) {
-    return (
-      <StatusMsg
-        ok={false}
-        msg={(endpointsQ.error as Error)?.message ?? t('common.error_loading')}
-      />
-    )
-  }
-
-  const buckets: Bucket[] = [
-    { id: DEFAULT_BUCKET, name: t('notif_section.default_bucket'), provider: null },
-    ...providers.map((p) => ({ id: p.provider_id, name: p.display_name, provider: p })),
-  ]
-  const dragEp = dragId ? endpoints.find((e) => epId(e) === dragId) ?? null : null
+  // Group endpoint rows per plugin (mirrors the NiceGUI page's grouping).
+  const byPlugin = endpoints.reduce<Record<string, NotifEndpoint[]>>((acc, ep) => {
+    ;(acc[ep.plugin_name] ||= []).push(ep)
+    return acc
+  }, {})
 
   return (
     <div className="flex flex-col gap-4">
       <Card>
-        <SectionTitle>{t('notif_section.provider_title')}</SectionTitle>
-        <p className="text-[11px] text-[var(--lx-text-muted)] -mt-2">
-          {t('notif_section.description')}
+        <SectionTitle>{t('notif_section.providers_title')}</SectionTitle>
+        <p className="text-xs text-[var(--lx-text-muted)] mb-3">
+          {t('notif_section.providers_hint')}
         </p>
+        <div className="flex flex-col gap-2">
+          {providers.map((p) => (
+            <ProviderCard key={p.provider_id} provider={p} />
+          ))}
+          {providers.length === 0 && (
+            <p className="text-xs text-[var(--lx-text-muted)]">{t('notif_section.no_providers')}</p>
+          )}
+        </div>
       </Card>
 
-      {status && <StatusMsg ok={status.ok} msg={status.msg} />}
-
-      {endpoints.length === 0 ? (
-        <p className="text-sm text-[var(--lx-text-muted)]">{t('notif_section.no_endpoints')}</p>
-      ) : (
-        <DndContext sensors={sensors} onDragStart={onDragStart} onDragEnd={onDragEnd}>
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-start">
-            {buckets.map((b) => (
-              <BucketCard
-                key={b.id}
-                bucket={b}
-                endpoints={endpoints.filter((e) => bucketOf(e.provider) === b.id)}
-                buckets={buckets}
-                onMove={onMove}
-                onToggle={onToggle}
-              />
-            ))}
-          </div>
-          <DragOverlay>
-            {dragEp ? (
-              <div className="px-2.5 py-2 rounded-lg border border-[var(--lx-accent)] bg-[var(--lx-elevated)] text-sm text-[var(--lx-text)] shadow-lg">
-                {dragEp.endpoint_name}
+      <Card>
+        <SectionTitle>{t('notif_section.routing_title')}</SectionTitle>
+        <p className="text-xs text-[var(--lx-text-muted)] mb-3">
+          {t('notif_section.routing_hint')}
+        </p>
+        <div className="flex flex-col gap-4">
+          {Object.entries(byPlugin).map(([pluginName, eps]) => (
+            <div key={pluginName}>
+              <p className="lx-eyebrow mb-2">{pluginName}</p>
+              <div className="flex flex-col gap-1.5">
+                {eps.map((ep) => (
+                  <EndpointRow
+                    key={epId(ep)}
+                    ep={ep}
+                    providers={providers}
+                    permissions={permissions}
+                  />
+                ))}
               </div>
-            ) : null}
-          </DragOverlay>
-        </DndContext>
-      )}
+            </div>
+          ))}
+          {endpoints.length === 0 && (
+            <p className="text-xs text-[var(--lx-text-muted)]">{t('notif_section.no_endpoints')}</p>
+          )}
+        </div>
+      </Card>
     </div>
   )
 }
