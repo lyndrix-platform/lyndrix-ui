@@ -256,7 +256,7 @@ function UserDetailPanel({
 
   return (
     <div className="fixed inset-0 z-40 flex">
-      <div className="flex-1 bg-black/40" onClick={onClose} />
+      <div className="flex-1 bg-[var(--lx-scrim)]" onClick={onClose} />
       <div className="w-full max-w-md bg-[var(--lx-surface-glass)] backdrop-blur-[var(--lx-blur-md)] backdrop-saturate-150 border-l border-[var(--lx-border-soft)] overflow-y-auto flex flex-col">
         <div className="px-5 py-4 border-b border-[var(--lx-border-soft)] flex items-center justify-between">
           <div>
@@ -406,7 +406,7 @@ function CreateUserModal({ onClose }: { onClose: () => void }) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
-      <div className="absolute inset-0 bg-black/50" onClick={onClose} />
+      <div className="absolute inset-0 bg-[var(--lx-scrim)]" onClick={onClose} />
       <div className="relative z-10 w-full max-w-sm bg-[var(--lx-surface-glass)] backdrop-blur-[var(--lx-blur-md)] backdrop-saturate-150 rounded-lg border border-[var(--lx-border-soft)] p-6">
         <div className="flex items-center justify-between mb-4">
           <h3 className="font-medium text-[var(--lx-text)]">{t('users_page.create_user_title')}</h3>

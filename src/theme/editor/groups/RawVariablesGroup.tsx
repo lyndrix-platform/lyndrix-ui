@@ -71,14 +71,13 @@ const SECTIONS: Section[] = [
   },
   {
     titleKey: 'editor.raw.borders',
-    title: 'Borders & glass',
+    title: 'Borders & glass (shell-only)',
     kind: 'engine',
     noteKey: 'editor.raw.borders_note',
-    note: 'Engine-composed literals + shell-only glass/popover vars. No colour token drives these — overriding them here is the only way to reach them.',
+    note: 'Shell-only glass/popover vars no colour token drives. The main glass/border surfaces (--lx-surface-glass, --lx-border, …) moved to Colors → "Glass & borders" — edit them there.',
     vars: [
-      '--lx-border', '--lx-border-soft', '--lx-border-width', '--lx-rail-width',
-      '--lx-surface-glass', '--lx-elevated-glass', '--lx-glass-border', '--lx-glass-highlight',
-      '--lx-glass-shadow', '--lx-glass-blur', '--lx-glass-saturate',
+      '--lx-border-width', '--lx-rail-width',
+      '--lx-glass-highlight', '--lx-glass-shadow', '--lx-glass-blur', '--lx-glass-saturate',
       '--lx-popover-glass', '--lx-popover-shadow',
     ],
   },

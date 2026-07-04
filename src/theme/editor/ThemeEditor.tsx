@@ -769,7 +769,7 @@ export default function ThemeEditor({ initialBase, initialGroup, onClose }: Them
 
       {/* Dirty-close confirm */}
       {confirmingClose && (
-        <div className="absolute inset-0 z-10 grid place-items-center bg-black/40 backdrop-blur-sm p-4">
+        <div className="absolute inset-0 z-10 grid place-items-center bg-[var(--lx-scrim)] backdrop-blur-sm p-4">
           <div className="lx-glass rounded-2xl p-6 max-w-sm w-full">
             <h3 className="text-sm font-semibold text-[var(--lx-text)] mb-2">
               {t('editor.discard_title', { defaultValue: 'Discard unsaved changes?' })}
@@ -797,7 +797,7 @@ export default function ThemeEditor({ initialBase, initialGroup, onClose }: Them
 
       {/* Save name dialog */}
       {saveDialog && (
-        <div className="absolute inset-0 z-20 grid place-items-center bg-black/40 backdrop-blur-sm p-4">
+        <div className="absolute inset-0 z-20 grid place-items-center bg-[var(--lx-scrim)] backdrop-blur-sm p-4">
           <div className="lx-glass rounded-2xl p-6 max-w-sm w-full">
             <h3 className="text-sm font-semibold text-[var(--lx-text)] mb-2">
               {t('editor.save.title', { defaultValue: 'Save as theme' })}
@@ -863,7 +863,7 @@ export default function ThemeEditor({ initialBase, initialGroup, onClose }: Them
 
       {/* Post-save activation panel */}
       {saved && (
-        <div className="absolute inset-0 z-20 grid place-items-center bg-black/40 backdrop-blur-sm p-4">
+        <div className="absolute inset-0 z-20 grid place-items-center bg-[var(--lx-scrim)] backdrop-blur-sm p-4">
           <div className="lx-glass rounded-2xl p-6 max-w-sm w-full">
             <h3 className="text-sm font-semibold text-[var(--lx-text)] mb-1">
               {t('editor.save.done_title', { defaultValue: 'Saved “{{id}}”', id: saved.id })}
@@ -917,7 +917,7 @@ export default function ThemeEditor({ initialBase, initialGroup, onClose }: Them
 
       {/* All-users activation confirm (the only PUT /api/themes/active path here) */}
       {systemActivate && (
-        <div className="absolute inset-0 z-30 grid place-items-center bg-black/40 backdrop-blur-sm p-4">
+        <div className="absolute inset-0 z-30 grid place-items-center bg-[var(--lx-scrim)] backdrop-blur-sm p-4">
           <div className="lx-glass rounded-2xl p-6 max-w-sm w-full">
             <h3 className="text-sm font-semibold text-[var(--lx-text)] mb-2">
               {t('editor.save.system_confirm_title', { defaultValue: 'Change the system default?' })}

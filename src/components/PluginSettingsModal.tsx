@@ -40,7 +40,7 @@ export default function PluginSettingsModal({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-[var(--lx-scrim)] backdrop-blur-sm"
       onClick={(e) => e.target === e.currentTarget && onClose()}
     >
       <div className="w-full max-w-lg mx-4 p-6 rounded-xl bg-[var(--lx-surface-glass)] backdrop-blur-[20px] border border-[var(--lx-glass-border)] shadow-2xl max-h-[80vh] flex flex-col">

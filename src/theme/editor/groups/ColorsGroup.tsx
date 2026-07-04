@@ -20,6 +20,13 @@ const SUBGROUPS: { titleKey: string; title: string; keys: string[] }[] = [
   { titleKey: 'editor.colors.surfaces', title: 'Surfaces', keys: ['bg_body', 'bg_surface', 'bg_elevated'] },
   { titleKey: 'editor.colors.text', title: 'Text', keys: ['text_body', 'text_muted', 'text_subtle'] },
   { titleKey: 'editor.colors.states', title: 'States', keys: ['positive', 'negative', 'info', 'warning'] },
+  // Theming v2.1: glass/border surfaces are real colour tokens now. rgba()
+  // alphas survive via the free-text input; a solid value = glass off.
+  {
+    titleKey: 'editor.colors.glass',
+    title: 'Glass & borders',
+    keys: ['surface_glass', 'elevated_glass', 'glass_border', 'border_accent', 'border_soft'],
+  },
 ]
 
 const KEY_LABELS: Record<string, string> = {
@@ -36,6 +43,11 @@ const KEY_LABELS: Record<string, string> = {
   negative: 'Negative',
   info: 'Info',
   warning: 'Warning',
+  surface_glass: 'Card glass surface',
+  elevated_glass: 'Elevated glass surface',
+  glass_border: 'Glass border',
+  border_accent: 'Accent border',
+  border_soft: 'Soft border',
 }
 
 export default function ColorsGroup({ draft, dispatch, mode, baseCssVars }: GroupProps) {

@@ -86,7 +86,7 @@ function ToggleSwitch({
     >
       <span
         className={[
-          'inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow transition-transform duration-200',
+          'inline-block h-3.5 w-3.5 transform rounded-full bg-[var(--lx-on-accent-text)] shadow transition-transform duration-200',
           checked ? 'translate-x-4' : 'translate-x-1',
         ].join(' ')}
       />
@@ -143,7 +143,7 @@ function ConfirmDialog({
 }) {
   const { t } = useTranslation('ui')
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[var(--lx-scrim)] backdrop-blur-sm">
       <div className="w-full max-w-sm mx-4 p-5 rounded-xl bg-[var(--lx-surface-glass)] backdrop-blur-[var(--lx-blur-md)] backdrop-saturate-150 border border-[var(--lx-border-soft)] shadow-xl">
         <h3 className="text-sm font-semibold text-[var(--lx-text)] mb-2">{title}</h3>
         <p className="text-sm text-[var(--lx-text-muted)] mb-5">{message}</p>
@@ -195,7 +195,7 @@ function InstallDialog({ initialRepoUrl = '', onClose }: { initialRepoUrl?: stri
   })
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[var(--lx-scrim)] backdrop-blur-sm">
       <div className="w-full max-w-md mx-4 p-6 rounded-xl bg-[var(--lx-surface-glass)] backdrop-blur-[var(--lx-blur-md)] backdrop-saturate-150 border border-[var(--lx-border-soft)] shadow-xl">
         <div className="flex items-center justify-between mb-5">
           <h3 className="text-sm font-semibold text-[var(--lx-text)]">{t('plugins_page.install_title')}</h3>
@@ -313,7 +313,7 @@ function UpgradeDialog({ plugin, onClose }: { plugin: PluginOut; onClose: () => 
   })
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[var(--lx-scrim)] backdrop-blur-sm">
       <div className="w-full max-w-sm mx-4 p-6 rounded-xl bg-[var(--lx-surface-glass)] backdrop-blur-[var(--lx-blur-md)] backdrop-saturate-150 border border-[var(--lx-border-soft)] shadow-xl">
         <div className="flex items-center justify-between mb-5">
           <div>
@@ -458,7 +458,7 @@ function HealthDialog({ plugin, onClose }: { plugin: PluginOut; onClose: () => v
   const tone = healthTone(entry?.status)
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[var(--lx-scrim)] backdrop-blur-sm">
       <div className="w-full max-w-md mx-4 p-6 rounded-xl bg-[var(--lx-surface-glass)] backdrop-blur-[var(--lx-blur-md)] backdrop-saturate-150 border border-[var(--lx-border-soft)] shadow-xl">
         <div className="flex items-center justify-between mb-5">
           <div className="min-w-0">

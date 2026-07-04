@@ -14,10 +14,12 @@
 //      parity is guaranteed for everything the user didn't touch.
 //
 // IMPORTANT — engine-composed vars are NOT token-derived, so we never fake them:
-//   • --lx-border, --lx-border-soft, --lx-surface-glass are hardcoded rgba()
-//     literals in the engine (not resolved from any colour token). Editing
-//     `primary` will therefore NOT shift them in preview or in a saved pack.
-//     That is engine parity, not a bug — do not derive them client-side.
+//   • Since Theming v2.1 the glass/border surfaces ARE colour tokens
+//     (surface_glass, elevated_glass, glass_border, border_accent, border_soft →
+//     --lx-surface-glass/--lx-elevated-glass/--lx-glass-border/--lx-border/
+//     --lx-border-soft) with the old literals as engine fallbacks. Truly
+//     shell-only vars (--lx-glass-highlight, --lx-popover-*, …) remain
+//     reachable only via css_variables.
 //   • The `info` colour token has NO --lx-* CSS variable in the engine at all;
 //     it only feeds NiceGUI's runtime (Quasar) palette. So editing `info`
 //     produces no browser-scope preview/override, but it IS still carried in the
@@ -43,6 +45,13 @@ export const DEFAULT_TOKENS: ThemeTokens = {
     text_body: { light: '#0f172a', dark: '#f0f6ff' },
     text_muted: { light: '#64748b', dark: '#94a3b8' },
     text_subtle: { light: '#94a3b8', dark: '#94a3b8' },
+    // Glass & border surfaces (Theming v2.1) — rgba with alpha is intentional:
+    // a solid value here turns the glass effect off for that surface.
+    surface_glass: { light: 'rgba(255, 255, 255, 0.72)', dark: 'rgba(15, 22, 41, 0.58)' },
+    elevated_glass: { light: 'rgba(255, 255, 255, 0.6)', dark: 'rgba(22, 32, 64, 0.55)' },
+    glass_border: { light: 'rgba(0, 0, 0, 0.12)', dark: 'rgba(255, 255, 255, 0.12)' },
+    border_accent: { light: 'rgba(8, 145, 178, 0.3)', dark: 'rgba(0, 212, 255, 0.2)' },
+    border_soft: { light: 'rgba(0, 0, 0, 0.09)', dark: 'rgba(255, 255, 255, 0.08)' },
   },
   radius: {
     sm: '0.125rem',
@@ -223,6 +232,12 @@ export const COLOR_VAR_MAP: Record<string, string[]> = {
   negative: ['--lx-state-down'],
   warning: ['--lx-state-paused', '--lx-warning'],
   info: [], // no engine CSS var — feeds NiceGUI runtime palette only.
+  // Glass & borders (Theming v2.1 — mirrors engine.resolve_css_variables)
+  surface_glass: ['--lx-surface-glass'],
+  elevated_glass: ['--lx-elevated-glass'],
+  glass_border: ['--lx-glass-border'],
+  border_accent: ['--lx-border'],
+  border_soft: ['--lx-border-soft'],
 }
 
 /** Ordered colour keys (drives the Colours group + any iteration order). */

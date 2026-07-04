@@ -60,7 +60,7 @@ export default function AppShell({ children }: Props) {
       {/* Mobile backdrop */}
       {sidebarOpen && (
         <div
-          className="fixed inset-0 z-20 bg-black/60 md:hidden"
+          className="fixed inset-0 z-20 bg-[var(--lx-scrim)] md:hidden"
           onClick={() => setSidebarOpen(false)}
         />
       )}
