@@ -5,6 +5,7 @@ import { ApiError, apiFetch } from '../../../lib/api'
 import type { SystemInfoOut } from '../../../lib/types'
 import { Card, SectionTitle, StatusMsg } from '../shared'
 import { APP_VERSION } from '../../../lib/version'
+import { useAccess, can } from '../../../lib/access'
 
 function formatUptime(seconds: number): string {
   const d = Math.floor(seconds / 86400)
@@ -124,6 +125,8 @@ export default function InfoSection(_: {
   envLocked: string[]
 }) {
   const { t } = useTranslation('ui')
+  const { data: access } = useAccess()
+  const canRestart = can(access, 'admin:write')
   const { data: info, isLoading } = useQuery({
     queryKey: ['system-info'],
     queryFn: () => apiFetch<SystemInfoOut>('/api/system/info'),
@@ -160,7 +163,7 @@ export default function InfoSection(_: {
         </div>
       </Card>
 
-      <RestartCard />
+      {canRestart && <RestartCard />}
     </div>
   )
 }

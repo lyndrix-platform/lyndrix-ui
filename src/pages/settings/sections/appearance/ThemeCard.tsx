@@ -8,6 +8,7 @@ import { getSelectedThemeId, getThemeVars } from '../../../../lib/themeStore'
 import { useTheme } from '../../../../theme/ThemeProvider'
 import { ACCOUNT_SCOPE_ENABLED } from '../../../../lib/preferences'
 import { toast } from '../../../../lib/toast'
+import { useAccess, can } from '../../../../lib/access'
 import type { ThemeOut } from '../../../../lib/types'
 import { Card, SectionTitle, inputCls } from '../../shared'
 
@@ -51,6 +52,11 @@ export default function ThemeCard() {
   } = useTheme()
   const qc = useQueryClient()
   const [, setSearchParams] = useSearchParams()
+  const { data: access } = useAccess()
+  // Server-side global writes (PUT /api/themes/active, POST/DELETE /api/themes)
+  // now require admin:write — hide those affordances proactively instead of
+  // relying only on the reactive 403 → writeDenied fallback below.
+  const canWrite = can(access, 'admin:write')
 
   // Open the live Theme Editor by adding the `editor=theme` param, pre-loading
   // the currently pinned theme as the editing base. AppearanceSection portals it.
@@ -80,12 +86,19 @@ export default function ThemeCard() {
   const initedMode = useRef(false)
   // Resolve the initial Apply-to mode once the server active theme is known:
   // "Both" when the browser has no pin OR the pin equals the server theme.
+  // A viewer without admin:write can never drive the server (NiceGUI) theme,
+  // so they're pinned to "Separate" (browser-only) regardless of the pin.
   useEffect(() => {
     if (initedMode.current || activeTheme === undefined) return
+    if (!canWrite) {
+      setApplyMode('separate')
+      initedMode.current = true
+      return
+    }
     const pin = getSelectedThemeId()
     setApplyMode(pin === null || pin === activeTheme ? 'both' : 'separate')
     initedMode.current = true
-  }, [activeTheme])
+  }, [activeTheme, canWrite])
 
   const [pending, setPending] = useState<PendingActivate | null>(null)
   const [manageOpen, setManageOpen] = useState(false)
@@ -189,7 +202,9 @@ export default function ThemeCard() {
     <Card>
       <SectionTitle>{t('appearance.theme', { defaultValue: 'Theme' })}</SectionTitle>
 
-      {/* Apply-to radio */}
+      {/* Apply-to radio — only meaningful when the viewer can drive the server
+          (NiceGUI) theme; otherwise there's only one mode (browser-only). */}
+      {canWrite && (
       <div className="flex flex-col sm:flex-row gap-2 mb-5">
         {(['both', 'separate'] as const).map((m) => {
           const active = applyMode === m
@@ -236,9 +251,10 @@ export default function ThemeCard() {
           )
         })}
       </div>
+      )}
 
       {/* ── BOTH: one row drives everything ── */}
-      {applyMode === 'both' && (
+      {canWrite && applyMode === 'both' && (
         <div className="flex flex-col gap-2">
           <label className="text-xs font-medium text-[var(--lx-text-muted)]">
             {t('appearance.theme_both_label', { defaultValue: 'Theme (all UIs)' })}
@@ -307,7 +323,8 @@ export default function ThemeCard() {
             <p className="text-[11px] text-[var(--lx-text-muted)]">{effectiveSource}</p>
           </div>
 
-          {/* NiceGUI (server) row */}
+          {/* NiceGUI (server) row — drives PUT /api/themes/active (all users) */}
+          {canWrite && (
           <div className="flex flex-col gap-2 border-t border-[var(--lx-border-soft)] pt-4">
             <label className="flex items-center gap-1.5 text-xs font-medium text-[var(--lx-text-muted)]">
               <Monitor size={13} />
@@ -331,6 +348,7 @@ export default function ThemeCard() {
               })}
             </p>
           </div>
+          )}
         </div>
       )}
 
@@ -367,6 +385,8 @@ export default function ThemeCard() {
           <Palette size={14} className="mr-1.5 inline" />
           {t('appearance.open_editor', { defaultValue: 'Open Theme Editor' })}
         </button>
+        {/* Upload + per-theme delete both need admin:write server-side. */}
+        {canWrite && (
         <button
           className="lx-btn lx-btn--ghost lx-btn--sm"
           onClick={() => setManageOpen((v) => !v)}
@@ -377,9 +397,10 @@ export default function ThemeCard() {
             className={`ml-1 inline transition-transform ${manageOpen ? 'rotate-180' : ''}`}
           />
         </button>
+        )}
       </div>
 
-      {manageOpen && (
+      {canWrite && manageOpen && (
         <ManageThemes
           ids={ids}
           activeTheme={activeTheme}

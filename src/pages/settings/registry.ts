@@ -16,6 +16,10 @@ export interface SettingsSectionDef {
   labelKey: string
   Icon: LucideIcon
   component: LazyExoticComponent<ComponentType<SettingsSectionProps>>
+  /** Server permission required to even see this section (Identity 2.0). Pure
+   *  administration sections that now 403 for non-admins — omitted entirely
+   *  from the nav/overview rather than shown and left to error. */
+  permission?: string
 }
 
 export const SETTINGS_SECTIONS: SettingsSectionDef[] = [
@@ -24,6 +28,8 @@ export const SETTINGS_SECTIONS: SettingsSectionDef[] = [
     labelKey: 'settings.general',
     Icon: Settings,
     component: lazy(() => import('./sections/GeneralSection')),
+    // Writes go through POST /api/system/config, which is admin:write-gated.
+    permission: 'admin:read',
   },
   {
     id: 'appearance',
@@ -36,12 +42,14 @@ export const SETTINGS_SECTIONS: SettingsSectionDef[] = [
     labelKey: 'settings.auth',
     Icon: ShieldCheck,
     component: lazy(() => import('./sections/AuthSection')),
+    permission: 'admin:read',
   },
   {
     id: 'plugins',
     labelKey: 'settings.plugins',
     Icon: Puzzle,
     component: lazy(() => import('./sections/PluginsConfigSection')),
+    permission: 'admin:read',
   },
   {
     id: 'profile',
@@ -60,6 +68,7 @@ export const SETTINGS_SECTIONS: SettingsSectionDef[] = [
     labelKey: 'settings.notifications',
     Icon: Bell,
     component: lazy(() => import('./sections/NotificationsSection')),
+    permission: 'admin:read',
   },
   // Native-only: appears solely inside the Capacitor app shell (lyndrix-app), where it holds the
   // runtime backend switcher. `@capacitor/core` is loaded before this module runs, so the platform

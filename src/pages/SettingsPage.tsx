@@ -8,6 +8,7 @@ import type { SystemConfigOut, EditableSettingMeta } from '../lib/types'
 import { SETTINGS_SECTIONS } from './settings/registry'
 import { SettingsTileGrid, SettingsRail } from './settings/SettingsNav'
 import { useIsDesktop } from '../lib/useIsDesktop'
+import { useAccess, can } from '../lib/access'
 
 function SectionSkeleton() {
   return (
@@ -27,6 +28,12 @@ export default function SettingsPage() {
   const [searchParams, setSearchParams] = useSearchParams()
   const activeId = searchParams.get('section')
   const isDesktop = useIsDesktop()
+  const { data: access } = useAccess()
+  // Pure-administration sections 403 for non-admins server-side — drop them
+  // from the nav/overview entirely rather than showing a section that errors.
+  const visibleSections = SETTINGS_SECTIONS.filter(
+    (s) => !s.permission || can(access, s.permission),
+  )
 
   const { data: configData } = useQuery({
     queryKey: ['system-config'],
@@ -43,7 +50,7 @@ export default function SettingsPage() {
   const envLocked = configData?.envLocked ?? []
   const editableSettings = configData?.editableSettings ?? []
 
-  const activeDef = activeId ? SETTINGS_SECTIONS.find((s) => s.id === activeId) ?? null : null
+  const activeDef = activeId ? visibleSections.find((s) => s.id === activeId) ?? null : null
   const ActiveComponent = activeDef?.component
 
   function selectSection(id: string) {
@@ -85,7 +92,7 @@ export default function SettingsPage() {
       return (
         <div className="max-w-5xl mx-auto px-4 py-6">
           {overviewHeader}
-          <SettingsTileGrid sections={SETTINGS_SECTIONS} onSelect={selectSection} />
+          <SettingsTileGrid sections={visibleSections} onSelect={selectSection} />
         </div>
       )
     }
@@ -116,7 +123,7 @@ export default function SettingsPage() {
     return (
       <div className="max-w-5xl mx-auto px-6 py-8 md:px-8">
         {overviewHeader}
-        <SettingsTileGrid sections={SETTINGS_SECTIONS} onSelect={selectSection} />
+        <SettingsTileGrid sections={visibleSections} onSelect={selectSection} />
       </div>
     )
   }
@@ -127,7 +134,7 @@ export default function SettingsPage() {
       {overviewHeader}
       <div className="grid grid-cols-[260px_1fr] gap-6 items-start">
         <div className="lx-card p-3 sticky top-6">
-          <SettingsRail sections={SETTINGS_SECTIONS} activeId={activeId} onSelect={selectSection} />
+          <SettingsRail sections={visibleSections} activeId={activeId} onSelect={selectSection} />
         </div>
         <div className="min-w-0">
           {sectionBody}

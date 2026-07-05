@@ -76,6 +76,10 @@ export interface GroupOut {
   description: string | null
   permissions: string[]
   ldap_mappings: string[]
+  // Identity 2.0: registered role ids assigned to this group. Roles expand to
+  // permissions live at resolution time (see get_effective_permissions) rather
+  // than being melted into `permissions` on assignment.
+  roles: string[]
 }
 
 // /api/permissions/catalog returns permission *definitions* (objects), not bare ids.

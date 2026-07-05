@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { apiFetch } from '../lib/api'
+import { useAccess } from '../lib/access'
 import type { UserOut, ApiKeyOut, GroupOut, PermissionDefOut } from '../lib/types'
 
 // ── Shared primitives ─────────────────────────────────────────────────────────
@@ -180,12 +181,18 @@ function UserDetailPanel({
 }) {
   const { t } = useTranslation('ui')
   const qc = useQueryClient()
+  const { data: access } = useAccess()
+  // "roles" is now a system-flag field (superadmin/bot), not free-text — the
+  // backend rejects any change unless the caller is superadmin, and only these
+  // two values are accepted (privilege-escalation guard).
+  const isSuperadmin = access?.is_superadmin ?? false
+  const initialFlags: string[] = user.roles.filter((r) => r === 'superadmin' || r === 'bot')
   const [form, setForm] = useState({
     full_name: user.full_name ?? '',
     email: user.email ?? '',
     password: '',
-    roles: user.roles.join(', '),
   })
+  const [flags, setFlags] = useState<string[]>(initialFlags)
   const [groupSel, setGroupSel] = useState<string[]>(user.groups ?? [])
   const [groupSearch, setGroupSearch] = useState('')
   const [status, setStatus] = useState<{ ok: boolean; msg: string } | null>(null)
@@ -201,20 +208,30 @@ function UserDetailPanel({
   const { data: apiKeys } = useQuery({
     queryKey: ['api-keys', user.username],
     queryFn: () =>
-      apiFetch<{ keys: ApiKeyOut[] }>(`/api/users/${user.username}/api-keys`).then(
-        (r) => r.keys
+      apiFetch<{ api_keys: ApiKeyOut[] }>(`/api/users/${user.username}/api-keys`).then(
+        (r) => r.api_keys
       ),
   })
+
+  function toggleFlag(flag: 'superadmin' | 'bot') {
+    setFlags((f) => (f.includes(flag) ? f.filter((x) => x !== flag) : [...f, flag]))
+  }
+
+  const flagsChanged =
+    flags.length !== initialFlags.length || flags.some((f) => !initialFlags.includes(f))
 
   const patchMut = useMutation({
     mutationFn: () => {
       const updates: Record<string, unknown> = {
         full_name: form.full_name,
         email: form.email,
-        roles: form.roles.split(',').map((s) => s.trim()).filter(Boolean),
         groups: groupSel,
       }
       if (form.password) updates.password = form.password
+      // Only send `roles` when a superadmin actually changed a flag — omitting
+      // it otherwise means a normal self-edit (full_name/email) never trips
+      // the backend's 403-on-roles-change guard.
+      if (isSuperadmin && flagsChanged) updates.roles = flags
       return apiFetch(`/api/users/${user.username}`, {
         method: 'PATCH',
         body: JSON.stringify(updates),
@@ -237,12 +254,12 @@ function UserDetailPanel({
 
   const createKeyMut = useMutation({
     mutationFn: () =>
-      apiFetch<{ raw_key: string }>(`/api/users/${user.username}/api-keys`, {
+      apiFetch<{ token: string }>(`/api/users/${user.username}/api-keys`, {
         method: 'POST',
         body: JSON.stringify({ label: newKeyLabel }),
       }),
     onSuccess: (data) => {
-      setNewKeyResult(data.raw_key)
+      setNewKeyResult(data.token)
       setNewKeyLabel('')
       qc.invalidateQueries({ queryKey: ['api-keys', user.username] })
     },
@@ -275,7 +292,6 @@ function UserDetailPanel({
                 { label: t('users_page.field_full_name'), key: 'full_name' },
                 { label: t('users_page.field_email'), key: 'email' },
                 { label: t('users_page.field_new_password'), key: 'password', type: 'password' },
-                { label: t('users_page.field_roles'), key: 'roles' },
               ] as { label: string; key: string; type?: string }[]).map(({ label, key, type }) => (
                 <div key={key} className="flex flex-col gap-1">
                   <label className="lx-label">{label}</label>
@@ -288,6 +304,42 @@ function UserDetailPanel({
                   />
                 </div>
               ))}
+              {/* System flags (superadmin/bot) — not assignable roles, and only
+                  a superadmin can see or change them (the backend 403s the
+                  change otherwise). */}
+              {isSuperadmin && (
+                <div className="flex flex-col gap-1">
+                  <label className="lx-label">
+                    {t('users_page.system_flags_label', { defaultValue: 'System flags' })}
+                  </label>
+                  <p className="text-[10px] text-[var(--lx-text-muted)]">
+                    {t('users_page.system_flags_hint', {
+                      defaultValue:
+                        'Platform-level flags, not assignable roles. Only visible/editable by a superadmin.',
+                    })}
+                  </p>
+                  <div className="flex flex-col gap-1.5 mt-1">
+                    <label className="flex items-center gap-2 text-xs text-[var(--lx-text)]">
+                      <input
+                        type="checkbox"
+                        className="accent-[var(--lx-accent)]"
+                        checked={flags.includes('superadmin')}
+                        onChange={() => toggleFlag('superadmin')}
+                      />
+                      {t('users_page.flag_superadmin', { defaultValue: 'Superadmin' })}
+                    </label>
+                    <label className="flex items-center gap-2 text-xs text-[var(--lx-text)]">
+                      <input
+                        type="checkbox"
+                        className="accent-[var(--lx-accent)]"
+                        checked={flags.includes('bot')}
+                        onChange={() => toggleFlag('bot')}
+                      />
+                      {t('users_page.flag_bot', { defaultValue: 'Bot' })}
+                    </label>
+                  </div>
+                </div>
+              )}
               <div className="flex flex-col gap-1">
                 <label className="lx-label">{t('users_page.field_groups')}</label>
                 <SearchInput value={groupSearch} onChange={setGroupSearch} placeholder={t('users_page.search_group')} />
@@ -581,6 +633,39 @@ function GroupsTab() {
     setDraftPerms(base.includes(perm) ? base.filter((p) => p !== perm) : [...base, perm])
   }
 
+  // ── Role assignment (Identity 2.0) ────────────────────────────────────────
+  // Assignable roles come from the same catalog RolesPanel reads (shared cache
+  // entry — this doesn't trigger a second network fetch). Unlike the permission
+  // chips above, toggling a role is persisted immediately (no draft/save step),
+  // matching the group-membership toggle pattern in GroupMembersSection.
+  const { data: roles } = useQuery({
+    queryKey: ['permission-roles'],
+    queryFn: () =>
+      apiFetch<{ roles: RoleDefOut[] }>('/api/permissions/roles').then((r) => r.roles),
+    staleTime: 60_000,
+  })
+
+  const roleMut = useMutation({
+    mutationFn: ({ groupId, roleId, add }: { groupId: number; roleId: string; add: boolean }) =>
+      apiFetch<{ status: string; group: GroupOut }>(
+        `/api/permissions/groups/${groupId}/roles/${roleId}`,
+        { method: add ? 'POST' : 'DELETE' },
+      ),
+    onSuccess: (data) => {
+      setSelected(data.group)
+      qc.invalidateQueries({ queryKey: ['groups'] })
+      // A role bundles permissions — changing it can alter the current admin's
+      // own effective access (e.g. assigning admin:* to their own group).
+      qc.invalidateQueries({ queryKey: ['me-access'] })
+    },
+  })
+
+  function toggleRole(roleId: string) {
+    if (!selected) return
+    const active = selected.roles.includes(roleId)
+    roleMut.mutate({ groupId: selected.id, roleId, add: !active })
+  }
+
   const permQuery = permSearch.trim().toLowerCase()
   const groupDetailByCat = (catalog ?? [])
     .filter(
@@ -700,6 +785,47 @@ function GroupsTab() {
                 </button>
               )}
             </div>
+
+            {/* Role assignment — each toggle persists immediately (POST/DELETE),
+                unlike the draft-then-save permission chips above. */}
+            <div className="mt-6 pt-4 border-t border-[var(--lx-border-soft)]">
+              <p className="lx-eyebrow mb-2">
+                {t('users_page.group_roles_label', { defaultValue: 'Roles' })}
+              </p>
+              <p className="text-[10px] text-[var(--lx-text-muted)] mb-2 leading-tight">
+                {t('users_page.group_roles_hint', {
+                  defaultValue:
+                    'Assign a manifest-declared role to grant its permission bundle to every member of this group.',
+                })}
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {(roles ?? []).map((r) => {
+                  const active = selected.roles.includes(r.id)
+                  return (
+                    <button
+                      key={r.id}
+                      type="button"
+                      disabled={roleMut.isPending}
+                      onClick={() => toggleRole(r.id)}
+                      title={r.permissions.join(', ')}
+                      className={`px-2 py-1 text-xs rounded border transition-colors ${
+                        active
+                          ? 'border-[var(--lx-accent)] bg-[var(--lx-accent)]/10 text-[var(--lx-accent)]'
+                          : 'border-[var(--lx-border-soft)] bg-[var(--lx-elevated-glass)] text-[var(--lx-text-muted)]'
+                      }`}
+                    >
+                      {r.label}
+                    </button>
+                  )
+                })}
+                {(roles ?? []).length === 0 && (
+                  <span className="text-xs text-[var(--lx-text-muted)]">
+                    {t('users_page.no_perms_found')}
+                  </span>
+                )}
+              </div>
+            </div>
+
             <GroupMembersSection group={selected} />
           </Card>
         ) : (

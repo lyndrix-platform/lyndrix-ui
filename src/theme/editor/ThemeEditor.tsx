@@ -32,6 +32,7 @@ import { setBrowserOverrideVars } from '../../lib/browserOverrides'
 import { getThemeVars, setThemeVars, type ThemeVars } from '../../lib/themeStore'
 import { ACCOUNT_SCOPE_ENABLED, preferencesClient } from '../../lib/preferences'
 import { toast } from '../../lib/toast'
+import { useAccess, can } from '../../lib/access'
 import type { ThemeOut } from '../../lib/types'
 import { useTheme } from '../ThemeProvider'
 import { tokensToVarDelta, backfillTokens } from './tokenMap'
@@ -142,6 +143,10 @@ export default function ThemeEditor({ initialBase, initialGroup, onClose }: Them
   const { t } = useTranslation('ui')
   const { themeId, setTheme, selectedThemeId, setSelectedTheme, setDraftVars } = useTheme()
   const qc = useQueryClient()
+  const { data: access } = useAccess()
+  // Save-as-theme (POST /api/themes) and system activation (PUT /api/themes/active)
+  // both need admin:write server-side — hide those affordances proactively.
+  const canWrite = can(access, 'admin:write')
   const [draft, dispatch] = useReducer(draftReducer, undefined, initialDraft)
   const [activeGroup, setActiveGroup] = useState<GroupId>(initialGroup ?? 'colors')
   // Preview scope shared by the desktop side panel and the mobile inline preview:
@@ -486,7 +491,7 @@ export default function ThemeEditor({ initialBase, initialGroup, onClose }: Them
     }
   }
 
-  const canSave = baseComponents !== null && !writeDenied
+  const canSave = baseComponents !== null && !writeDenied && canWrite
 
   const active = GROUPS.find((g) => g.id === activeGroup) ?? GROUPS[0]
   const ActiveComponent = active.Component
@@ -709,7 +714,7 @@ export default function ThemeEditor({ initialBase, initialGroup, onClose }: Them
                   ? t('editor.save.needs_components', {
                       defaultValue: 'Base pack could not be loaded — saving needs its components.json.',
                     })
-                  : writeDenied
+                  : writeDenied || !canWrite
                     ? t('editor.save.denied', {
                         defaultValue: 'You do not have permission to save themes.',
                       })
@@ -896,7 +901,7 @@ export default function ThemeEditor({ initialBase, initialGroup, onClose }: Them
                 <Monitor size={14} className="mr-1.5 inline" />
                 {t('editor.save.use_browser', { defaultValue: 'Use in this browser' })}
               </button>
-              {!writeDenied && (
+              {!writeDenied && canWrite && (
                 <button
                   className="lx-btn lx-btn--secondary lx-btn--sm justify-start"
                   onClick={() => setSystemActivate(saved.id)}
