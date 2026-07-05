@@ -28,7 +28,13 @@ RUN npx vite build
 # ---------- runtime ----------
 FROM nginx:1.27-alpine AS runtime
 COPY --from=build /app/dist /usr/share/nginx/html
-COPY docker/nginx.conf /etc/nginx/conf.d/default.conf
+# Runtime-templated config: the backend location is injected at container start
+# from LYNDRIX_BACKEND_URL (envsubst), so ONE image serves every environment.
+COPY docker/default.conf.template /etc/nginx/templates/default.conf.template
+COPY docker/lyndrix-proxy.conf /etc/nginx/lyndrix-proxy.conf
+COPY docker/docker-entrypoint.d/15-lyndrix-defaults.envsh /docker-entrypoint.d/15-lyndrix-defaults.envsh
+# The nginx entrypoint only sources *.envsh files that are executable.
+RUN chmod +x /docker-entrypoint.d/15-lyndrix-defaults.envsh
 EXPOSE 80
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
   CMD wget -qO- http://127.0.0.1/ >/dev/null 2>&1 || exit 1

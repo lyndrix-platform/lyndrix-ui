@@ -1,0 +1,57 @@
+# Lyndrix React UI — static SPA + same-origin reverse proxy to the core backend.
+#
+# The SPA talks to the backend same-origin (BASE_URL === '' in src/lib/api.ts,
+# EventSource('/api/events') in src/lib/useSSE.ts). nginx proxies the backend
+# surface so the operator exposes ONE host and never touches CORS:
+#   /api/**              -> backend REST + SSE
+#   /auth/callback/oidc  -> backend OIDC authorization-code callback
+# Everything else is the SPA (client-side routing).
+#
+# The backend location is the single runtime knob LYNDRIX_BACKEND_URL, e.g.
+#   https://lyndrix.int.fam-feser.de   (prod, behind TLS / another ingress)
+#   http://aac-lyndrix-core:8081       (in-cluster or docker service DNS)
+# It is substituted at container start (see 15-lyndrix-defaults.envsh) — the same
+# image works everywhere with no rebuild.
+
+server {
+    listen 80;
+    server_name _;
+
+    root /usr/share/nginx/html;
+    index index.html;
+
+    # Uploads (per-user background images via POST /api/me/background) flow through
+    # the /api proxy. nginx's default 1 MB body limit would 413 real images before
+    # they reach core (whose own cap is 8 MB with a friendly message); stay above it.
+    client_max_body_size 12m;
+
+    # Container DNS, auto-detected at start (Docker 127.0.0.11 / k8s cluster DNS).
+    # Combined with the variable in proxy_pass this resolves the backend at REQUEST
+    # time — the UI boots even if the backend isn't up yet, and it follows the
+    # backend's IP across restarts (Docker) or endpoint changes (k8s).
+    resolver ${LYNDRIX_DNS_RESOLVER} valid=10s ipv6=off;
+    set $core_upstream "${LYNDRIX_BACKEND_URL}";
+
+    # Hashed, immutable build assets — cache hard.
+    location /assets/ {
+        expires 1y;
+        add_header Cache-Control "public, immutable";
+        try_files $uri =404;
+    }
+
+    # OIDC authorization-code callback is a BACKEND route. Exact match so the SPA's
+    # own /auth/callback (AuthCallbackPage) and /login keep client-side routing.
+    location = /auth/callback/oidc {
+        include /etc/nginx/lyndrix-proxy.conf;
+    }
+
+    # REST API + SSE -> backend (same-origin from the browser's perspective).
+    location /api/ {
+        include /etc/nginx/lyndrix-proxy.conf;
+    }
+
+    # SPA client-side routing: unknown paths fall back to index.html.
+    location / {
+        try_files $uri $uri/ /index.html;
+    }
+}

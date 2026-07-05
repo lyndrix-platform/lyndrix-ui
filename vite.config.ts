@@ -22,11 +22,18 @@ export default defineConfig(() => ({
       usePolling: !!process.env.CHOKIDAR_USEPOLLING,
       interval: 300,
     },
+    // Same-origin proxy, mirroring the prod nginx (docker/default.conf.template):
+    // both /api and the backend-owned OIDC callback are forwarded to core, so the
+    // OIDC redirect_uri is <frontend-origin>/auth/callback/oidc in dev AND prod.
     proxy: {
       '/api': {
         target: apiTarget,
         changeOrigin: true,
         ws: true,
+      },
+      '/auth/callback/oidc': {
+        target: apiTarget,
+        changeOrigin: true,
       },
     },
   },

@@ -1,0 +1,19 @@
+# Sourced by the nginx image entrypoint BEFORE 20-envsubst-on-templates.sh.
+# Populates the template variables and restricts envsubst to LYNDRIX_* so nginx's
+# own $variables (e.g. $host, $uri, $core_upstream) are never substituted.
+export NGINX_ENVSUBST_FILTER="LYNDRIX_"
+
+# The ONE knob operators set: where to reach the core backend.
+#   Prod:        https://lyndrix.int.fam-feser.de
+#   In-cluster:  http://aac-lyndrix-core:8081   (k3s Service / docker service DNS)
+export LYNDRIX_BACKEND_URL="${LYNDRIX_BACKEND_URL:-http://aac-lyndrix-core:8081}"
+
+# DNS resolver for runtime re-resolution of the backend name. Auto-detect the
+# container's own nameserver so it works in Docker (127.0.0.11) AND k8s (cluster
+# DNS) with zero config; override with LYNDRIX_DNS_RESOLVER if needed.
+if [ -z "${LYNDRIX_DNS_RESOLVER:-}" ]; then
+    LYNDRIX_DNS_RESOLVER="$(awk '/^nameserver/ {print $2; exit}' /etc/resolv.conf 2>/dev/null)"
+fi
+export LYNDRIX_DNS_RESOLVER="${LYNDRIX_DNS_RESOLVER:-127.0.0.11}"
+
+echo "[lyndrix-ui] backend=${LYNDRIX_BACKEND_URL} resolver=${LYNDRIX_DNS_RESOLVER}"
