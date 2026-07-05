@@ -136,7 +136,6 @@ function ProviderConfigPanel({ provider }: { provider: NotifProvider }) {
 }
 
 function ProviderCard({ provider }: { provider: NotifProvider }) {
-  const { t } = useTranslation('ui')
   const [open, setOpen] = useState(false)
   return (
     <div className="rounded-md border border-[var(--lx-border-soft)] bg-[var(--lx-elevated)] px-3 py-2">
