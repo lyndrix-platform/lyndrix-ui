@@ -188,7 +188,7 @@ export default function ProfileSection(_: {
 
   const createKeyMut = useMutation({
     mutationFn: () =>
-      apiFetch<{ raw_key: string }>(`/api/users/${me!.username}/api-keys`, {
+      apiFetch<{ token: string }>(`/api/users/${me!.username}/api-keys`, {
         method: 'POST',
         body: JSON.stringify({
           label: newKeyLabel || t('profile_section.key_default_label'),
@@ -196,7 +196,7 @@ export default function ProfileSection(_: {
         }),
       }),
     onSuccess: (data) => {
-      setCreatedToken(data.raw_key)
+      setCreatedToken(data.token)
       setNewKeyLabel('')
       qc.invalidateQueries({ queryKey: ['profile-api-keys', me?.username] })
     },
