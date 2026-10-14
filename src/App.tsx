@@ -25,6 +25,7 @@ import JobLogPage from './pages/JobLogPage'
 import VaultSetupPage from './pages/VaultSetupPage'
 import VaultUnsealPage from './pages/VaultUnsealPage'
 import PluginRoute from './components/PluginRoute'
+import BootGate from './components/BootGate'
 import type { PluginOut, PluginRuntime, VaultStatusResponse } from './lib/types'
 
 // ─── Document title sync ──────────────────────────────────────────────────────
@@ -214,6 +215,8 @@ export default function App() {
     {/* One shared liquid-glass SVG filter for every GlassSurface in the app. */}
     <LiquidGlassDefs />
     <TitleSync plugins={plugins} />
+    {/* Boot screen while the core boots / restarts / is unreachable (GET /api/boot). */}
+    <BootGate>
     <Routes>
       {/* Public: vault bootstrap */}
       <Route path="/vault-setup" element={<VaultSetupPage />} />
@@ -291,6 +294,7 @@ export default function App() {
       {/* Fallback */}
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
+    </BootGate>
     </>
   )
 }

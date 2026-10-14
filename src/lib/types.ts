@@ -65,6 +65,33 @@ export interface VaultStatusResponse {
   ui_state: string
 }
 
+/** One core dependency as reported by GET /api/boot (public, polled during boot). */
+export type BootServiceStatus = 'online' | 'pending' | 'waiting' | 'action' | 'failed' | 'unavailable'
+
+export interface BootServiceOut {
+  /** vault | database | iam | modules | coordinator | leader | peers | storage */
+  id: string
+  status: BootServiceStatus
+  /** i18n key suffix under boot.detail.* (null = no detail) */
+  detail: string | null
+  detail_params: Record<string, string | number>
+  progress: { done: number; total: number } | null
+  since: string | null
+}
+
+export interface BootStatus {
+  phase: 'waiting_core' | 'loading_modules' | 'ready' | 'failed' | string
+  is_booting: boolean
+  ready: boolean
+  failed: boolean
+  mode: 'single' | 'cluster'
+  vault_ui_state: string
+  started_at: string
+  elapsed_s: number
+  summary: { online: number; total: number }
+  services: BootServiceOut[]
+}
+
 export interface UserOut {
   username: string
   full_name: string | null
