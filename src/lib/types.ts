@@ -8,11 +8,16 @@ export interface PluginRoute {
 export interface PluginSettingField {
   key: string
   label: string
-  kind: 'str' | 'bool' | 'int' | 'select'
+  /** 'action' (core API ≥ 1.6) renders a button that calls the plugin route in `action`. */
+  kind: 'str' | 'bool' | 'int' | 'select' | 'secret' | 'action'
   options: string[]
   description: string
   category: string
   default: string | null
+  action?: string | null
+  method?: 'POST' | 'PUT' | 'DELETE' | string
+  confirm?: boolean
+  danger?: boolean
 }
 
 /** Runtime status a plugin reports via ctx.set_status() (core API ≥ 1.5).

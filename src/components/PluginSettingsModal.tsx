@@ -1,17 +1,21 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { useTranslation } from 'react-i18next'
 import { getPluginSettings, updatePluginSettings } from '../lib/api'
 import type { EditableSettingMeta, PluginSettingField } from '../lib/types'
 import SettingsForm from './SettingsForm'
+import PluginActionsPanel from './PluginActionsPanel'
 
 // Plugin setting fields share the generic form's metadata shape; map key→field.
+// Action fields are buttons, not values — they are rendered by PluginActionsPanel.
 function toMeta(f: PluginSettingField): EditableSettingMeta {
   return {
     field: f.key,
     label: f.label,
-    kind: f.kind,
+    kind: (f.kind === 'action' || f.kind === 'secret' ? 'str' : f.kind) as EditableSettingMeta['kind'],
     options: f.options,
     category: f.category,
     description: f.description,
+    sensitive: f.kind === 'secret',
   }
 }
 
@@ -24,6 +28,7 @@ export default function PluginSettingsModal({
   pluginName: string
   onClose: () => void
 }) {
+  const { t } = useTranslation('ui')
   const qc = useQueryClient()
 
   const { data, isLoading } = useQuery({
@@ -31,12 +36,12 @@ export default function PluginSettingsModal({
     queryFn: () => getPluginSettings(pluginId),
   })
 
-  const metas = data ? data.schema.map(toMeta) : []
-  const config: Record<string, unknown> = data
-    ? Object.fromEntries(
-        data.schema.map((f) => [f.key, data.values[f.key] ?? f.default ?? '']),
-      )
-    : {}
+  const valueFields = data ? data.schema.filter((f) => f.kind !== 'action') : []
+  const actionFields = data ? data.schema.filter((f) => f.kind === 'action') : []
+  const metas = valueFields.map(toMeta)
+  const config: Record<string, unknown> = Object.fromEntries(
+    valueFields.map((f) => [f.key, data?.values[f.key] ?? f.default ?? '']),
+  )
 
   return (
     <div
@@ -47,7 +52,7 @@ export default function PluginSettingsModal({
         <div className="flex items-center justify-between mb-5 shrink-0">
           <div>
             <h3 className="text-sm font-semibold text-[var(--lx-text)]">
-              {pluginName} — Einstellungen
+              {t('plugin_settings.title', { name: pluginName })}
             </h3>
             <p className="text-xs text-[var(--lx-text-muted)] mt-0.5 font-mono">{pluginId}</p>
           </div>
@@ -68,11 +73,11 @@ export default function PluginSettingsModal({
 
           {data && data.schema.length === 0 && (
             <p className="text-sm text-[var(--lx-text-muted)] py-4 text-center">
-              Dieses Plugin hat keine konfigurierbaren Einstellungen.
+              {t('plugin_settings.none')}
             </p>
           )}
 
-          {data && data.schema.length > 0 && (
+          {data && valueFields.length > 0 && (
             <SettingsForm
               metas={metas}
               config={config}
@@ -82,6 +87,8 @@ export default function PluginSettingsModal({
               }
             />
           )}
+
+          {data && <PluginActionsPanel pluginId={pluginId} actions={actionFields} />}
         </div>
       </div>
     </div>
