@@ -1,6 +1,6 @@
 import { lazy } from 'react'
 import type { ComponentType, LazyExoticComponent } from 'react'
-import { Settings, Palette, ShieldCheck, Puzzle, User, Info, Bell, Smartphone } from 'lucide-react'
+import { Settings, Palette, ShieldCheck, Puzzle, User, Info, Bell, Smartphone, Network } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import type { EditableSettingMeta } from '../../lib/types'
 import { isNativeApp } from '../../lib/nativeBridge'
@@ -68,6 +68,15 @@ export const SETTINGS_SECTIONS: SettingsSectionDef[] = [
     labelKey: 'settings.notifications',
     Icon: Bell,
     component: lazy(() => import('./sections/NotificationsSection')),
+    permission: 'admin:read',
+  },
+  {
+    // Instances, leader, leases, plugin placement and the HA preflight
+    // (GET /api/cluster). Shown in single mode too — it explains how to grow.
+    id: 'cluster',
+    labelKey: 'settings.cluster',
+    Icon: Network,
+    component: lazy(() => import('./sections/ClusterSection')),
     permission: 'admin:read',
   },
   // Native-only: appears solely inside the Capacitor app shell (lyndrix-app), where it holds the

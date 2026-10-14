@@ -258,6 +258,8 @@ export default function App() {
                       version={cacheKey}
                       pluginName={plugin.name}
                       runtime={plugin.runtime ?? null}
+                      status={plugin.status}
+                      placement={plugin.placement}
                     />
                   </RequirePluginRoute>
                 </AuthShell>

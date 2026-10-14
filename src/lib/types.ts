@@ -53,6 +53,8 @@ export interface PluginOut {
   update_available?: boolean
   log_source?: string
   runtime?: PluginRuntime | null
+  /** any | singleton | pinned:<role> (core API ≥ 1.7); status 'remote' = pinned elsewhere */
+  placement?: string
 }
 
 export interface HealthResponse {
@@ -178,6 +180,94 @@ export interface SystemInfoOut {
   uptime_s: number
   vault_connected: boolean
   db_connected: boolean | null
+  cluster_mode?: 'single' | 'cluster'
+  instance_id?: string
+  roles?: string[]
+  is_leader?: boolean
+}
+
+// ─── Cluster (GET /api/cluster, core API ≥ 1.7) ──────────────────────────────
+
+export interface ClusterInstanceOut {
+  instance_id: string
+  hostname: string | null
+  roles: string[]
+  core_version: string | null
+  api_version: string | null
+  started_at: string | null
+  heartbeat_at: string | null
+  age_s: number
+  alive: boolean
+  is_self: boolean
+  meta: Record<string, unknown>
+}
+
+export interface ClusterLeaseOut {
+  name: string
+  holder: string | null
+  acquired_at: string | null
+  expires_at: string | null
+  remaining_s: number
+  expired: boolean
+}
+
+export type ClusterCheckStatus = 'ok' | 'warn' | 'fail' | 'skip'
+
+export interface ClusterCheckOut {
+  id: string
+  status: ClusterCheckStatus
+  message: string
+  hint: string | null
+}
+
+export interface ClusterPlacementOut {
+  plugin_id: string
+  name: string
+  placement: string
+  role: string | null
+  status: string | null
+  lease: string | null
+  held_here: boolean
+}
+
+export interface ClusterStatus {
+  mode: 'single' | 'cluster'
+  driver: string
+  instance: {
+    id: string
+    hostname: string
+    roles: string[]
+    is_leader: boolean
+    ready: boolean
+    reasons: string[]
+    draining: boolean
+    started_at: string
+    uptime_s: number
+  }
+  leader: { id: string | null; is_self: boolean }
+  coordinator: {
+    started: boolean
+    error: string | null
+    ttl_s: number
+    heartbeat_s: number
+    poll_ms: number
+    bridge: { attached: boolean; published: number; relayed: number }
+    server?: Record<string, unknown>
+  }
+  instances: ClusterInstanceOut[]
+  alive: number
+  leases: { held: string[]; wanted: string[] }
+  preflight: {
+    ok: number
+    warn: number
+    fail: number
+    skip: number
+    checked_at: string | null
+    checks: ClusterCheckOut[]
+  }
+  settings: { drain_seconds: number; trusted_proxies: string; forwarded_for_seen: boolean }
+  lease_table: ClusterLeaseOut[]
+  placements: ClusterPlacementOut[]
 }
 
 export interface MarketplacePlugin {

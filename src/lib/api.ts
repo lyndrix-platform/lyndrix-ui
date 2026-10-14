@@ -222,3 +222,18 @@ export const dismissNotification = (id: string) =>
 
 export const clearAllNotifications = () =>
   apiFetch('/api/notifications', { method: 'DELETE' })
+
+// ─── Cluster (core API ≥ 1.7) ─────────────────────────────────────────────────
+
+export const getClusterStatus = () => apiFetch<import('./types').ClusterStatus>('/api/cluster')
+
+export const runClusterPreflight = () =>
+  apiFetch<{ checks: import('./types').ClusterCheckOut[]; ok: number; warn: number; fail: number; skip: number }>(
+    '/api/cluster/preflight',
+  )
+
+export const releaseClusterLease = (name: string) =>
+  apiFetch<{ status: 'released' | 'not_held'; lease: string }>(
+    `/api/cluster/leases/${encodeURIComponent(name)}/release`,
+    { method: 'POST' },
+  )

@@ -172,15 +172,35 @@ function PluginRuntimeBanner({ runtime }: { runtime: PluginRuntime }) {
   )
 }
 
+/** Cluster: the plugin is pinned to a role this core instance does not have.
+ *  Its API answers 503 "remote" here and the bundle is not mounted on this
+ *  instance — say so instead of showing a broken plugin UI. */
+function PluginRemotePanel({ pluginName, placement }: { pluginName: string; placement?: string }) {
+  const { t } = useTranslation('ui')
+  const role = placement?.startsWith('pinned:') ? placement.slice('pinned:'.length) : '?'
+  return (
+    <div className="max-w-lg mx-auto px-6 py-16 flex flex-col items-center gap-3 text-center">
+      <p className="text-sm font-semibold text-[var(--lx-text)]">
+        {t('plugin_runtime.panel_title_remote', { name: pluginName, defaultValue: '{{name}} runs on another instance' })}
+      </p>
+      <p className="text-xs text-[var(--lx-text-muted)]">
+        {t('plugin_runtime.remote_hint', { role, defaultValue: "This plugin is pinned to instances with the role '{{role}}'. Open it through the load balancer route that targets that instance." })}
+      </p>
+    </div>
+  )
+}
+
 // ─── Public component ─────────────────────────────────────────────────────────
 
 export default function PluginRoute({
-  pluginId, version = 'dev', pluginName, runtime = null,
+  pluginId, version = 'dev', pluginName, runtime = null, status, placement,
 }: {
   pluginId: string
   version?: string
   pluginName?: string
   runtime?: PluginRuntime | null
+  status?: string
+  placement?: string
 }) {
   // A failed bundle load is cached as an `error` resource (PluginRoute cache) and
   // would otherwise stay broken until the page is reloaded. The retry drops the
@@ -192,6 +212,10 @@ export default function PluginRoute({
     invalidatePluginModule(pluginId)
     setAttempt((a) => a + 1)
   }, [pluginId])
+
+  if (status === 'remote') {
+    return <PluginRemotePanel pluginName={pluginName ?? pluginId} placement={placement} />
+  }
 
   const blocking = !!runtime && runtime.blocking && (runtime.phase === 'starting' || runtime.phase === 'maintenance')
   if (blocking) {

@@ -609,6 +609,8 @@ function PluginCard({ plugin }: { plugin: PluginOut }) {
     loading: t('plugins_page.status_loading'),
     installing: t('plugins_page.status_installing'),
     upgrading: t('plugins_page.status_upgrading'),
+    // Pinned to a role this instance lacks (cluster) — runs on another instance.
+    remote: t('plugins_page.status_remote'),
   }
 
   const statusBadge =
