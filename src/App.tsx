@@ -25,7 +25,7 @@ import JobLogPage from './pages/JobLogPage'
 import VaultSetupPage from './pages/VaultSetupPage'
 import VaultUnsealPage from './pages/VaultUnsealPage'
 import PluginRoute from './components/PluginRoute'
-import type { PluginOut, VaultStatusResponse } from './lib/types'
+import type { PluginOut, PluginRuntime, VaultStatusResponse } from './lib/types'
 
 // ─── Document title sync ──────────────────────────────────────────────────────
 
@@ -190,6 +190,16 @@ export default function App() {
     } else if (topic === 'plugin:update_available') {
       // Background checker found a newer tag — refresh so the badge appears.
       void queryClient.invalidateQueries({ queryKey: ['plugins'] })
+    } else if (topic === 'plugin:runtime_status') {
+      // Warm-up / maintenance progress: patch the cached list in place. Never
+      // invalidate here — that would remount the plugin UI on every tick.
+      const p = payload as (PluginRuntime & { plugin_id?: string }) | undefined
+      if (p?.plugin_id) {
+        const { plugin_id, ...runtime } = p
+        queryClient.setQueryData<PluginOut[]>(['plugins'], (old) =>
+          old?.map((pl) => (pl.id === plugin_id ? { ...pl, runtime } : pl)),
+        )
+      }
     } else if (topic === 'ui:needs_refresh') {
       void bootstrapI18n()
       // A theme upload/activation re-emits this — re-fetch the selected theme's vars.
@@ -239,7 +249,13 @@ export default function App() {
                 <AuthShell>
                   <RequirePluginRoute pluginId={plugin.id} path={route.path}>
                     {/* key on invalidation forces unmount/re-fetch on plugin:state_changed */}
-                    <PluginRoute key={invalidation} pluginId={plugin.id} version={cacheKey} />
+                    <PluginRoute
+                      key={invalidation}
+                      pluginId={plugin.id}
+                      version={cacheKey}
+                      pluginName={plugin.name}
+                      runtime={plugin.runtime ?? null}
+                    />
                   </RequirePluginRoute>
                 </AuthShell>
               }

@@ -15,6 +15,19 @@ export interface PluginSettingField {
   default: string | null
 }
 
+/** Runtime status a plugin reports via ctx.set_status() (core API ≥ 1.5).
+ *  `blocking` only applies to starting/maintenance: the core then answers the
+ *  plugin's API with 503 + Retry-After and the shell shows a warm-up panel. */
+export interface PluginRuntime {
+  phase: 'starting' | 'ready' | 'degraded' | 'maintenance'
+  message: string | null
+  progress: { done: number; total: number } | null
+  blocking: boolean
+  since: string | null
+  updated_at: string | null
+  retry_after: number | null
+}
+
 export interface PluginOut {
   id: string
   name: string
@@ -34,13 +47,14 @@ export interface PluginOut {
   latest_version?: string | null
   update_available?: boolean
   log_source?: string
+  runtime?: PluginRuntime | null
 }
 
 export interface HealthResponse {
   status: string
   core_version: string
   api_version: string
-  plugins: Record<string, { status: string; latency_ms?: number }>
+  plugins: Record<string, { status: string; latency_ms?: number; runtime?: PluginRuntime | null }>
 }
 
 export interface VaultStatusResponse {

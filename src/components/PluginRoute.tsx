@@ -1,7 +1,9 @@
-import { Suspense, Component, useCallback, useState } from 'react'
+import { Suspense, Component, useCallback, useEffect, useState } from 'react'
 import type { ErrorInfo, ReactNode } from 'react'
+import { useTranslation } from 'react-i18next'
 import { loadPluginModule, invalidatePluginModule } from '../lib/usePluginModules'
 import type { PluginModule } from '../lib/usePluginModules'
+import type { PluginRuntime } from '../lib/types'
 
 // ─── React 18 suspense resource ───────────────────────────────────────────────
 
@@ -96,9 +98,90 @@ function PluginSkeleton() {
   )
 }
 
+// ─── Runtime status (ctx.set_status in the plugin, core API ≥ 1.5) ────────────
+
+function useElapsedSeconds(since: string | null): number {
+  const [now, setNow] = useState(() => Date.now())
+  useEffect(() => {
+    const t = window.setInterval(() => setNow(Date.now()), 1000)
+    return () => window.clearInterval(t)
+  }, [])
+  if (!since) return 0
+  const start = Date.parse(since)
+  return Number.isFinite(start) ? Math.max(0, Math.round((now - start) / 1000)) : 0
+}
+
+function RuntimeProgress({ runtime }: { runtime: PluginRuntime }) {
+  const { t } = useTranslation('ui')
+  const p = runtime.progress
+  if (!p || p.total <= 0) return null
+  const pct = Math.min(100, Math.round((p.done / p.total) * 100))
+  return (
+    <div className="flex items-center gap-3 w-full">
+      <div className="flex-1 h-1.5 rounded-full overflow-hidden" style={{ background: 'var(--lx-border-soft)' }}>
+        <div className="h-full rounded-full transition-[width] duration-500" style={{ width: `${pct}%`, background: 'var(--lx-accent)' }} />
+      </div>
+      <span className="text-xs font-mono text-[var(--lx-text-muted)] shrink-0">
+        {t('plugin_runtime.progress', { done: p.done, total: p.total, defaultValue: '{{done}} of {{total}}' })}
+      </span>
+    </div>
+  )
+}
+
+/** Full-page stand-in while a plugin reports a *blocking* warm-up/maintenance.
+ *  Its API answers 503 meanwhile; the plugin UI mounts by itself once the
+ *  runtime flips to ready (the plugins query is patched over SSE). */
+function PluginWarmupPanel({ pluginName, runtime }: { pluginName: string; runtime: PluginRuntime }) {
+  const { t } = useTranslation('ui')
+  const elapsed = useElapsedSeconds(runtime.since)
+  const title = runtime.phase === 'maintenance'
+    ? t('plugin_runtime.panel_title_maintenance', { name: pluginName, defaultValue: '{{name}} is in maintenance' })
+    : t('plugin_runtime.panel_title', { name: pluginName, defaultValue: '{{name}} is starting up' })
+  return (
+    <div className="max-w-lg mx-auto px-6 py-16 flex flex-col items-center gap-4 text-center">
+      <div className="w-8 h-8 border-2 border-[var(--lx-accent)] border-t-transparent rounded-full animate-spin" />
+      <p className="text-sm font-semibold text-[var(--lx-text)]">{title}</p>
+      {runtime.message && <p className="text-xs text-[var(--lx-text-muted)]">{runtime.message}</p>}
+      <RuntimeProgress runtime={runtime} />
+      <p className="text-[11px] text-[var(--lx-text-muted)]">
+        {t('plugin_runtime.elapsed', { seconds: elapsed, defaultValue: '{{seconds}} s' })} · {t('plugin_runtime.panel_hint', { defaultValue: "The plugin's API pauses until this is done. This page continues by itself." })}
+      </p>
+    </div>
+  )
+}
+
+/** Slim banner above a mounted plugin UI for non-blocking phases. */
+function PluginRuntimeBanner({ runtime }: { runtime: PluginRuntime }) {
+  const { t } = useTranslation('ui')
+  const label = t(`plugin_runtime.${runtime.phase}`, { defaultValue: runtime.phase })
+  const tone = runtime.phase === 'degraded' ? 'var(--lx-state-paused, #d4a017)' : 'var(--lx-accent)'
+  return (
+    <div className="mx-auto max-w-5xl px-6 pt-3">
+      <div
+        className="flex items-center gap-3 rounded-md px-3 py-2 text-xs"
+        style={{ border: `1px solid color-mix(in srgb, ${tone} 35%, transparent)`, background: `color-mix(in srgb, ${tone} 10%, transparent)`, color: 'var(--lx-text)' }}
+      >
+        {runtime.phase !== 'degraded' && (
+          <div className="w-3.5 h-3.5 border-2 rounded-full animate-spin shrink-0" style={{ borderColor: tone, borderTopColor: 'transparent' }} />
+        )}
+        <span className="font-semibold shrink-0">{label}</span>
+        {runtime.message && <span className="text-[var(--lx-text-muted)] truncate">{runtime.message}</span>}
+        <div className="flex-1 min-w-[120px]"><RuntimeProgress runtime={runtime} /></div>
+      </div>
+    </div>
+  )
+}
+
 // ─── Public component ─────────────────────────────────────────────────────────
 
-export default function PluginRoute({ pluginId, version = 'dev' }: { pluginId: string; version?: string }) {
+export default function PluginRoute({
+  pluginId, version = 'dev', pluginName, runtime = null,
+}: {
+  pluginId: string
+  version?: string
+  pluginName?: string
+  runtime?: PluginRuntime | null
+}) {
   // A failed bundle load is cached as an `error` resource (PluginRoute cache) and
   // would otherwise stay broken until the page is reloaded. The retry drops the
   // cached resource + module and remounts the boundary (via the bumped key) so
@@ -110,11 +193,21 @@ export default function PluginRoute({ pluginId, version = 'dev' }: { pluginId: s
     setAttempt((a) => a + 1)
   }, [pluginId])
 
+  const blocking = !!runtime && runtime.blocking && (runtime.phase === 'starting' || runtime.phase === 'maintenance')
+  if (blocking) {
+    // Do not mount the plugin at all: its API 503s right now and the bundle
+    // would only render errors. Mounts automatically when `ready` arrives.
+    return <PluginWarmupPanel pluginName={pluginName ?? pluginId} runtime={runtime} />
+  }
+
   return (
-    <PluginErrorBoundary key={attempt} onRetry={retry}>
-      <Suspense fallback={<PluginSkeleton />}>
-        <RemotePlugin pluginId={pluginId} version={version} />
-      </Suspense>
-    </PluginErrorBoundary>
+    <>
+      {runtime && runtime.phase !== 'ready' && <PluginRuntimeBanner runtime={runtime} />}
+      <PluginErrorBoundary key={attempt} onRetry={retry}>
+        <Suspense fallback={<PluginSkeleton />}>
+          <RemotePlugin pluginId={pluginId} version={version} />
+        </Suspense>
+      </PluginErrorBoundary>
+    </>
   )
 }

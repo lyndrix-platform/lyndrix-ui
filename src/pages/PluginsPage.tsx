@@ -719,6 +719,22 @@ function PluginCard({ plugin }: { plugin: PluginOut }) {
                 {statusLabel[plugin.status] ?? plugin.status}
               </span>
             )}
+            {plugin.runtime && plugin.runtime.phase !== 'ready' && (
+              <span
+                className="lx-badge lx-badge--muted inline-flex items-center gap-1.5"
+                title={plugin.runtime.message ?? undefined}
+              >
+                {plugin.runtime.phase !== 'degraded' && (
+                  <span className="w-2.5 h-2.5 border-[1.5px] border-[var(--lx-accent)] border-t-transparent rounded-full animate-spin" />
+                )}
+                {t(`plugin_runtime.${plugin.runtime.phase}`, { defaultValue: plugin.runtime.phase })}
+                {plugin.runtime.progress && plugin.runtime.progress.total > 0 && (
+                  <span className="font-mono">
+                    {t('plugin_runtime.progress', { done: plugin.runtime.progress.done, total: plugin.runtime.progress.total, defaultValue: '{{done}} of {{total}}' })}
+                  </span>
+                )}
+              </span>
+            )}
             {isPlugin && plugin.is_active && (
               <button
                 onClick={() => setShowHealth(true)}
