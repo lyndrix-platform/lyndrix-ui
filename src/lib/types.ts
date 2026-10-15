@@ -230,6 +230,17 @@ export interface ClusterPlacementOut {
   held_here: boolean
 }
 
+export interface ClusterWorkOut {
+  name: string
+  count: number
+  roles: string[] | null
+  workers: string[]
+  keys?: number
+  mine?: number
+  is_worker: boolean
+  at: number
+}
+
 export interface ClusterStatus {
   mode: 'single' | 'cluster'
   driver: string
@@ -257,6 +268,8 @@ export interface ClusterStatus {
   instances: ClusterInstanceOut[]
   alive: number
   leases: { held: string[]; wanted: string[] }
+  /** Work assignments plugins asked the cluster for (core API ≥ 1.8). */
+  work?: ClusterWorkOut[]
   preflight: {
     ok: number
     warn: number

@@ -300,6 +300,38 @@ export default function ClusterSection(_: { config: Record<string, unknown>; env
         </Card>
       </div>
 
+      {/* ── work assignments (plugins asking the cluster for load balancing) ── */}
+      <Card>
+        <SectionTitle>
+          <span className="inline-flex items-center gap-2" title={t('cluster.work_hint')}>
+            <Network size={16} /> {t('cluster.work')}
+          </span>
+        </SectionTitle>
+        {!s.work || s.work.length === 0 ? (
+          <p className="text-xs text-[var(--lx-text-muted)]">{t('cluster.no_work')}</p>
+        ) : (
+          <ul className="flex flex-col divide-y divide-[var(--lx-border-soft)]">
+            {s.work.map((w) => (
+              <li key={w.name} className="py-2 flex items-center justify-between gap-3 flex-wrap">
+                <div className="min-w-0">
+                  <p className="text-sm font-mono text-[var(--lx-text)] truncate">{w.name}</p>
+                  <p className="text-[11px] text-[var(--lx-text-muted)]">
+                    {t('cluster.workers')} {w.workers.length}/{w.count}
+                    {w.roles && w.roles.length > 0 && ` · ${t('cluster.roles')}: ${w.roles.join(', ')}`}
+                    {typeof w.keys === 'number' && ` · ${t('cluster.keys', { mine: w.mine ?? 0, keys: w.keys })}`}
+                  </p>
+                </div>
+                <span className="flex gap-1 flex-wrap justify-end">
+                  {w.workers.map((id) => (
+                    <Pill key={id} tone={id === s.instance.id ? 'accent' : 'muted'}>{id}</Pill>
+                  ))}
+                </span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </Card>
+
       {/* ── preflight ─────────────────────────────────────────────────── */}
       <Card>
         <div className="flex items-start justify-between gap-3 flex-wrap mb-3">
