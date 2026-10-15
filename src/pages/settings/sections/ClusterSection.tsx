@@ -1,12 +1,13 @@
 import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
-import { Crown, RefreshCw, ShieldCheck, Server, Network, Puzzle, Unlock } from 'lucide-react'
+import { Crown, RefreshCw, ShieldCheck, Server, Network, Puzzle, Unlock, ScrollText } from 'lucide-react'
 import { getClusterStatus, releaseClusterLease, runClusterPreflight } from '../../../lib/api'
 import type { ClusterCheckStatus, ClusterStatus } from '../../../lib/types'
 import { Card, SectionTitle, StatusMsg } from '../shared'
 import { useAccess, can } from '../../../lib/access'
 import { useSSE } from '../../../lib/useSSE'
+import LogModal from '../../../components/LogModal'
 
 // ─── small presentational helpers ────────────────────────────────────────────
 
@@ -68,6 +69,7 @@ export default function ClusterSection(_: { config: Record<string, unknown>; env
   const canAdmin = can(access, 'admin:write')
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null)
   const [confirmRelease, setConfirmRelease] = useState<string | null>(null)
+  const [logInstance, setLogInstance] = useState<string | null>(null)
 
   const { data, isLoading, isError, error, refetch } = useQuery({
     queryKey: ['cluster'],
@@ -167,6 +169,7 @@ export default function ClusterSection(_: { config: Record<string, unknown>; env
                 <th className="text-left px-2 py-1 font-medium">{t('cluster.version')}</th>
                 <th className="text-left px-2 py-1 font-medium">{t('cluster.heartbeat')}</th>
                 <th className="text-left px-2 py-1 font-medium">{t('cluster.status')}</th>
+                <th className="px-2 py-1" />
               </tr>
             </thead>
             <tbody>
@@ -195,12 +198,24 @@ export default function ClusterSection(_: { config: Record<string, unknown>; env
                         ) : null}
                       </span>
                     </td>
+                    <td className="px-2 py-1.5 text-right">
+                      <button
+                        className="lx-btn lx-btn--ghost lx-btn--sm inline-flex items-center gap-1"
+                        title={t('cluster.logs_hint', { defaultValue: 'Open this instance’s log (shared log store)' })}
+                        onClick={() => setLogInstance(i.instance_id)}
+                      >
+                        <ScrollText size={12} /> {t('cluster.logs', { defaultValue: 'Logs' })}
+                      </button>
+                    </td>
                   </tr>
                 )
               })}
             </tbody>
           </table>
         </div>
+        {logInstance && (
+          <LogModal instance={logInstance} title={logInstance} onClose={() => setLogInstance(null)} />
+        )}
       </Card>
 
       {/* ── leases + placements ───────────────────────────────────────── */}
