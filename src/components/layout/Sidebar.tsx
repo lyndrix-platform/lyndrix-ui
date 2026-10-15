@@ -1,13 +1,14 @@
 import { NavLink, Link } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
-import { Cpu, LayoutDashboard, Puzzle, Settings, Users } from 'lucide-react'
+import { Cpu, ExternalLink, LayoutDashboard, Puzzle, Settings, Users } from 'lucide-react'
 import { apiFetch } from '../../lib/api'
 import { useAccess, can, pluginVisible } from '../../lib/access'
 import { getPluginIcon } from '../../lib/icons'
+import { groupNavEntries, navEntryPath, useNavEntries } from '../../lib/nav'
 import { useAppTitle } from '../../lib/useAppTitle'
 import LyndrixLogo from '../LyndrixLogo'
-import type { PluginOut } from '../../lib/types'
+import type { NavEntryOut, PluginOut } from '../../lib/types'
 
 const CORE_URL = import.meta.env.VITE_CORE_URL ?? 'http://localhost:8081'
 
@@ -146,6 +147,54 @@ function PluginNavItem({
   )
 }
 
+/**
+ * A sidebar entry a plugin registered at runtime (core API ≥ 1.9): embedded
+ * entries route to /ext/<plugin>/<id>, new-tab entries are plain links.
+ */
+function NavEntryItem({
+  entry,
+  onClose,
+  collapsed,
+}: {
+  entry: NavEntryOut
+  onClose?: () => void
+  collapsed?: boolean
+}) {
+  const Icon = getPluginIcon(entry.icon)
+  const title = collapsed ? entry.label : entry.description ?? undefined
+
+  if (entry.open_mode === 'new_tab') {
+    return (
+      <a
+        href={entry.url}
+        target="_blank"
+        rel="noreferrer"
+        title={title}
+        className={[baseItemCls, inactiveItemCls, collapsed ? 'justify-center' : ''].join(' ')}
+        onClick={onClose}
+      >
+        <Icon size={16} />
+        {!collapsed && <span className="flex-1 truncate">{entry.label}</span>}
+        {!collapsed && <ExternalLink size={12} className="opacity-60 shrink-0" />}
+      </a>
+    )
+  }
+
+  return (
+    <NavLink
+      to={navEntryPath(entry)}
+      onClick={onClose}
+      title={title}
+      className={({ isActive }) =>
+        [baseItemCls, collapsed ? 'justify-center' : '', isActive ? activeItemCls : inactiveItemCls].join(' ')
+      }
+    >
+      <Icon size={16} />
+      {!collapsed && <span className="truncate">{entry.label}</span>}
+    </NavLink>
+  )
+}
+
 interface HealthResp {
   status?: string
   plugins?: Record<string, { status?: string }>
@@ -268,6 +317,11 @@ export default function Sidebar({
     refetchInterval: 30_000,
   })
 
+  // Runtime sidebar entries (External Services etc.); the core already filters
+  // them by the caller's plugin visibility.
+  const { data: navEntries } = useNavEntries()
+  const navGroups = groupNavEntries(navEntries ?? [])
+
   // Identity 2.0: server-derived access view gates what we render — plugins
   // the caller may not see and admin nav items are hidden (the API enforces
   // regardless; this is display hygiene).
@@ -333,6 +387,23 @@ export default function Sidebar({
             ))}
           </div>
         )}
+
+        {/* Plugin-registered entries (GET /api/nav), one section per group */}
+        {navGroups.map(([group, entries]) => (
+          <div key={group}>
+            <SectionLabel collapsed={collapsed}>
+              {group === 'Services' ? t('sidebar.section_services') : group}
+            </SectionLabel>
+            {entries.map((entry) => (
+              <NavEntryItem
+                key={`${entry.plugin_id}/${entry.id}`}
+                entry={entry}
+                onClose={onClose}
+                collapsed={collapsed}
+              />
+            ))}
+          </div>
+        ))}
       </nav>
 
       {/* System — pinned at bottom */}

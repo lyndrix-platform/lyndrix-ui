@@ -57,6 +57,19 @@ export interface PluginOut {
   placement?: string
 }
 
+/** Sidebar entry a plugin registered at runtime (core API ≥ 1.9, GET /api/nav). */
+export interface NavEntryOut {
+  plugin_id: string
+  id: string
+  label: string
+  url: string
+  icon: string | null
+  open_mode: 'iframe' | 'new_tab'
+  group: string
+  description: string | null
+  order: number
+}
+
 export interface HealthResponse {
   status: string
   core_version: string

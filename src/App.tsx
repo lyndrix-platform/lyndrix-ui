@@ -22,6 +22,7 @@ import PluginsPage from './pages/PluginsPage'
 import SettingsPage from './pages/SettingsPage'
 import UsersPage from './pages/UsersPage'
 import JobLogPage from './pages/JobLogPage'
+import ExternalFramePage from './pages/ExternalFramePage'
 import VaultSetupPage from './pages/VaultSetupPage'
 import VaultUnsealPage from './pages/VaultUnsealPage'
 import PluginRoute from './components/PluginRoute'
@@ -159,6 +160,7 @@ export default function App() {
     if (sseStatus !== 'authenticated') return
     void queryClient.invalidateQueries({ queryKey: ['plugins'] })
     void queryClient.invalidateQueries({ queryKey: ['health'] })
+    void queryClient.invalidateQueries({ queryKey: ['nav'] })
     void bootstrapI18n()
   }, [sseStatus, queryClient])
 
@@ -185,9 +187,14 @@ export default function App() {
         }))
         void queryClient.invalidateQueries({ queryKey: ['plugins'] })
       }
+      // A disabled/unloaded plugin takes its runtime sidebar entries with it.
+      void queryClient.invalidateQueries({ queryKey: ['nav'] })
       // A plugin install/removal may add/remove locale namespaces and bumps the
       // catalog version server-side — cheap `?v=` revalidation (304 if unchanged).
       void bootstrapI18n()
+    } else if (topic === 'nav:changed') {
+      // A plugin (re)registered sidebar entries (core API ≥ 1.9).
+      void queryClient.invalidateQueries({ queryKey: ['nav'] })
     } else if (topic === 'plugin:update_available') {
       // Background checker found a newer tag — refresh so the badge appears.
       void queryClient.invalidateQueries({ queryKey: ['plugins'] })
@@ -234,6 +241,8 @@ export default function App() {
       <Route path="/settings" element={<AuthShell><SettingsPage /></AuthShell>} />
       <Route path="/users" element={<AuthShell><RequirePermission perm="feature:users.view"><UsersPage /></RequirePermission></AuthShell>} />
       <Route path="/iac/jobs/:jobId/logs" element={<AuthShell><JobLogPage /></AuthShell>} />
+      {/* Embedded page of a plugin-registered sidebar entry (GET /api/nav, core API ≥ 1.9) */}
+      <Route path="/ext/:pluginId/:entryId" element={<AuthShell><ExternalFramePage /></AuthShell>} />
 
       {/* Dynamic plugin React UI routes */}
       {reactPlugins.flatMap((plugin) =>
