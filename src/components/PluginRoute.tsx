@@ -175,7 +175,7 @@ function PluginRuntimeBanner({ runtime }: { runtime: PluginRuntime }) {
 /** Cluster: the plugin is pinned to a role this core instance does not have.
  *  Its API answers 503 "remote" here and the bundle is not mounted on this
  *  instance — say so instead of showing a broken plugin UI. */
-function PluginRemotePanel({ pluginName, placement }: { pluginName: string; placement?: string }) {
+function PluginRemotePanel({ pluginName, placement, onRetry }: { pluginName: string; placement?: string; onRetry?: () => void }) {
   const { t } = useTranslation('ui')
   const role = placement?.startsWith('pinned:') ? placement.slice('pinned:'.length) : '?'
   return (
@@ -186,8 +186,39 @@ function PluginRemotePanel({ pluginName, placement }: { pluginName: string; plac
       <p className="text-xs text-[var(--lx-text-muted)]">
         {t('plugin_runtime.remote_hint', { role, defaultValue: "This plugin is pinned to instances with the role '{{role}}'. Open it through the load balancer route that targets that instance." })}
       </p>
+      {onRetry && (
+        <button onClick={onRetry} className="lx-btn lx-btn--secondary lx-btn--sm mt-2">
+          {t('plugin_runtime.retry', { defaultValue: 'Retry' })}
+        </button>
+      )}
     </div>
   )
+}
+
+/** Error boundary for a *remote* plugin: the load balancer may route this
+ *  plugin's paths (bundle + API) to the pinned instance, in which case the UI
+ *  mounts normally. If the bundle request lands on this instance instead
+ *  (503 remote stub, no route), explain that rather than a generic error. */
+class PluginRemoteBoundary extends Component<
+  { children: ReactNode; pluginName: string; placement?: string; onRetry: () => void },
+  EBState
+> {
+  state: EBState = { error: null }
+
+  static getDerivedStateFromError(error: Error): EBState {
+    return { error }
+  }
+
+  componentDidCatch(error: Error, info: ErrorInfo) {
+    console.info('[PluginRoute] remote plugin bundle not reachable through this instance', error, info)
+  }
+
+  render() {
+    if (this.state.error) {
+      return <PluginRemotePanel pluginName={this.props.pluginName} placement={this.props.placement} onRetry={this.props.onRetry} />
+    }
+    return this.props.children
+  }
 }
 
 // ─── Public component ─────────────────────────────────────────────────────────
@@ -214,7 +245,16 @@ export default function PluginRoute({
   }, [pluginId])
 
   if (status === 'remote') {
-    return <PluginRemotePanel pluginName={pluginName ?? pluginId} placement={placement} />
+    // Try the bundle anyway: with a load-balancer route for this plugin's paths
+    // the request reaches the pinned instance and the UI works end to end. Only
+    // when the bundle is unreachable (503 remote stub on this instance) show why.
+    return (
+      <PluginRemoteBoundary key={attempt} pluginName={pluginName ?? pluginId} placement={placement} onRetry={retry}>
+        <Suspense fallback={<PluginSkeleton />}>
+          <RemotePlugin pluginId={pluginId} version={version} />
+        </Suspense>
+      </PluginRemoteBoundary>
+    )
   }
 
   const blocking = !!runtime && runtime.blocking && (runtime.phase === 'starting' || runtime.phase === 'maintenance')
