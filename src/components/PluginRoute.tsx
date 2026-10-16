@@ -2,7 +2,7 @@ import { Suspense, Component, useCallback, useEffect, useState } from 'react'
 import type { ErrorInfo, ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { loadPluginModule, invalidatePluginModule } from '../lib/usePluginModules'
-import type { PluginModule } from '../lib/usePluginModules'
+import type { PluginModule, PluginPanelContext } from '../lib/usePluginModules'
 import type { PluginRuntime } from '../lib/types'
 
 // ─── React 18 suspense resource ───────────────────────────────────────────────
@@ -52,7 +52,10 @@ export function invalidatePluginRouteCache(pluginId: string) {
 
 interface EBState { error: Error | null }
 
-class PluginErrorBoundary extends Component<{ children: ReactNode; onRetry: () => void }, EBState> {
+class PluginErrorBoundary extends Component<
+  { children: ReactNode; onRetry: () => void; compact?: boolean },
+  EBState
+> {
   state: EBState = { error: null }
 
   static getDerivedStateFromError(error: Error): EBState {
@@ -66,7 +69,7 @@ class PluginErrorBoundary extends Component<{ children: ReactNode; onRetry: () =
   render() {
     if (this.state.error) {
       return (
-        <div className="max-w-lg mx-auto px-6 py-12 text-center">
+        <div className={this.props.compact ? 'px-4 py-8 text-center' : 'max-w-lg mx-auto px-6 py-12 text-center'}>
           <p className="text-sm font-medium text-[var(--lx-text)] mb-1">Plugin-UI nicht verfügbar</p>
           <p className="text-xs text-[var(--lx-text-muted)] mb-4">{this.state.error.message}</p>
           <button onClick={this.props.onRetry} className="lx-btn lx-btn--secondary lx-btn--sm">
@@ -81,17 +84,25 @@ class PluginErrorBoundary extends Component<{ children: ReactNode; onRetry: () =
 
 // ─── Inner component (suspends via resource.read()) ───────────────────────────
 
-function RemotePlugin({ pluginId, version }: { pluginId: string; version: string }) {
+function RemotePlugin({
+  pluginId, version, panel,
+}: {
+  pluginId: string
+  version: string
+  panel?: PluginPanelContext
+}) {
   const mod = getResource(pluginId, version).read()
   const { PluginApp } = mod
-  return <PluginApp />
+  // `panel` (core API ≥ 1.11) is only set inside a floating panel; as a page the
+  // component receives no props at all, exactly as before.
+  return panel ? <PluginApp panel={panel} /> : <PluginApp />
 }
 
 // ─── Skeleton ─────────────────────────────────────────────────────────────────
 
-function PluginSkeleton() {
+function PluginSkeleton({ compact }: { compact?: boolean }) {
   return (
-    <div className="max-w-5xl mx-auto px-6 py-8 flex gap-3 items-center">
+    <div className={compact ? 'px-4 py-6 flex gap-3 items-center' : 'max-w-5xl mx-auto px-6 py-8 flex gap-3 items-center'}>
       <div className="w-5 h-5 border-2 border-[var(--lx-accent)] border-t-transparent rounded-full animate-spin shrink-0" />
       <p className="text-sm text-[var(--lx-text-muted)]">Plugin wird geladen…</p>
     </div>
@@ -131,14 +142,14 @@ function RuntimeProgress({ runtime }: { runtime: PluginRuntime }) {
 /** Full-page stand-in while a plugin reports a *blocking* warm-up/maintenance.
  *  Its API answers 503 meanwhile; the plugin UI mounts by itself once the
  *  runtime flips to ready (the plugins query is patched over SSE). */
-function PluginWarmupPanel({ pluginName, runtime }: { pluginName: string; runtime: PluginRuntime }) {
+function PluginWarmupPanel({ pluginName, runtime, compact }: { pluginName: string; runtime: PluginRuntime; compact?: boolean }) {
   const { t } = useTranslation('ui')
   const elapsed = useElapsedSeconds(runtime.since)
   const title = runtime.phase === 'maintenance'
     ? t('plugin_runtime.panel_title_maintenance', { name: pluginName, defaultValue: '{{name}} is in maintenance' })
     : t('plugin_runtime.panel_title', { name: pluginName, defaultValue: '{{name}} is starting up' })
   return (
-    <div className="max-w-lg mx-auto px-6 py-16 flex flex-col items-center gap-4 text-center">
+    <div className={`${compact ? 'px-4 py-8' : 'max-w-lg mx-auto px-6 py-16'} flex flex-col items-center gap-4 text-center`}>
       <div className="w-8 h-8 border-2 border-[var(--lx-accent)] border-t-transparent rounded-full animate-spin" />
       <p className="text-sm font-semibold text-[var(--lx-text)]">{title}</p>
       {runtime.message && <p className="text-xs text-[var(--lx-text-muted)]">{runtime.message}</p>}
@@ -151,12 +162,12 @@ function PluginWarmupPanel({ pluginName, runtime }: { pluginName: string; runtim
 }
 
 /** Slim banner above a mounted plugin UI for non-blocking phases. */
-function PluginRuntimeBanner({ runtime }: { runtime: PluginRuntime }) {
+function PluginRuntimeBanner({ runtime, compact }: { runtime: PluginRuntime; compact?: boolean }) {
   const { t } = useTranslation('ui')
   const label = t(`plugin_runtime.${runtime.phase}`, { defaultValue: runtime.phase })
   const tone = runtime.phase === 'degraded' ? 'var(--lx-state-paused, #d4a017)' : 'var(--lx-accent)'
   return (
-    <div className="mx-auto max-w-5xl px-6 pt-3">
+    <div className={compact ? 'px-3 pt-2' : 'mx-auto max-w-5xl px-6 pt-3'}>
       <div
         className="flex items-center gap-3 rounded-md px-3 py-2 text-xs"
         style={{ border: `1px solid color-mix(in srgb, ${tone} 35%, transparent)`, background: `color-mix(in srgb, ${tone} 10%, transparent)`, color: 'var(--lx-text)' }}
@@ -175,11 +186,18 @@ function PluginRuntimeBanner({ runtime }: { runtime: PluginRuntime }) {
 /** Cluster: the plugin is pinned to a role this core instance does not have.
  *  Its API answers 503 "remote" here and the bundle is not mounted on this
  *  instance — say so instead of showing a broken plugin UI. */
-function PluginRemotePanel({ pluginName, placement, onRetry }: { pluginName: string; placement?: string; onRetry?: () => void }) {
+function PluginRemotePanel({
+  pluginName, placement, onRetry, compact,
+}: {
+  pluginName: string
+  placement?: string
+  onRetry?: () => void
+  compact?: boolean
+}) {
   const { t } = useTranslation('ui')
   const role = placement?.startsWith('pinned:') ? placement.slice('pinned:'.length) : '?'
   return (
-    <div className="max-w-lg mx-auto px-6 py-16 flex flex-col items-center gap-3 text-center">
+    <div className={`${compact ? 'px-4 py-8' : 'max-w-lg mx-auto px-6 py-16'} flex flex-col items-center gap-3 text-center`}>
       <p className="text-sm font-semibold text-[var(--lx-text)]">
         {t('plugin_runtime.panel_title_remote', { name: pluginName, defaultValue: '{{name}} runs on another instance' })}
       </p>
@@ -200,7 +218,7 @@ function PluginRemotePanel({ pluginName, placement, onRetry }: { pluginName: str
  *  mounts normally. If the bundle request lands on this instance instead
  *  (503 remote stub, no route), explain that rather than a generic error. */
 class PluginRemoteBoundary extends Component<
-  { children: ReactNode; pluginName: string; placement?: string; onRetry: () => void },
+  { children: ReactNode; pluginName: string; placement?: string; onRetry: () => void; compact?: boolean },
   EBState
 > {
   state: EBState = { error: null }
@@ -215,7 +233,14 @@ class PluginRemoteBoundary extends Component<
 
   render() {
     if (this.state.error) {
-      return <PluginRemotePanel pluginName={this.props.pluginName} placement={this.props.placement} onRetry={this.props.onRetry} />
+      return (
+        <PluginRemotePanel
+          pluginName={this.props.pluginName}
+          placement={this.props.placement}
+          onRetry={this.props.onRetry}
+          compact={this.props.compact}
+        />
+      )
     }
     return this.props.children
   }
@@ -223,8 +248,11 @@ class PluginRemoteBoundary extends Component<
 
 // ─── Public component ─────────────────────────────────────────────────────────
 
+/** Mounts a plugin's React bundle — as a page route, or (with `panel`) inside a
+ *  floating panel (core API ≥ 1.11). `compact` tightens the stand-ins
+ *  (skeleton, warm-up, remote, error) for the small window. */
 export default function PluginRoute({
-  pluginId, version = 'dev', pluginName, runtime = null, status, placement,
+  pluginId, version = 'dev', pluginName, runtime = null, status, placement, panel, compact = false,
 }: {
   pluginId: string
   version?: string
@@ -232,6 +260,8 @@ export default function PluginRoute({
   runtime?: PluginRuntime | null
   status?: string
   placement?: string
+  panel?: PluginPanelContext
+  compact?: boolean
 }) {
   // A failed bundle load is cached as an `error` resource (PluginRoute cache) and
   // would otherwise stay broken until the page is reloaded. The retry drops the
@@ -249,9 +279,9 @@ export default function PluginRoute({
     // the request reaches the pinned instance and the UI works end to end. Only
     // when the bundle is unreachable (503 remote stub on this instance) show why.
     return (
-      <PluginRemoteBoundary key={attempt} pluginName={pluginName ?? pluginId} placement={placement} onRetry={retry}>
-        <Suspense fallback={<PluginSkeleton />}>
-          <RemotePlugin pluginId={pluginId} version={version} />
+      <PluginRemoteBoundary key={attempt} pluginName={pluginName ?? pluginId} placement={placement} onRetry={retry} compact={compact}>
+        <Suspense fallback={<PluginSkeleton compact={compact} />}>
+          <RemotePlugin pluginId={pluginId} version={version} panel={panel} />
         </Suspense>
       </PluginRemoteBoundary>
     )
@@ -261,15 +291,15 @@ export default function PluginRoute({
   if (blocking) {
     // Do not mount the plugin at all: its API 503s right now and the bundle
     // would only render errors. Mounts automatically when `ready` arrives.
-    return <PluginWarmupPanel pluginName={pluginName ?? pluginId} runtime={runtime} />
+    return <PluginWarmupPanel pluginName={pluginName ?? pluginId} runtime={runtime} compact={compact} />
   }
 
   return (
     <>
-      {runtime && runtime.phase !== 'ready' && <PluginRuntimeBanner runtime={runtime} />}
-      <PluginErrorBoundary key={attempt} onRetry={retry}>
-        <Suspense fallback={<PluginSkeleton />}>
-          <RemotePlugin pluginId={pluginId} version={version} />
+      {runtime && runtime.phase !== 'ready' && <PluginRuntimeBanner runtime={runtime} compact={compact} />}
+      <PluginErrorBoundary key={attempt} onRetry={retry} compact={compact}>
+        <Suspense fallback={<PluginSkeleton compact={compact} />}>
+          <RemotePlugin pluginId={pluginId} version={version} panel={panel} />
         </Suspense>
       </PluginErrorBoundary>
     </>

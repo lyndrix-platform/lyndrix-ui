@@ -5,6 +5,7 @@ import Sidebar from './Sidebar'
 import Header from './Header'
 import LyndrixLogo from '../LyndrixLogo'
 import ToastStack from '../ToastStack'
+import PanelLauncher from '../panels/PanelLauncher'
 import { useAppTitle } from '../../lib/useAppTitle'
 
 interface Props {
@@ -102,6 +103,10 @@ export default function AppShell({ children }: Props) {
           >
             {appName}
           </span>
+          {/* The desktop header is hidden here — panels open as a bottom sheet. */}
+          <div className="ml-auto flex items-center">
+            <PanelLauncher />
+          </div>
         </div>
 
         {/* Desktop header */}

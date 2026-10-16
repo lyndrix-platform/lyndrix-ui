@@ -12,8 +12,21 @@
 
 import type React from 'react'
 
+/** What the shell passes to `PluginApp` when the bundle is rendered inside a
+ *  floating panel (core API ≥ 1.11). Absent when rendered as a page route —
+ *  a plugin that ignores the prop simply shows its default view. */
+export interface PluginPanelContext {
+  /** Panel id from the manifest (`panels[].id`). */
+  id: string
+  pluginId: string
+}
+
+export interface PluginAppProps {
+  panel?: PluginPanelContext
+}
+
 export interface PluginModule {
-  PluginApp: React.ComponentType
+  PluginApp: React.ComponentType<PluginAppProps>
   pluginRoutes?: Array<{ path: string; label: string; icon: string; sidebar_visible: boolean }>
 }
 

@@ -55,6 +55,24 @@ export interface PluginOut {
   runtime?: PluginRuntime | null
   /** any | singleton | pinned:<role> (core API ≥ 1.7); status 'remote' = pinned elsewhere */
   placement?: string
+  /** Floating shell windows the plugin declares (core API ≥ 1.11). */
+  panels?: PluginPanelOut[]
+}
+
+/** A floating, per-user pinnable window a plugin declares in its manifest
+ *  (core API ≥ 1.11). The shell renders the plugin's bundle inside it with
+ *  `<PluginApp panel={{ id, pluginId }} />`. */
+export interface PluginPanelOut {
+  /** Slug, unique per plugin — preference key is `<plugin_id>/<id>`. */
+  id: string
+  label: string
+  /** Material icon name (mapped through getPluginIcon). */
+  icon: string
+  description?: string | null
+  /** Initial window size in px (min 320×240). */
+  default_size?: { width: number; height: number } | null
+  /** Extra permission the caller must hold to be offered the panel. */
+  permission?: string | null
 }
 
 /** Sidebar entry a plugin registered at runtime (core API ≥ 1.9, GET /api/nav). */

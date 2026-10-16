@@ -8,7 +8,9 @@ export { default as HeroBadge } from './components/marketing/HeroBadge'
 export type { SectionTagProps } from './components/marketing/SectionTag'
 export type { FeatureCardProps } from './components/marketing/FeatureCard'
 export type { HeroBadgeProps } from './components/marketing/HeroBadge'
-export type { PluginOut, HealthResponse, VaultStatusResponse } from './lib/types'
+export type { PluginOut, PluginPanelOut, HealthResponse, VaultStatusResponse } from './lib/types'
+// Props the shell passes to a plugin's PluginApp (core API ≥ 1.11: `panel`).
+export type { PluginAppProps, PluginPanelContext } from './lib/usePluginModules'
 
 // Shared component library (mirrors the runtime window.__lyndrix_ui surface).
 export { sharedUi } from './lib/sharedUi'

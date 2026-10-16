@@ -1,5 +1,6 @@
 import { apiFetch, setToken, clearToken } from './api'
 import { clearAccountPrefs, preferencesClient } from './preferences'
+import { clearPanelStore } from './panels'
 
 export interface LoginResponse {
   token: string
@@ -39,6 +40,8 @@ export async function logout(): Promise<void> {
     clearToken()
     // Stop applying the account layer and drop its browser cache for this user.
     clearAccountPrefs()
+    // Floating panels belong to the user too — the next login hydrates afresh.
+    clearPanelStore()
   }
 }
 

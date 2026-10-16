@@ -1,18 +1,20 @@
-import { useEffect, useState } from 'react'
+import { useEffect } from 'react'
 import { Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { isLoggedIn } from './lib/auth'
 import { useAccess, can, routeAllowed } from './lib/access'
-import { apiFetch } from './lib/api'
+import { apiFetch, getPlugins } from './lib/api'
 import { useSSE, useSSEStatus } from './lib/useSSE'
 import { toast } from './lib/toast'
 import { bootstrapI18n } from './lib/i18n'
 import { useTheme } from './theme/ThemeProvider'
 import { useAppTitle } from './lib/useAppTitle'
 import { invalidatePluginModule } from './lib/usePluginModules'
+import { bumpPluginInvalidation, usePluginInvalidations } from './lib/pluginInvalidation'
 import { invalidatePluginRouteCache } from './components/PluginRoute'
 import AppShell from './components/layout/AppShell'
+import PanelHost from './components/panels/PanelHost'
 import ErrorBoundary from './components/ErrorBoundary'
 import LiquidGlassDefs from './components/LiquidGlassDefs'
 import LoginPage from './pages/LoginPage'
@@ -138,14 +140,15 @@ export default function App() {
   const queryClient = useQueryClient()
   const { refreshTheme } = useTheme()
 
-  // Version counter per plugin — incremented on state_changed so the error boundary resets.
-  const [pluginVersions, setPluginVersions] = useState<Record<string, number>>({})
+  // Version counter per plugin — bumped on state_changed so the error boundary
+  // resets and the bundle is re-fetched. Shared with the floating panel host.
+  const pluginVersions = usePluginInvalidations()
 
   const sseStatus = useSSEStatus()
 
   const { data: plugins } = useQuery({
     queryKey: ['plugins'],
-    queryFn: () => apiFetch<{ plugins: PluginOut[] }>('/api/plugins').then((r) => r.plugins),
+    queryFn: getPlugins,
     enabled: isLoggedIn(),
     // Live updates arrive over the authenticated SSE stream; whenever that
     // channel is down (or stuck on the public subset), fall back to polling so
@@ -181,10 +184,7 @@ export default function App() {
       if (p?.plugin_id) {
         invalidatePluginModule(p.plugin_id)
         invalidatePluginRouteCache(p.plugin_id)
-        setPluginVersions((prev) => ({
-          ...prev,
-          [p.plugin_id!]: (prev[p.plugin_id!] ?? 0) + 1,
-        }))
+        bumpPluginInvalidation(p.plugin_id)
         void queryClient.invalidateQueries({ queryKey: ['plugins'] })
       }
       // A disabled/unloaded plugin takes its runtime sidebar entries with it.
@@ -308,6 +308,8 @@ export default function App() {
       {/* Fallback */}
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
+    {/* Floating plugin panels (core API ≥ 1.11) — once, above every page. */}
+    <PanelHost />
     </BootGate>
     </>
   )

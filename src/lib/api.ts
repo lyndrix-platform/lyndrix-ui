@@ -237,3 +237,8 @@ export const releaseClusterLease = (name: string) =>
     `/api/cluster/leases/${encodeURIComponent(name)}/release`,
     { method: 'POST' },
   )
+
+// ─── Plugins ──────────────────────────────────────────────────────────────────
+/** Loaded plugins (shared query key ['plugins']: app routes, launcher, panel host). */
+export const getPlugins = () =>
+  apiFetch<{ plugins: import('./types').PluginOut[] }>('/api/plugins').then((r) => r.plugins)
