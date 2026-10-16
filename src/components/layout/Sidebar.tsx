@@ -162,6 +162,8 @@ function NavEntryItem({
 }) {
   const Icon = getPluginIcon(entry.icon)
   const title = collapsed ? entry.label : entry.description ?? undefined
+  // route = a path inside the shell (API 1.10), iframe = the embedded page.
+  const to = entry.open_mode === 'route' ? entry.url : navEntryPath(entry)
 
   if (entry.open_mode === 'new_tab') {
     return (
@@ -182,7 +184,7 @@ function NavEntryItem({
 
   return (
     <NavLink
-      to={navEntryPath(entry)}
+      to={to}
       onClick={onClose}
       title={title}
       className={({ isActive }) =>
@@ -328,11 +330,13 @@ export default function Sidebar({
   const { data: access } = useAccess()
 
   const allModules = plugins ?? []
+  // A plugin earns a sidebar entry only with a route it marked sidebar_visible —
+  // settings-only plugins (External Services) stay reachable via the gear/plugins page.
   const pluginList = allModules.filter(
     (p) =>
       p.type === 'PLUGIN' &&
       p.react_ui &&
-      p.react_routes.length > 0 &&
+      p.react_routes.some((r) => r.sidebar_visible) &&
       pluginVisible(access, p.id),
   )
 

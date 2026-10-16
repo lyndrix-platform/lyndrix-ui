@@ -195,6 +195,9 @@ export default function App() {
     } else if (topic === 'nav:changed') {
       // A plugin (re)registered sidebar entries (core API ≥ 1.9).
       void queryClient.invalidateQueries({ queryKey: ['nav'] })
+    } else if (topic === 'plugin:operation_changed') {
+      // Cluster-wide install/upgrade progress (core 1.8): refresh the operations bar.
+      void queryClient.invalidateQueries({ queryKey: ['plugin-operations'] })
     } else if (topic === 'plugin:update_available') {
       // Background checker found a newer tag — refresh so the badge appears.
       void queryClient.invalidateQueries({ queryKey: ['plugins'] })

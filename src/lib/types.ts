@@ -64,10 +64,35 @@ export interface NavEntryOut {
   label: string
   url: string
   icon: string | null
-  open_mode: 'iframe' | 'new_tab'
+  /** iframe = embedded page, new_tab = external link, route = a path inside the shell (API 1.10) */
+  open_mode: 'iframe' | 'new_tab' | 'route'
   group: string
   description: string | null
   order: number
+}
+
+/** One participating instance of a cluster-wide plugin operation (core 1.8). */
+export interface PluginOperationInstanceOut {
+  instance_id: string
+  status: 'pending' | 'done' | 'failed' | 'reverted' | 'skipped' | string
+  message: string | null
+  updated_at: string | null
+}
+
+/** A cluster-wide plugin install/upgrade/rollback (GET /api/plugins/operations). */
+export interface PluginOperationOut {
+  id: number
+  plugin_id: string | null
+  repo_name: string | null
+  action: 'install' | 'upgrade' | 'rollback' | string
+  version: string | null
+  requested_by: string | null
+  requested_at: string | null
+  finished_at: string | null
+  status: 'running' | 'done' | 'partial' | 'failed' | string
+  done: number
+  total: number
+  instances: PluginOperationInstanceOut[]
 }
 
 export interface HealthResponse {

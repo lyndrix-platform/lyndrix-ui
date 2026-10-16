@@ -9,6 +9,7 @@ import { toast } from '../lib/toast'
 import { getPluginIcon } from '../lib/icons'
 import type { PluginOut, MarketplacePlugin } from '../lib/types'
 import PluginSettingsModal from '../components/PluginSettingsModal'
+import PluginOperationsBar from '../components/PluginOperationsBar'
 
 // ─── Shared styles ────────────────────────────────────────────────────────────
 
@@ -1179,18 +1180,97 @@ function MarketplaceTab() {
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
+function UpdateAllButton() {
+  const { t } = useTranslation('ui')
+  const queryClient = useQueryClient()
+  const [confirm, setConfirm] = useState(false)
+  const { data: plugins } = useQuery({
+    queryKey: ['plugins'],
+    queryFn: () => apiFetch<{ plugins: PluginOut[] }>('/api/plugins').then((r) => r.plugins),
+  })
+  const outdated = (plugins ?? []).filter((p) => p.type === 'PLUGIN' && p.update_available && p.latest_version)
+
+  const mutation = useMutation({
+    mutationFn: () =>
+      apiFetch<{ count: number; started: { plugin_id: string; version: string }[] }>(
+        '/api/plugins/upgrade-all',
+        { method: 'POST' },
+      ),
+    onSuccess: (r) => {
+      setConfirm(false)
+      toast.success(t('plugins_page.update_all_started', { count: r.count }))
+      void queryClient.invalidateQueries({ queryKey: ['plugin-operations'] })
+      void queryClient.invalidateQueries({ queryKey: ['plugins'] })
+    },
+    onError: (err) => toast.error(err instanceof Error ? err.message : t('plugins_page.update_failed')),
+  })
+
+  if (outdated.length === 0) return null
+
+  return (
+    <>
+      <button
+        type="button"
+        onClick={() => setConfirm(true)}
+        className="lx-btn lx-btn--primary lx-btn--sm inline-flex items-center gap-1.5 shrink-0"
+        title={t('plugins_page.update_all_tip', { count: outdated.length })}
+      >
+        <ArrowUpCircle size={14} />
+        {t('plugins_page.update_all', { count: outdated.length })}
+      </button>
+      {confirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[var(--lx-scrim)] backdrop-blur-sm">
+          <div className="w-full max-w-md mx-4 p-6 rounded-xl bg-[var(--lx-surface-glass)] backdrop-blur-[var(--lx-blur-md)] backdrop-saturate-150 border border-[var(--lx-border-soft)] shadow-xl">
+            <h2 className="text-base font-semibold text-[var(--lx-text)] mb-1">{t('plugins_page.update_all_confirm_title')}</h2>
+            <p className="text-xs text-[var(--lx-text-muted)] mb-4">{t('plugins_page.update_all_confirm_body')}</p>
+            <ul className="mb-5 flex flex-col gap-1.5 max-h-60 overflow-y-auto">
+              {outdated.map((p) => (
+                <li key={p.id} className="flex items-center justify-between text-sm">
+                  <span className="text-[var(--lx-text)] truncate">{p.name}</span>
+                  <span className="font-mono text-xs text-[var(--lx-text-muted)] shrink-0 ml-3">
+                    {p.version} → {p.latest_version}
+                  </span>
+                </li>
+              ))}
+            </ul>
+            <div className="flex justify-end gap-2">
+              <button type="button" onClick={() => setConfirm(false)} className="lx-btn lx-btn--secondary lx-btn--sm">
+                {t('common.cancel')}
+              </button>
+              <button
+                type="button"
+                onClick={() => mutation.mutate()}
+                disabled={mutation.isPending}
+                className="lx-btn lx-btn--primary lx-btn--sm"
+              >
+                {mutation.isPending ? t('plugins_page.upgrading') : t('plugins_page.update_all_confirm_btn')}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
+  )
+}
+
 export default function PluginsPage() {
   const { t } = useTranslation('ui')
   const [tab, setTab] = useState('installed')
 
   return (
     <div className="max-w-5xl mx-auto px-6 py-8 md:px-8">
-      <div className="mb-6">
-        <h1 className="text-xl font-semibold text-[var(--lx-text)]">{t('plugins_page.page_title')}</h1>
-        <p className="text-sm text-[var(--lx-text-muted)] mt-1">
-          {t('plugins_page.page_subtitle')}
-        </p>
+      <div className="mb-6 flex items-start justify-between gap-4">
+        <div>
+          <h1 className="text-xl font-semibold text-[var(--lx-text)]">{t('plugins_page.page_title')}</h1>
+          <p className="text-sm text-[var(--lx-text-muted)] mt-1">
+            {t('plugins_page.page_subtitle')}
+          </p>
+        </div>
+        <UpdateAllButton />
       </div>
+
+      {/* Cluster-wide install/upgrade progress (core 1.8) */}
+      <PluginOperationsBar />
 
       <Tabs
         tabs={[

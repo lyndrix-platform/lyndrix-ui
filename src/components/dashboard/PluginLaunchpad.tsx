@@ -17,7 +17,9 @@ interface Props {
 }
 
 function hasReactUI(p: PluginOut): boolean {
-  return p.react_ui && p.react_routes.length > 0
+  // Only a sidebar-visible route makes an "app" tile; settings-only React UIs
+  // (External Services) are reached through the gear / the plugins page.
+  return p.react_ui && p.react_routes.some((r) => r.sidebar_visible)
 }
 
 function StatusBadge({ plugin }: { plugin: PluginOut }) {
