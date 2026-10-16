@@ -157,10 +157,12 @@ export default function PluginLaunchpad({ plugins }: Props) {
   )
 
   // Three buckets by UI capability — only rendered when non-empty.
-  const apps = pluginItems.filter((p) => hasReactUI(p)) // native React UI
-  const tools = pluginItems.filter((p) => !hasReactUI(p) && !!p.ui_route) // external/legacy UI
+  const apps = pluginItems.filter((p) => hasReactUI(p)) // native React UI with a visible route
+  // Legacy (NiceGUI) UIs only — a React plugin whose routes are all hidden
+  // (settings-only, e.g. External Services) gets no tile at all.
+  const tools = pluginItems.filter((p) => !p.react_ui && !!p.ui_route)
   const services = showAdminSections
-    ? pluginItems.filter((p) => !hasReactUI(p) && !p.ui_route) // headless
+    ? pluginItems.filter((p) => !p.react_ui && !p.ui_route) // headless
     : []
 
   function appHref(p: PluginOut): string {
