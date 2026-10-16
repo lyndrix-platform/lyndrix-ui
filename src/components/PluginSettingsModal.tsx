@@ -1,5 +1,7 @@
+import { useEffect } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
+import { X } from 'lucide-react'
 import { getPluginSettings, updatePluginSettings } from '../lib/api'
 import type { EditableSettingMeta, PluginSettingField } from '../lib/types'
 import SettingsForm from './SettingsForm'
@@ -36,6 +38,14 @@ export default function PluginSettingsModal({
     queryFn: () => getPluginSettings(pluginId),
   })
 
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if (e.key === 'Escape') onClose()
+    }
+    document.addEventListener('keydown', onKey)
+    return () => document.removeEventListener('keydown', onKey)
+  }, [onClose])
+
   const valueFields = data ? data.schema.filter((f) => f.kind !== 'action') : []
   const actionFields = data ? data.schema.filter((f) => f.kind === 'action') : []
   const metas = valueFields.map(toMeta)
@@ -45,26 +55,36 @@ export default function PluginSettingsModal({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-[var(--lx-scrim)] backdrop-blur-sm"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-[var(--lx-scrim)] backdrop-blur-sm p-4"
       onClick={(e) => e.target === e.currentTarget && onClose()}
+      role="dialog"
+      aria-modal="true"
+      aria-label={t('plugin_settings.title', { name: pluginName })}
     >
-      <div className="w-full max-w-lg mx-4 p-6 rounded-xl bg-[var(--lx-surface-glass)] backdrop-blur-[20px] border border-[var(--lx-glass-border)] shadow-2xl max-h-[80vh] flex flex-col">
-        <div className="flex items-center justify-between mb-5 shrink-0">
-          <div>
-            <h3 className="text-sm font-semibold text-[var(--lx-text)]">
+      {/* min-h-0 on the scroll area is what keeps a long schema inside the dialog
+          instead of pushing the header out of the viewport. */}
+      <div className="w-full max-w-2xl rounded-xl bg-[var(--lx-surface-glass)] backdrop-blur-[20px] border border-[var(--lx-glass-border)] shadow-2xl max-h-[88vh] flex flex-col overflow-hidden">
+        <div className="flex items-start justify-between gap-4 px-6 py-4 border-b border-[var(--lx-border-soft)] shrink-0">
+          <div className="min-w-0">
+            <h3 className="text-base font-semibold text-[var(--lx-text)] truncate">
               {t('plugin_settings.title', { name: pluginName })}
             </h3>
-            <p className="text-xs text-[var(--lx-text-muted)] mt-0.5 font-mono">{pluginId}</p>
+            <p className="text-xs text-[var(--lx-text-muted)] mt-0.5">
+              {t('plugin_settings.subtitle')} <span className="font-mono">{pluginId}</span>
+            </p>
           </div>
           <button
+            type="button"
             onClick={onClose}
-            className="text-[var(--lx-text-muted)] hover:text-[var(--lx-text)] text-xl leading-none p-1 transition-colors"
+            className="lx-icon-btn shrink-0"
+            aria-label={t('common.close')}
+            title={t('common.close')}
           >
-            &times;
+            <X size={16} />
           </button>
         </div>
 
-        <div className="overflow-y-auto flex-1">
+        <div className="overflow-y-auto flex-1 min-h-0 px-6 py-5">
           {isLoading && (
             <div className="flex justify-center py-8">
               <div className="w-5 h-5 border-2 border-[var(--lx-accent)] border-t-transparent rounded-full animate-spin" />

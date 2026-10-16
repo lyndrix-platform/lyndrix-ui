@@ -1,14 +1,22 @@
 import { useEffect, useRef, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Link, useNavigate } from 'react-router-dom'
-import { KeyRound, LogOut, Settings, User, Users } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
+import { KeyRound, LogOut, Settings, SlidersHorizontal, User, Users } from 'lucide-react'
 import { apiFetch } from '../lib/api'
 import { getMe, logout } from '../lib/auth'
 import { toast } from '../lib/toast'
+import { getPluginIcon } from '../lib/icons'
+import { usePluginSettingsTarget } from '../lib/usePluginSettingsTarget'
+import PluginSettingsModal from './PluginSettingsModal'
 
 export default function ProfileMenu() {
+  const { t } = useTranslation('ui')
   const navigate = useNavigate()
   const [open, setOpen] = useState(false)
+  // "Plugin settings" entry for the plugin page that is open (core 1.8 UX).
+  const { target: pluginTarget, open: openPluginSettings } = usePluginSettingsTarget()
+  const [pluginDialog, setPluginDialog] = useState(false)
   const [showPwForm, setShowPwForm] = useState(false)
   const [currentPassword, setCurrentPassword] = useState('')
   const [newPassword, setNewPassword] = useState('')
@@ -106,6 +114,33 @@ export default function ProfileMenu() {
             )}
           </div>
 
+          {/* Plugin settings of the page that is open — the standard entry point */}
+          {pluginTarget && (
+            <div className="py-1 border-b border-[var(--lx-border-soft)]">
+              <button
+                type="button"
+                onClick={() => {
+                  closeMenu()
+                  openPluginSettings(() => setPluginDialog(true))
+                }}
+                className="w-full flex items-start gap-2.5 px-3 py-2 text-left text-sm text-[var(--lx-text-muted)] hover:text-[var(--lx-text)] hover:bg-[var(--lx-elevated)]/50 transition-colors"
+              >
+                {(() => {
+                  const Icon = pluginTarget.plugin.icon ? getPluginIcon(pluginTarget.plugin.icon) : SlidersHorizontal
+                  return <Icon size={15} className="mt-0.5 shrink-0 text-[var(--lx-accent)]" />
+                })()}
+                <span className="min-w-0">
+                  <span className="block text-[var(--lx-text)] truncate">
+                    {t('shell.plugin_settings', { name: pluginTarget.plugin.name })}
+                  </span>
+                  <span className="block text-[11px] text-[var(--lx-text-muted)] leading-snug">
+                    {pluginTarget.route ? t('shell.plugin_settings_desc_route') : t('shell.plugin_settings_desc_dialog')}
+                  </span>
+                </span>
+              </button>
+            </div>
+          )}
+
           {/* Links */}
           <div className="py-1">
             <Link
@@ -184,6 +219,14 @@ export default function ProfileMenu() {
             </button>
           </div>
         </div>
+      )}
+
+      {pluginDialog && pluginTarget && (
+        <PluginSettingsModal
+          pluginId={pluginTarget.plugin.id}
+          pluginName={pluginTarget.plugin.name}
+          onClose={() => setPluginDialog(false)}
+        />
       )}
     </div>
   )

@@ -1,7 +1,6 @@
 import { PanelLeft } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import NotificationBell from '../NotificationBell'
-import PluginSettingsAction from '../PluginSettingsAction'
 import ProfileMenu from '../ProfileMenu'
 
 interface Props {
@@ -24,8 +23,6 @@ export default function Header({ onToggleSidebar }: Props) {
       </button>
 
       <div className="flex items-center gap-2">
-        {/* Standard entry point to a plugin's settings while its page is open (core 1.8 UX) */}
-        <PluginSettingsAction />
         <NotificationBell />
         <ProfileMenu />
       </div>
